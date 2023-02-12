@@ -1,0 +1,6 @@
+[submodule "dependencies/json"]
+	path = dependencies/json
+	url = git@github.com:nlohmann/json.git
+[submodule "dependencies/glfw"]
+	path = dependencies/glfw
+	url = git@github.com:glfw/glfw.git
