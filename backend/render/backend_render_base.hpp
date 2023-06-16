@@ -43,17 +43,17 @@ namespace lib::backend {
         }
 
         //! returns the cos/sin value of a particular circle segment
-        const circle_cache_t& get_circle_cache(uint8_t segment) const  {
+        [[nodiscard]] const circle_cache_t& get_circle_cache(uint8_t segment) const  {
             return _circle_cache.at(segment);
         }
 
         //! returns the time between frames
-        const float get_frame_time() const {
+        [[nodiscard]] float get_frame_time() const {
             return _frame_time;
         }
 
         //! returns the size of the window the renderer is running in
-        const common::point_int& get_window_size() const {
+        [[nodiscard]] const common::point_int& get_window_size() const {
             return _window_size;
         }
     public:

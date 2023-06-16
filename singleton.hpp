@@ -43,5 +43,9 @@ namespace lib {
 
             return _impl;
         }
+    protected:
+        // constructor should only be accessible from the singleton class
+        shared_singleton() = default;
+        ~shared_singleton() = default;
     };
 }
