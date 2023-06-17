@@ -13,4 +13,4 @@ if (${LIB_BACKEND_WINDOW} STREQUAL "glfw")
 
 endif()
 
-message(STATUS "Window backend: ${LIB_BACKEND_WINDOW}")
+message(STATUS "LIB_BACKEND_WINDOW: ${LIB_BACKEND_WINDOW}")

@@ -8,9 +8,6 @@ set(CMAKE_CXX_STANDARD 20)
 add_library(${PROJECT_NAME} STATIC custom_lib.cpp)
 
 # register options
-set(LIB_BACKEND_INPUT "none" CACHE STRING "Input handling")
-set_property(CACHE LIB_BACKEND_INPUT PROPERTY STRINGS "none" "glfw" "wndproc")
-
 set(LIB_BACKEND_RENDER "none" CACHE STRING "Render implementation")
 set_property(CACHE LIB_BACKEND_RENDER PROPERTY STRINGS "none" "dx9" "dx11" "opengl3")
 

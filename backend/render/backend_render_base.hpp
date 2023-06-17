@@ -9,6 +9,7 @@
 #include <common/types/color.hpp>
 
 #include <array>
+#include <cmath>
 #include <unordered_map>
 
 namespace lib::backend {
@@ -114,6 +115,6 @@ namespace lib::backend {
         float _frame_time = 0.f;
         common::point_int _window_size = {};
 
-        std::array<circle_cache_t, CIRCLE_CACHE_SEGMENTS> _circle_cache = {};
+        std::array<circle_cache_t, CIRCLE_CACHE_SEGMENTS + 1> _circle_cache = {};
     };
 }

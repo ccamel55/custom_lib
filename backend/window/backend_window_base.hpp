@@ -1,5 +1,8 @@
 #pragma once
 
+#include <backend/input/backend_input_base.hpp>
+#include <backend/render/backend_render_base.hpp>
+
 #include <singleton.hpp>
 #include <common/types/point/point_int.hpp>
 #include <common/types/bitflag.hpp>
@@ -23,6 +26,16 @@ namespace lib::backend {
         //! register a callback function \param render_callback that is called every render frame
         void register_render_callback(std::function<void()> render_callback) {
             _render_callback = std::move(render_callback);
+        }
+
+        //! register the input renderer used
+        void register_renderer(std::shared_ptr<backend_render_base> render_impl) {
+            _render_handler = std::move(render_impl);
+        }
+
+        //! register the input handler used
+        void register_input_handler(std::shared_ptr<backend_input_base> input_impl) {
+            _input_handler = std::move(input_impl);
         }
 
         //! return the size of the current window
@@ -51,6 +64,9 @@ namespace lib::backend {
         virtual void window_loop() = 0;
 	protected:
         std::function<void()> _render_callback = nullptr;
+        std::shared_ptr<backend_input_base> _input_handler = nullptr;
+        std::shared_ptr<backend_render_base> _render_handler = nullptr;
+
 		std::string _window_name;
 
 		common::point_int _window_position = {100, 100};

@@ -2,6 +2,25 @@
 
 using namespace lib::backend;
 
+namespace {
+
+    // passing c callbacks into c++ ew
+    backend_input_base* input_handler_ptr = nullptr;
+
+    void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+        input_handler_ptr->update_input_state(key, action);
+    }
+}
+
+backend_window::~backend_window() {
+
+    input_handler_ptr = nullptr;
+
+    if (_render_handler) {
+        _render_handler->destroy_instance();
+    }
+}
+
 void backend_window::create_window(const std::string& window_name, int pos_x, int pos_y, int width, int height, WINDOW_FLAGS_E flags) {
 
     // initialize base class
@@ -37,6 +56,16 @@ void backend_window::create_window(const std::string& window_name, int pos_x, in
 
     // make sure we can capture escape key
     glfwSetInputMode(_glfw_window_ptr, GLFW_STICKY_KEYS, GL_TRUE);
+
+    if (_render_handler) {
+        _render_handler->init_instance();
+    }
+
+    if (_input_handler) {
+
+        input_handler_ptr = _input_handler.get();
+        glfwSetKeyCallback(_glfw_window_ptr, glfw_key_callback);
+    }
 };
 
 void backend_window::close_window() {

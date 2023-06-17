@@ -10,6 +10,8 @@ namespace lib::backend {
 
     class backend_window : public backend_window_base {
     public:
+        ~backend_window();
+
         void create_window(const std::string& window_name, int pos_x, int pos_y, int width, int height, WINDOW_FLAGS_E flags) override;
         void close_window() override;
         void focus_window() override;

@@ -4,7 +4,6 @@
 
 #include <array>
 
-
 namespace lib::backend {
 
     using input_key = uint32_t;
@@ -12,6 +11,9 @@ namespace lib::backend {
     //! base class for input handling
     class backend_input_base : public shared_singleton<backend_input_base> {
     public:
+        //! Called when ever a input state changes to update the current input handler implementation
+        virtual void update_input_state(input_key key, uint32_t state) = 0;
+
         //! returns whether \param key is currently pressed
         virtual bool key_down(input_key key) = 0;
 
