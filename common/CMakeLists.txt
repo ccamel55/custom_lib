@@ -1,6 +1,3 @@
-add_subdirectory(config)
 add_subdirectory(cryptography)
-add_subdirectory(keybind)
-add_subdirectory(math)
 add_subdirectory(threading)
 add_subdirectory(types)

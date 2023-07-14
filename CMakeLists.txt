@@ -23,7 +23,6 @@ target_sources( ${PROJECT_NAME} PUBLIC
 add_subdirectory(backend)
 add_subdirectory(common)
 add_subdirectory(deps)
-add_subdirectory(frontend)
 
 target_include_directories(${PROJECT_NAME} PUBLIC
         .
