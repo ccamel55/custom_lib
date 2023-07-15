@@ -1,3 +1,5 @@
-add_subdirectory(cryptography)
 add_subdirectory(threading)
-add_subdirectory(types)
+
+target_include_directories(${PROJECT_NAME} PUBLIC
+        include
+        )

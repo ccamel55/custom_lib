@@ -1,23 +1,13 @@
-set(LIB_BACKEND_RENDER_COMMON
-        ${CMAKE_CURRENT_LIST_DIR}/common/stb_truetype.hpp
-        ${CMAKE_CURRENT_LIST_DIR}/common/bitmap_font.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/common/bitmap_font.hpp
-        )
+lib_create_options(LIB_BACKEND_RENDER "Selects render api backend" none gl3)
 
-set(LIB_BACKEND_RENDER_OPENGL3
-        ${CMAKE_CURRENT_LIST_DIR}/opengl3/backend_render.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/opengl3/backend_render.hpp
-        )
-
-if (${LIB_BACKEND_RENDER} STREQUAL "opengl3")
-
-    # opengl3
-    target_sources(custom_lib PUBLIC
-            ${CMAKE_CURRENT_LIST_DIR}/backend_render_base.hpp
-            ${LIB_BACKEND_RENDER_COMMON}
-            ${LIB_BACKEND_RENDER_OPENGL3}
+if (NOT LIB_BACKEND_RENDER STREQUAL none)
+    target_sources(${PROJECT_NAME} PUBLIC
+            common/bitmap_font.cpp
             )
+endif ()
 
-endif()
-
-message(STATUS "LIB_BACKEND_RENDER: ${LIB_BACKEND_RENDER}")
+if (LIB_BACKEND_RENDER STREQUAL gl3)
+    target_sources(${PROJECT_NAME} PUBLIC
+            opengl3/render.cpp
+            )
+endif ()

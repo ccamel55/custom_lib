@@ -1,9 +1,9 @@
-[submodule "deps/fmt"]
-	path = deps/fmt
+[submodule "dependencies/fmt"]
+	path = dependencies/fmt
 	url = git@github.com:fmtlib/fmt.git
-[submodule "deps/json"]
-	path = deps/json
+[submodule "dependencies/json"]
+	path = dependencies/json
 	url = git@github.com:nlohmann/json.git
-[submodule "deps/glfw"]
-	path = deps/glfw
+[submodule "dependencies/glfw"]
+	path = dependencies/glfw
 	url = git@github.com:glfw/glfw.git

@@ -2,80 +2,78 @@
 
 using namespace lib::common;
 
-void thread_pool::worker_thread(void* param) {
+void thread_pool::worker_thread(void* param)
+{
+	const auto thread_pool_data = reinterpret_cast<thread_pool*>(param);
 
-    const auto thread_pool_data = reinterpret_cast<thread_pool*>(param);
+	while (thread_pool_data->_running)
+	{
+		std::function<void()> task;
+		std::unique_lock<std::mutex> task_lock(thread_pool_data->_tasks_mutex);
 
-    if (thread_pool_data->_worker_constructor) {
-        thread_pool_data->_worker_constructor();
-    }
+		thread_pool_data->_cv_task_available.wait(task_lock, [thread_pool_data]
+		{ return !thread_pool_data->_tasks.empty() || !thread_pool_data->_running; });
 
-    while (thread_pool_data->_running) {
+		if (thread_pool_data->_running)
+		{
+			task = std::move(thread_pool_data->_tasks.front());
+			thread_pool_data->_tasks.pop();
 
-        std::function<void()> task;
-        std::unique_lock<std::mutex> task_lock(thread_pool_data->_tasks_mutex);
+			task_lock.unlock();
 
-        thread_pool_data->_cv_task_available.wait(task_lock, [thread_pool_data] { return !thread_pool_data->_tasks.empty() || !thread_pool_data->_running; });
+			task();
 
-        if (thread_pool_data->_running) {
+			task_lock.lock();
+			--thread_pool_data->_task_count;
 
-            task = std::move(thread_pool_data->_tasks.front());
-            thread_pool_data->_tasks.pop();
-
-            task_lock.unlock();
-
-            task();
-
-            task_lock.lock();
-            --thread_pool_data->_task_count;
-
-            if (thread_pool_data->_waiting) {
-                thread_pool_data->_cv_task_done.notify_one();
-            }
-        }
-    }
-
-    if (thread_pool_data->_worker_destructor) {
-        thread_pool_data->_worker_destructor();
-    }
+			if (thread_pool_data->_waiting)
+			{
+				thread_pool_data->_cv_task_done.notify_one();
+			}
+		}
+	}
 }
 
-void thread_pool::spawn_threads(std::function<void()> worker_constructor, std::function<void()> worker_destructor) {
+void thread_pool::spawn_threads()
+{
+	if (std::thread::hardware_concurrency() > 0)
+	{
+		_thread_count = std::thread::hardware_concurrency();
+	}
+	else
+	{
+		_thread_count = 1;
+	}
 
-    if (std::thread::hardware_concurrency() > 0) {
-        _thread_count = std::thread::hardware_concurrency();
-    }
-    else {
-        _thread_count = 1;
-    }
+	_threads = std::make_unique<std::thread[]>(_thread_count);
+	_running = true;
 
-    _threads = std::make_unique<std::thread[]>(_thread_count);
-    _running = true;
-
-    for (concurrency_t i = 0; i < _thread_count; i++) {
-        _threads[i] = std::thread(worker_thread, this);
-    }
+	for (concurrency_t i = 0; i < _thread_count; i++)
+	{
+		_threads[i] = std::thread(worker_thread, this);
+	}
 }
 
-void thread_pool::kill_threads() {
+void thread_pool::kill_threads()
+{
+	wait_for_task();
 
-    // dont stop until finished everything in the thread pool
-    wait_for_task();
+	_running = false;
+	_cv_task_available.notify_all();
 
-    _running = false;
-    _cv_task_available.notify_all();
-
-    for (concurrency_t i = 0; i < _thread_count; i++) {
-        _threads[i].join();
-    }
+	for (concurrency_t i = 0; i < _thread_count; i++)
+	{
+		_threads[i].join();
+	}
 }
 
-void thread_pool::wait_for_task() {
+void thread_pool::wait_for_task()
+{
+	_waiting = true;
 
-    _waiting = true;
+	std::unique_lock<std::mutex> task_lock(_tasks_mutex);
+	_cv_task_done.wait(task_lock, [this]
+	{ return (_task_count == 0); });
 
-    std::unique_lock<std::mutex> task_lock(_tasks_mutex);
-    _cv_task_done.wait(task_lock, [this] { return (_task_count == 0); });
-
-    _waiting = false;
+	_waiting = false;
 }

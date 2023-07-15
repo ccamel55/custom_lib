@@ -1,32 +1,18 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.19)
 project (custom_lib)
 
-# use cpp 2020
+include(cmake/functions.cmake)
+
+# force modern c/c++ standards
+set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# custom_lib.cpp contains no code, it is a work around for building a library without initial sources
 add_library(${PROJECT_NAME} STATIC custom_lib.cpp)
-
-# register options
-set(LIB_BACKEND_RENDER "none" CACHE STRING "Render implementation")
-set_property(CACHE LIB_BACKEND_RENDER PROPERTY STRINGS "none" "dx9" "dx11" "opengl3")
-
-set(LIB_BACKEND_WINDOW "none" CACHE STRING "Window creation")
-set_property(CACHE LIB_BACKEND_WINDOW PROPERTY STRINGS "none" "glfw")
-
-# include macro and singleton header files
-target_sources( ${PROJECT_NAME} PUBLIC
-        ${CMAKE_CURRENT_LIST_DIR}/macros.hpp
-        ${CMAKE_CURRENT_LIST_DIR}/singleton.hpp
-        )
 
 add_subdirectory(backend)
 add_subdirectory(common)
-add_subdirectory(deps)
-
-target_include_directories(${PROJECT_NAME} PUBLIC
-        .
-        )
+add_subdirectory(dependencies)
 
 target_link_libraries(${PROJECT_NAME} PUBLIC
         nlohmann_json::nlohmann_json
