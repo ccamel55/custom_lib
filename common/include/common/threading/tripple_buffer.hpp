@@ -57,6 +57,6 @@ namespace lib::common
 		std::atomic<t*> _reading = nullptr;
 		std::atomic<t*> _writing = nullptr;
 		std::atomic<t*> _ready = nullptr;
-		std::atomic<bool> _updated = false;
+		std::atomic_bool _updated = false;
 	};
 }
