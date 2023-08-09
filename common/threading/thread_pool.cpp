@@ -77,3 +77,12 @@ void thread_pool::wait_for_task()
 
 	_waiting = false;
 }
+
+void thread_pool::add_task(std::function<void()>&& task)
+{
+	const std::scoped_lock task_lock(_tasks_mutex);
+	_tasks.push(task);
+
+	_task_count++;
+	_cv_task_available.notify_one();
+}
