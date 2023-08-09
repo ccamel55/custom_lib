@@ -18,6 +18,8 @@ namespace lib::common
 	class thread_pool
 	{
 	public:
+		~thread_pool();
+
 		void spawn_threads();
 		void kill_threads();
 		void wait_for_task();

@@ -11,6 +11,16 @@ namespace lib::common
 	class async_caller
 	{
 	public:
+		~async_caller()
+		{
+			// stop exec thread if running
+			_stop_exec = true;
+
+			// wait until function has finished running by waiting for a lock
+			std::unique_lock<std::mutex> mutex(_queue_mutex);
+			mutex.unlock();
+		}
+
 		//! Add a new \a callback to the \c _callbacks list. Will be invoked later.
 		void add_function(std::function<void()>&& callback)
 		{
@@ -45,9 +55,9 @@ namespace lib::common
 		}
 
 		//! Non returning function, will wait for callbacks to be placed onto queue before running.
-		[[noreturn]] void exec()
+		void exec()
 		{
-			while (true)
+			while (!_stop_exec)
 			{
 				std::unique_lock<std::mutex> mutex(_queue_mutex);
 				_callbacks_exist.wait(mutex);
@@ -70,9 +80,9 @@ namespace lib::common
 			}
 		}
 
-
 	private:
 		std::mutex _queue_mutex = {};
+		std::atomic_bool _stop_exec = false;
 		std::condition_variable _callbacks_exist = {};
 		std::deque<std::function<void()>> _callbacks = {};
 	};

@@ -12,6 +12,13 @@ namespace lib::common
 	class signal_handler
 	{
 	public:
+		~signal_handler()
+		{
+			// wait until function has finished running by waiting for a lock
+			std::unique_lock<std::mutex> mutex(_queue_mutex);
+			mutex.unlock();
+		}
+
 		//! Add a new \a callback to the \c _callbacks list.
 		void register_callback(std::function<void(a...)>&& callback)
 		{

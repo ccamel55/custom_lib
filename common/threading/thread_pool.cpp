@@ -2,6 +2,14 @@
 
 using namespace lib::common;
 
+thread_pool::~thread_pool()
+{
+	if (_running)
+	{
+		kill_threads();
+	}
+}
+
 void thread_pool::worker_thread(void* param)
 {
 	const auto thread_pool_data = reinterpret_cast<thread_pool*>(param);
