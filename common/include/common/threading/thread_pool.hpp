@@ -1,58 +1,40 @@
 #pragma once
 
 #include <thread>
-#include <atomic>
-#include <condition_variable>
+#include <deque>
+#include <vector>
 #include <functional>
-#include <queue>
-#include <mutex>
+#include <condition_variable>
 
 namespace lib::common
 {
-	// todo: rewrite this shit
-	// modified version of thread_pool_light
-	// https://github.com/bshoshany/thread-pool/blob/master/BS_thread_pool_light.hpp
-	using concurrency_t = std::invoke_result_t<decltype(std::thread::hardware_concurrency)>;
-
-	//! Thread pool which can batch process jobs.
+	//! General purpose thread pool. Executes a pool of jobs.
 	class thread_pool
 	{
 	public:
 		~thread_pool();
 
-		void spawn_threads();
-		void kill_threads();
-		void wait_for_task();
-		void add_task(std::function<void()>&& task);
+		//! Spawn worker threads. Will determine the number of threads automatically.
+		void spawn_threads(size_t max_threads);
 
-		//		template <typename f, typename... a>
-		//		void add_task(f&& task, a&&... args)
-		//		{
-		//			std::function<void()> task_function = std::bind(std::forward<f>(task), std::forward<a>(args)...);
-		//			{
-		//				const std::scoped_lock task_lock(_tasks_mutex);
-		//				_tasks.push(task_function);
-		//			}
-		//
-		//			_task_count++;
-		//			_cv_task_available.notify_one();
-		//		}
+		//! Kill all worker threads.
+		void kill_threads();
+
+		//! Queue a task onto the thread pool.
+		void queue_task(std::function<void()>&& function);
+
+		//! Wait until all thread pool tasks have been completed.
+		void wait_for_tasks();
 
 	private:
-		static void worker_thread(void* param);
+		std::atomic_bool _worker_threads_running = false;
+		std::atomic_bool _waiting_for_finish = false;
 
-		std::atomic<bool> _running = false;
-		std::atomic<bool> _waiting = false;
+		std::mutex _tasks_mutex = {};
+		std::condition_variable _received_tasks = {};
+		std::condition_variable _finished_tasks = {};
 
-		std::condition_variable _cv_task_available = {};
-		std::condition_variable _cv_task_done = {};
-
-		concurrency_t _thread_count = 0;
-		std::atomic<size_t> _task_count = 0;
-
-		mutable std::mutex _tasks_mutex = {};
-
-		std::queue<std::function<void()>> _tasks = {};
-		std::unique_ptr<std::thread[]> _threads = nullptr;
+		std::vector<std::thread> _worker_threads = {};
+		std::deque<std::function<void()>> _thread_pool_tasks = {};
 	};
 }

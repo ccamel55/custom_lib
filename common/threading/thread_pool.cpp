@@ -4,93 +4,123 @@ using namespace lib::common;
 
 thread_pool::~thread_pool()
 {
-	if (_running)
-	{
-		kill_threads();
-	}
+	kill_threads();
 }
 
-void thread_pool::worker_thread(void* param)
+void thread_pool::spawn_threads(size_t max_threads)
 {
-	const auto thread_pool_data = reinterpret_cast<thread_pool*>(param);
-
-	while (thread_pool_data->_running)
+	if (_worker_threads_running)
 	{
-		std::function<void()> task;
-		std::unique_lock<std::mutex> task_lock(thread_pool_data->_tasks_mutex);
+		return;
+	}
 
-		thread_pool_data->_cv_task_available.wait(task_lock, [thread_pool_data]
-		{ return !thread_pool_data->_tasks.empty() || !thread_pool_data->_running; });
+	// hardware_concurrency returns estimated number of threads a system has for concurrency
+	size_t num_thread = std::thread::hardware_concurrency();
 
-		if (thread_pool_data->_running)
+	if (num_thread == 0)
+	{
+		num_thread = 1;
+	}
+
+	// clamp number of max threads lol
+	num_thread = std::min(num_thread, max_threads);
+
+	// define worker thread task
+	const auto worker_thread_task = [&]() -> void
+	{
+		while (_worker_threads_running)
 		{
-			task = std::move(thread_pool_data->_tasks.front());
-			thread_pool_data->_tasks.pop();
+			std::unique_lock<std::mutex> mutex(_tasks_mutex);
 
-			task_lock.unlock();
-
-			task();
-
-			task_lock.lock();
-			--thread_pool_data->_task_count;
-
-			if (thread_pool_data->_waiting)
+			if (_thread_pool_tasks.empty())
 			{
-				thread_pool_data->_cv_task_done.notify_one();
+				// wait until receive a conditional variable if we have no callbacks
+				_received_tasks.wait(mutex);
 			}
+
+			// if we have stopped in between loop check and receiving conditional variable exit
+			if (!_worker_threads_running)
+			{
+				break;
+			}
+
+			while (!_thread_pool_tasks.empty())
+			{
+				const auto task = std::move(_thread_pool_tasks.at(0));
+				_thread_pool_tasks.pop_front();
+
+				mutex.unlock();
+
+				task();
+
+				mutex.lock();
+			}
+
+			if (_waiting_for_finish)
+			{
+				_finished_tasks.notify_all();
+				_waiting_for_finish = false;
+			}
+
+			mutex.unlock();
 		}
-	}
-}
+	};
 
-void thread_pool::spawn_threads()
-{
-	if (std::thread::hardware_concurrency() > 0)
-	{
-		_thread_count = std::thread::hardware_concurrency();
-	}
-	else
-	{
-		_thread_count = 1;
-	}
+	_worker_threads_running = true;
 
-	_threads = std::make_unique<std::thread[]>(_thread_count);
-	_running = true;
-
-	for (concurrency_t i = 0; i < _thread_count; i++)
+	for (size_t i = 0; i < num_thread; i++)
 	{
-		_threads[i] = std::thread(worker_thread, this);
+		// create worker thread using thread_pool lambda
+		_worker_threads.emplace_back(worker_thread_task);
 	}
 }
 
 void thread_pool::kill_threads()
 {
-	wait_for_task();
-
-	_running = false;
-	_cv_task_available.notify_all();
-
-	for (concurrency_t i = 0; i < _thread_count; i++)
+	if (!_worker_threads_running)
 	{
-		_threads[i].join();
+		return;
+	}
+
+	// stop processing data in thread
+	_worker_threads_running = false;
+	_received_tasks.notify_all();
+
+	// wait until all threads terminates
+	for (auto& thread : _worker_threads)
+	{
+		thread.join();
 	}
 }
 
-void thread_pool::wait_for_task()
+void thread_pool::queue_task(std::function<void()>&& function)
 {
-	_waiting = true;
+	if (!_worker_threads_running)
+	{
+		return;
+	}
 
-	std::unique_lock<std::mutex> task_lock(_tasks_mutex);
-	_cv_task_done.wait(task_lock, [this]
-	{ return (_task_count == 0); });
+	std::unique_lock<std::mutex> mutex(_tasks_mutex);
+	_thread_pool_tasks.push_back(std::move(function));
 
-	_waiting = false;
+	// tell one of the worker threads to pick up job
+	_received_tasks.notify_one();
 }
 
-void thread_pool::add_task(std::function<void()>&& task)
+void thread_pool::wait_for_tasks()
 {
-	const std::scoped_lock task_lock(_tasks_mutex);
-	_tasks.push(task);
+	if (!_worker_threads_running)
+	{
+		return;
+	}
 
-	_task_count++;
-	_cv_task_available.notify_one();
+	std::unique_lock<std::mutex> mutex(_tasks_mutex);
+
+	if (!_thread_pool_tasks.empty())
+	{
+		_waiting_for_finish = true;
+
+		// wait until receive a conditional variable if we have no callbacks
+		_finished_tasks.wait(mutex);
+	}
 }

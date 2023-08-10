@@ -20,25 +20,20 @@ void timer::start_timer()
 
 	_timeout_thread = std::thread([this]()
 	{
-		while (true)
+		while (_is_running)
 		{
-			if (!this->_is_running)
-			{
-				return;
-			}
-
 			// timer timeout ;)
-			std::this_thread::sleep_for(this->_timeout);
+			std::this_thread::sleep_for(_timeout);
 
-			if (!this->_is_running)
+			if (!_is_running)
 			{
-				return;
+				break;
 			}
 
 			// place the function onto the async caller, async caller will invoke the callback
-			this->_async_caller.add_function([this](){ this->_callback(); });
+			_async_caller.add_function([this](){ _callback(); });
 
-			if (this->_timer_mode == timer_mode_e::ONE_SHOT)
+			if (_timer_mode == timer_mode_e::ONE_SHOT)
 			{
 				break;
 			}
