@@ -3,6 +3,7 @@
 #include <atomic>
 #include <vector>
 #include <functional>
+#include <thread>
 
 #include "common/threading/async_caller.hpp"
 

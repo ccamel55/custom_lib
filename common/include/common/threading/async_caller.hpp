@@ -4,6 +4,7 @@
 #include <deque>
 #include <condition_variable>
 #include <functional>
+#include <thread>
 
 namespace lib::common
 {

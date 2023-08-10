@@ -21,8 +21,13 @@ if (LIB_BACKEND_RENDER STREQUAL gl3)
             glm::glm
             )
 
-    # Suppress volatile deprecated warnings, annoying!!
-    target_compile_options(glm INTERFACE -Wno-volatile)
+    #suppress volatile deprecated warnings, annoying!!
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        target_compile_options(glm INTERFACE -Wno-volatile)
+    elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+        target_compile_options(glm INTERFACE -Wno-deprecated-volatile)
+    endif()
+
 
 endif ()
 
