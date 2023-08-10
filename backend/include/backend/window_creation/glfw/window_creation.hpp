@@ -1,7 +1,9 @@
 #pragma once
 
-#include <backend/window_creation/window_creation_base.hpp>
+#define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
+
+#include <backend/window_creation/window_creation_base.hpp>
 
 namespace lib::backend
 {

@@ -86,7 +86,7 @@ namespace lib::backend
 		virtual void render_finish() = 0;
 
 		//! create a new font with the given param, \param font_hash is the name of the font hashed to fn1v
-		virtual void addFont(common::hash_t font_hash, const std::string& font_name, size_t height, size_t weight) = 0;
+		virtual void add_font(common::hash_t font_hash, const std::string& font_name, size_t height, size_t weight) = 0;
 
 		//! draw a string
 		virtual void draw_string(common::hash_t font_hash, const common::point2Di& pos, const common::color& color, const std::string& string, render_flags flags) = 0;

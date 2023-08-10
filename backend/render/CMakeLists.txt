@@ -9,5 +9,8 @@ endif ()
 if (LIB_BACKEND_RENDER STREQUAL gl3)
     target_sources(${PROJECT_NAME} PUBLIC
             opengl3/render.cpp
+            opengl3/core/shader_manager.cpp
+            opengl3/core/vertex_layout_manager.cpp
+            opengl3/core/vertex_manager.cpp
             )
 endif ()

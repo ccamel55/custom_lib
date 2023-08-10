@@ -15,6 +15,7 @@ namespace lib::backend
 	{
 		window_flag_none = 0 << 0,
 		window_flag_no_border = 1 << 0,
+		window_flag_opengl3 = 1 << 1,
 	};
 
 	//! base class for os window creation
@@ -26,7 +27,13 @@ namespace lib::backend
 		{
 		}
 
-		virtual ~window_creation_base() = default;
+		virtual ~window_creation_base()
+		{
+			if (_renderer)
+			{
+				_renderer->destroy_instance();
+			}
+		}
 
 		//! register a callback function \param render_callback that is called every render frame
 		void register_render_callback(std::function<void()> render_callback)
@@ -38,6 +45,7 @@ namespace lib::backend
 		void register_renderer(renderer_base* renderer)
 		{
 			_renderer = renderer;
+			_renderer->init_instance();
 		}
 
 		//! return the size of the current window
