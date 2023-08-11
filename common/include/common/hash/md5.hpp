@@ -1,8 +1,13 @@
-//
-// Created by Allan on 12/08/2023.
-//
+#pragma once
+#include <array>
 
-#ifndef TEST_ENVIRONMENT_MD5_HPP
-#define TEST_ENVIRONMENT_MD5_HPP
+namespace lib::common
+{
+	// md5 is 128 bit :O
+	using md5_t = std::array<uint8_t, 16>;
 
-#endif //TEST_ENVIRONMENT_MD5_HPP
+	namespace md5
+	{
+
+	}
+}

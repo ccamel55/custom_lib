@@ -15,8 +15,9 @@ window_creation::window_creation(std::string window_name, int pos_x, int pos_y, 
 	if (_flags.has_flag(window_flags::window_flag_opengl3))
 	{
 		// Opengl version 3.3
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+		glfwWindowHint (GLFW_CONTEXT_VERSION_MAJOR, 3);
+		glfwWindowHint (GLFW_CONTEXT_VERSION_MINOR, 3);
+		glfwWindowHint (GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
 
 		// OpenGl core profile
@@ -33,6 +34,9 @@ window_creation::window_creation(std::string window_name, int pos_x, int pos_y, 
 
 	// remove border and title bar
 	glfwWindowHint(GLFW_DECORATED, !_flags.has_flag(window_flags::window_flag_no_border));
+
+	// allow resizing
+	glfwWindowHint(GLFW_RESIZABLE, _flags.has_flag(window_flags::window_flag_resizeable));
 
 	// create a new window
 	_glfw_window_ptr = glfwCreateWindow(_window_size._x, _window_size._y, _window_name.data(), nullptr, nullptr);
@@ -80,7 +84,5 @@ void window_creation::window_loop()
 	}
 
 	lib_log_d("window_creation: destroying window");
-
-	glfwDestroyWindow(_glfw_window_ptr);
 	glfwTerminate();
 }

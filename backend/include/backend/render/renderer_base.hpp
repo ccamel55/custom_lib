@@ -2,9 +2,10 @@
 
 #include <common/types/bitflag.hpp>
 #include <common/types/color.hpp>
-#include <common/types/hash/fnv1a.hpp>
+#include <common/hash/fnv1a.hpp>
 #include <common/types/point/point2D.hpp>
 #include <common/types/point/point4D.hpp>
+#include <common/logger.hpp>
 
 #include <cmath>
 #include <array>
@@ -64,6 +65,7 @@ namespace lib::backend
 		void set_window_size(const common::point2Di& window_size)
 		{
 			_window_size = window_size;
+			lib_log_d(fmt::format("renderer: updated window size, width {} height {}", window_size._x, window_size._y));
 		}
 
 		//! returns the size of the window the renderer is running in
@@ -127,10 +129,11 @@ namespace lib::backend
 		//! draw a filled triangle
 		virtual void draw_triangle_filled(const common::point2Di& pos1, const common::point2Di& pos2, const common::point2Di& pos3, const common::color& color, render_flags flags) = 0;
 
-	private:
+	protected:
 		float _frame_time = 0.f;
-		common::point2Di _window_size = {};
+		bool _created_instance = false;
 
+		common::point2Di _window_size = {};
 		std::array<circle_cache_t, CIRCLE_CACHE_SEGMENTS + 1> _circle_cache = {};
 	};
 }

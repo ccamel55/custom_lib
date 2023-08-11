@@ -1,5 +1,6 @@
 #pragma once
 
+#include <backend/input_handler/input_handler_base.hpp>
 #include <backend/render/renderer_base.hpp>
 
 #include <common/logger.hpp>
@@ -16,7 +17,8 @@ namespace lib::backend
 	{
 		window_flag_none = 0 << 0,
 		window_flag_no_border = 1 << 0,
-		window_flag_opengl3 = 1 << 1,
+		window_flag_resizeable = 1 << 1,
+		window_flag_opengl3 = 1 << 2,
 	};
 
 	//! base class for os window creation
@@ -43,12 +45,20 @@ namespace lib::backend
 		}
 
 		//! register the input renderer used
-		void register_renderer(renderer_base* renderer)
+		void register_renderer(const std::shared_ptr<renderer_base>& renderer)
 		{
 			lib_log_d("window_creation: registered renderer");
-
 			_renderer = renderer;
+
 			_renderer->init_instance();
+			_renderer->set_window_size(_window_size);
+		}
+
+		//! register the input handler.
+		void register_input_handler(const std::shared_ptr<input_handler_base>& input_handler)
+		{
+			lib_log_d("window_creation: registered input_handler");
+			_input_handler = input_handler;
 		}
 
 		//! return the size of the current window
@@ -68,7 +78,9 @@ namespace lib::backend
 
 	protected:
 		std::function<void()> _render_callback = nullptr;
-		renderer_base* _renderer = nullptr;
+
+		std::shared_ptr<renderer_base> _renderer = nullptr;
+		std::shared_ptr<input_handler_base> _input_handler = nullptr;
 
 		std::string _window_name = {};
 

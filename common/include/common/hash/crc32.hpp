@@ -1,8 +1,12 @@
-//
-// Created by Allan on 12/08/2023.
-//
+#pragma once
+#include <cstring>
 
-#ifndef TEST_ENVIRONMENT_CRC32_HPP
-#define TEST_ENVIRONMENT_CRC32_HPP
+namespace lib::common
+{
+	using crc32_t = uint32_t;
 
-#endif //TEST_ENVIRONMENT_CRC32_HPP
+	namespace crc32
+	{
+
+	}
+}
