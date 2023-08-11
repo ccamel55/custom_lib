@@ -1,7 +1,5 @@
 #pragma once
 
-#include <backend/render/common/bitmap_font.hpp>
-
 #include <common/types/bitflag.hpp>
 #include <common/types/color.hpp>
 #include <common/types/hash/fnv1a.hpp>
@@ -40,8 +38,8 @@ namespace lib::backend
 			// cache circle segments
 			for (size_t i = 0; i <= CIRCLE_CACHE_SEGMENTS; i++)
 			{
-				_circle_cache.at(i).sin = std::sin(6.283185f * (i / static_cast<float>(CIRCLE_CACHE_SEGMENTS)));
-				_circle_cache.at(i).cos = std::cos(6.283185f * (i / static_cast<float>(CIRCLE_CACHE_SEGMENTS)));
+				_circle_cache.at(i).sin = std::sin(6.283185f * (static_cast<float>(i) / static_cast<float>(CIRCLE_CACHE_SEGMENTS)));
+				_circle_cache.at(i).cos = std::cos(6.283185f * (static_cast<float>(i) / static_cast<float>(CIRCLE_CACHE_SEGMENTS)));
 			}
 		}
 
@@ -52,9 +50,20 @@ namespace lib::backend
 		}
 
 		//! returns the time between frames
+		void set_frame_time(float frame_time)
+		{
+			_frame_time = frame_time;
+		}
+
+		//! returns the time between frames
 		[[nodiscard]] float get_frame_time() const
 		{
 			return _frame_time;
+		}
+
+		void set_window_size(const common::point2Di& window_size)
+		{
+			_window_size = window_size;
 		}
 
 		//! returns the size of the window the renderer is running in
