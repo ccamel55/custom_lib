@@ -9,7 +9,7 @@ window_creation::window_creation(std::string window_name, int pos_x, int pos_y, 
 	// try init glfw
 	if (!glfwInit())
 	{
-		throw misc::lib_exception("window_creation: failed to init glfw");
+		throw lib::lib_exception("window_creation: failed to init glfw");
 	}
 
 	if (_flags.has_flag(window_flags::window_flag_opengl3))
@@ -40,7 +40,7 @@ window_creation::window_creation(std::string window_name, int pos_x, int pos_y, 
 	if (!_glfw_window_ptr)
 	{
 		glfwTerminate();
-		throw misc::lib_exception("window_creation: failed to create glfw window");
+		throw lib::lib_exception("window_creation: failed to create glfw window");
 	}
 
 	glfwSetWindowPos(_glfw_window_ptr, _window_position._x, _window_position._y);

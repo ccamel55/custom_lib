@@ -33,11 +33,11 @@ void renderer::render_finish()
 {
 }
 
-void renderer::add_font(common::hash_t font_hash, const std::string& font_name, size_t height, size_t weight)
+void renderer::add_font(common::fnv1a_t font_hash, const std::string& font_name, size_t height, size_t weight)
 {
 }
 
-void renderer::draw_string(common::hash_t font_hash, const common::point2Di& pos, const common::color& color, const std::string& string, render_flags flags)
+void renderer::draw_string(common::fnv1a_t font_hash, const common::point2Di& pos, const common::color& color, const std::string& string, render_flags flags)
 {
 }
 

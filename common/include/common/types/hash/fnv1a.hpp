@@ -1,38 +1,41 @@
 #pragma once
-
 #include <cstring>
-#include <common/types/hash/hash.hpp>
 
-namespace lib::common::fnv1a
+namespace lib::common
 {
-	// https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function
+	using fnv1a_t = uint32_t;
 
-	constexpr hash_t FNV_PRIME = 0x01000193;
-	constexpr hash_t FNV_OFFSET_BASIS = 0x811c9dc5;
-
-	constexpr hash_t get_compile_time(const char* string, hash_t value = FNV_OFFSET_BASIS)
+	namespace fnv1a
 	{
-		if (string[0] == '\0')
+		// https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function
+
+		constexpr fnv1a_t FNV_PRIME = 0x01000193;
+		constexpr fnv1a_t FNV_OFFSET_BASIS = 0x811c9dc5;
+
+		constexpr fnv1a_t get_compile_time(const char* string, fnv1a_t value = FNV_OFFSET_BASIS)
 		{
+			if (string[0] == '\0')
+			{
+				return value;
+			}
+
+			value ^= string[0];
+			value *= FNV_PRIME;
+
+			return get_compile_time(string + 1, value);
+		}
+
+		inline fnv1a_t get(const char* string)
+		{
+			fnv1a_t value = FNV_OFFSET_BASIS;
+
+			for (size_t i = 0; i < strlen(string); i++)
+			{
+				value ^= string[i];
+				value *= FNV_PRIME;
+			}
+
 			return value;
 		}
-
-		value ^= string[0];
-		value *= FNV_PRIME;
-
-		return get_compile_time(string + 1, value);
-	}
-
-	inline hash_t get(const char* string)
-	{
-		hash_t value = FNV_OFFSET_BASIS;
-
-		for (size_t i = 0; i < strlen(string); i++)
-		{
-			value ^= string[i];
-			value *= FNV_PRIME;
-		}
-
-		return value;
 	}
 }

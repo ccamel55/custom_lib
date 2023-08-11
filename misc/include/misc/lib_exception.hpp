@@ -3,7 +3,7 @@
 #include <string>
 #include <exception>
 
-namespace misc
+namespace lib
 {
 class lib_exception : public std::exception
 {
