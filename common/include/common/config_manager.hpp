@@ -3,7 +3,7 @@
 #include <string>
 #include <filesystem>
 
-#include <common/types/hash/fnv1a.hpp>
+#include <common/hash/fnv1a.hpp>
 #include <nlohmann/json.hpp>
 
 namespace lib::common
