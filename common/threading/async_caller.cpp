@@ -1,4 +1,5 @@
 #include <common/threading/async_caller.hpp>
+#include <common/logger.hpp>
 
 using namespace lib::common;
 
@@ -36,6 +37,7 @@ void async_caller::spawn_exec_thread()
 {
 	if (_caller_thread_running)
 	{
+		lib_log_w("async_caller: could not spawn exec thread, exec thread already exists");
 		return;
 	}
 
@@ -63,6 +65,8 @@ void async_caller::spawn_exec_thread()
 
 	_caller_thread_running = true;
 	_async_caller_thread = std::thread(async_caller_thread);
+
+	lib_log_d("async_caller: created exec thread");
 }
 
 void async_caller::exec_callbacks_internal(std::unique_lock<std::mutex>& mutex)

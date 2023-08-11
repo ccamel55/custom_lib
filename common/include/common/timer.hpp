@@ -2,8 +2,8 @@
 
 #include <atomic>
 #include <vector>
-#include <functional>
 #include <thread>
+#include <functional>
 
 #include "common/threading/async_caller.hpp"
 

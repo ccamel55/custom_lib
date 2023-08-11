@@ -1,4 +1,6 @@
 #pragma once
+
+#include <iostream>
 #include <fmt/format.h>
 
 #if DEF_LIB_COMMON_LOGGER != 0
@@ -15,27 +17,27 @@ namespace
 #endif
 
 #if DEF_LIB_COMMON_LOGGER >= 4
-#define lib_print_d(x) std::cout << COLOR_LIGHT_GRAY << "[debug]: " << x << COLOR_RESET << std::endl;
+#define lib_log_d(x) std::cout << COLOR_LIGHT_GRAY << "[debug]: " << x << COLOR_RESET << std::endl
 #else
-#define lib_print_d(x);
+#define lib_log_d(x)
 #endif
 
 #if DEF_LIB_COMMON_LOGGER >= 3
-#define lib_print_i(x) std::cout << COLOR_WHITE << "[info]: " << x << COLOR_RESET << std::endl;
+#define lib_log_i(x) std::cout << COLOR_WHITE << "[info]: " << x << COLOR_RESET << std::endl
 #else
-#define lib_print_i(x);
+#define lib_log_i(x)
 #endif
 
 #if DEF_LIB_COMMON_LOGGER >= 2
-#define lib_print_w(x) std::cout << COLOR_YELLOW << "[warning]: " << x << COLOR_RESET << std::endl;
+#define lib_log_w(x) std::cout << COLOR_YELLOW << "[warning]: " << x << COLOR_RESET << std::endl
 #else
-#define lib_print_w(x);
+#define lib_log_w(x)
 #endif
 
 #if DEF_LIB_COMMON_LOGGER >= 1
-#define lib_print_e(x) std::cout << COLOR_RED << "[error]: " << x << COLOR_RESET << std::endl;
+#define lib_log_e(x) std::cout << COLOR_RED << "[error]: " << x << COLOR_RESET << std::endl
 #else
-#define lib_print_e(x);
+#define lib_log_e(x)
 #endif
 
 

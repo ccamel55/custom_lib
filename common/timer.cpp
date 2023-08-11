@@ -1,5 +1,5 @@
 #include <common/timer.hpp>
-#include <thread>
+#include <common/logger.hpp>
 
 using namespace lib::common;
 

@@ -2,6 +2,7 @@
 
 #include <backend/render/renderer_base.hpp>
 
+#include <common/logger.hpp>
 #include <common/types/bitflag.hpp>
 #include <common/types/point/point2D.hpp>
 
@@ -44,6 +45,8 @@ namespace lib::backend
 		//! register the input renderer used
 		void register_renderer(renderer_base* renderer)
 		{
+			lib_log_d("window_creation: registered renderer");
+
 			_renderer = renderer;
 			_renderer->init_instance();
 		}

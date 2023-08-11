@@ -1,4 +1,5 @@
 #include <backend/window_creation/glfw/window_creation.hpp>
+#include <cassert>
 
 using namespace lib::backend;
 
@@ -8,7 +9,8 @@ window_creation::window_creation(std::string window_name, int pos_x, int pos_y, 
 	// try init glfw
 	if (!glfwInit())
 	{
-		throw "backend_window: failed to initialize glfw";
+		lib_log_e("window_creation: failed to init glfw");
+		assert(0);
 	}
 
 	if (_flags.has_flag(window_flags::window_flag_opengl3))
@@ -39,7 +41,9 @@ window_creation::window_creation(std::string window_name, int pos_x, int pos_y, 
 	if (!_glfw_window_ptr)
 	{
 		glfwTerminate();
-		throw "backend_window: could not create window";
+		
+		lib_log_e("window_creation: failed to create glfw window");
+		assert(0);
 	}
 
 	glfwSetWindowPos(_glfw_window_ptr, _window_position._x, _window_position._y);
@@ -63,6 +67,8 @@ void window_creation::focus_window()
 
 void window_creation::window_loop()
 {
+	lib_log_d("window_creation: starting window loop");
+
 	// run main render thread from current thread
 	while (glfwGetKey(_glfw_window_ptr, GLFW_KEY_ESCAPE) != GLFW_PRESS && glfwWindowShouldClose(_glfw_window_ptr) == 0)
 	{
@@ -75,6 +81,8 @@ void window_creation::window_loop()
 		glfwSwapBuffers(_glfw_window_ptr);
 		glfwPollEvents();
 	}
+
+	lib_log_d("window_creation: destroying window");
 
 	glfwDestroyWindow(_glfw_window_ptr);
 	glfwTerminate();

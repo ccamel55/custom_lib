@@ -1,4 +1,5 @@
 #include <common/threading/thread_pool.hpp>
+#include <common/logger.hpp>
 
 using namespace lib::common;
 
@@ -11,6 +12,7 @@ void thread_pool::spawn_threads(size_t max_threads)
 {
 	if (_worker_threads_running)
 	{
+		lib_log_w("thread_pool: could not spawn worker threads, workers already exist");
 		return;
 	}
 
@@ -19,6 +21,7 @@ void thread_pool::spawn_threads(size_t max_threads)
 
 	if (num_thread == 0)
 	{
+		lib_log_w("thread_pool: current system does not support concurrency, spawning 1 worker thread");
 		num_thread = 1;
 	}
 
@@ -73,6 +76,8 @@ void thread_pool::spawn_threads(size_t max_threads)
 		// create worker thread using thread_pool lambda
 		_worker_threads.emplace_back(worker_thread_task);
 	}
+
+	lib_log_d("thread_pool: created worker threads");
 }
 
 void thread_pool::kill_threads()
@@ -97,6 +102,7 @@ void thread_pool::queue_task(std::function<void()>&& function)
 {
 	if (!_worker_threads_running)
 	{
+		lib_log_e("thread_pool: could not queue task, no worker threads exist");
 		return;
 	}
 
@@ -111,6 +117,7 @@ void thread_pool::wait_for_tasks()
 {
 	if (!_worker_threads_running)
 	{
+		lib_log_w("thread_pool: did not wait for tasks, no worker threads exist");
 		return;
 	}
 

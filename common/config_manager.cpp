@@ -1,4 +1,5 @@
 #include <common/config_manager.hpp>
+#include <common/logger.hpp>
 
 using namespace lib::common;
 
