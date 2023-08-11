@@ -23,7 +23,8 @@ void timer::start_timer()
 		while (_is_running)
 		{
 			// timer timeout ;)
-			std::this_thread::sleep_for(_timeout);
+			std::unique_lock<std::mutex> mutex(_exit_mutex);
+			_exit_timer_thread.wait_for(mutex, _timeout);
 
 			if (!_is_running)
 			{
@@ -43,4 +44,5 @@ void timer::start_timer()
 void timer::reset_timer()
 {
 	_is_running = false;
+	_exit_timer_thread.notify_all();
 }

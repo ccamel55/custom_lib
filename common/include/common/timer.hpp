@@ -35,6 +35,9 @@ namespace lib::common
 		std::atomic_bool _is_running = false;
 		std::thread _timeout_thread = {};
 
+		std::mutex _exit_mutex = {};
+		std::condition_variable _exit_timer_thread = {};
+
 		std::function<void()> _callback = nullptr;
 		std::chrono::milliseconds _timeout = std::chrono::milliseconds(1000);
 	};
