@@ -1,6 +1,7 @@
 # include JSON
 set(JSON_BuildTests OFF CACHE INTERNAL "")
 add_subdirectory(json)
+add_subdirectory(fmt)
 
 if (LIB_BACKEND_WINDOW_CREATION STREQUAL glfw)
     set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
@@ -37,4 +38,5 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 
 target_link_libraries(${PROJECT_NAME} PUBLIC
         nlohmann_json::nlohmann_json
+        fmt
         )
