@@ -1,5 +1,5 @@
 #include <backend/window_creation/glfw/window_creation.hpp>
-#include <cassert>
+#include <misc/lib_exception.hpp>
 
 using namespace lib::backend;
 
@@ -9,8 +9,7 @@ window_creation::window_creation(std::string window_name, int pos_x, int pos_y, 
 	// try init glfw
 	if (!glfwInit())
 	{
-		lib_log_e("window_creation: failed to init glfw");
-		assert(0);
+		throw misc::lib_exception("window_creation: failed to init glfw");
 	}
 
 	if (_flags.has_flag(window_flags::window_flag_opengl3))
@@ -41,9 +40,7 @@ window_creation::window_creation(std::string window_name, int pos_x, int pos_y, 
 	if (!_glfw_window_ptr)
 	{
 		glfwTerminate();
-		
-		lib_log_e("window_creation: failed to create glfw window");
-		assert(0);
+		throw misc::lib_exception("window_creation: failed to create glfw window");
 	}
 
 	glfwSetWindowPos(_glfw_window_ptr, _window_position._x, _window_position._y);
