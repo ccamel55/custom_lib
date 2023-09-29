@@ -1,11 +1,13 @@
 # Most dependencies are handled by CPM, thank you CPM 🙏
-
 set(JSON_BuildTests OFF CACHE INTERNAL "")
 CPMAddPackage("gh:fmtlib/fmt#10.1.1")
 CPMAddPackage("gh:nlohmann/json@3.11.2")
 
-target_include_directories(${PROJECT_NAME} PUBLIC
-        json/single_include/
+CPMAddPackage(
+        NAME Boost
+        VERSION 1.81.0
+        GITHUB_REPOSITORY "boostorg/boost"
+        GIT_TAG "boost-1.81.0"
 )
 
 target_link_libraries(${PROJECT_NAME} PUBLIC
