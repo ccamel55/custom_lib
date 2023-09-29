@@ -1,0 +1,3 @@
+[submodule "bindings/custom_lib_rust_bindings"]
+	path = bindings/custom_lib_rust_bindings
+	url = git@github.com:ccamel55/custom_lib_rust_bindings.git
