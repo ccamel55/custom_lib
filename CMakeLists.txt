@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.19)
 project (custom_lib)
 
+include(cmake/CPM.cmake)
 include(cmake/functions.cmake)
 
 # force modern c/c++ standards
