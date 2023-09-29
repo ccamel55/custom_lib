@@ -3,7 +3,8 @@
 
 using namespace lib::backend;
 
-window_creation::window_creation(std::string window_name, int pos_x, int pos_y, int width, int height, window_flags flags) :
+window_creation::window_creation(
+	std::string window_name, int pos_x, int pos_y, int width, int height, window_flags flags) :
 	window_creation_base(std::move(window_name), pos_x, pos_y, width, height, flags)
 {
 	// try init glfw
@@ -15,9 +16,9 @@ window_creation::window_creation(std::string window_name, int pos_x, int pos_y, 
 	if (_flags.has_flag(window_flags::window_flag_opengl3))
 	{
 		// Opengl version 3.3
-		glfwWindowHint (GLFW_CONTEXT_VERSION_MAJOR, 3);
-		glfwWindowHint (GLFW_CONTEXT_VERSION_MINOR, 3);
-		glfwWindowHint (GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
+		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+		glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
 
 		// OpenGl core profile

@@ -4,9 +4,8 @@
 
 namespace lib::backend
 {
-	class input_handler : public input_handler_base
-	{
-	public:
-
-	};
-}
+class input_handler : public input_handler_base
+{
+  public:
+};
+}  // namespace lib::backend
