@@ -1,18 +1,18 @@
 #pragma once
 
-#include <iostream>
 #include <fmt/format.h>
+#include <iostream>
 
 #if DEF_LIB_COMMON_LOGGER != 0
 
 namespace
 {
-	constexpr auto COLOR_RESET = "\033[0m";
-	constexpr auto COLOR_RED = "\033[31m";
-	constexpr auto COLOR_YELLOW = "\033[33m";
-	constexpr auto COLOR_LIGHT_GRAY = "\033[37m";
-	constexpr auto COLOR_WHITE = "\033[39m";
-}
+constexpr auto COLOR_RESET = "\033[0m";
+constexpr auto COLOR_RED = "\033[31m";
+constexpr auto COLOR_YELLOW = "\033[33m";
+constexpr auto COLOR_LIGHT_GRAY = "\033[37m";
+constexpr auto COLOR_WHITE = "\033[39m";
+}  // namespace
 
 #endif
 
@@ -39,6 +39,3 @@ namespace
 #else
 #define lib_log_e(x)
 #endif
-
-
-

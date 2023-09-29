@@ -22,7 +22,7 @@ void renderer::init_instance()
 	_created_instance = true;
 
 	lib_log_d("renderer: initialised new opengl instance");
-	lib_log_d("renderer: " <<  glGetString(GL_VERSION));
+	lib_log_d("renderer: " << glGetString(GL_VERSION));
 
 	// setup color blending mode
 	glEnable(GL_BLEND);
@@ -41,7 +41,7 @@ void renderer::destroy_instance()
 	}
 }
 
-void renderer::bind_context(void* context)
+void renderer::bind_context(void *context)
 {
 	if (_created_instance)
 	{
@@ -61,7 +61,6 @@ void renderer::remove_context()
 
 void renderer::reset()
 {
-
 }
 
 void renderer::render_start()
@@ -73,46 +72,69 @@ void renderer::render_finish()
 {
 }
 
-void renderer::add_font(common::fnv1a_t font_hash, const std::string& font_name, size_t height, size_t weight)
+void renderer::add_font(common::fnv1a_t font_hash, const std::string &font_name, size_t height, size_t weight)
 {
 }
 
-void renderer::draw_string(common::fnv1a_t font_hash, const common::point2Di& pos, const common::color& color, const std::string& string, render_flags flags)
+void renderer::draw_string(
+	common::fnv1a_t font_hash,
+	const common::point2Di &pos,
+	const common::color &color,
+	const std::string &string,
+	render_flags flags)
 {
 }
 
-void renderer::draw_rect(const common::point4Di& area, const common::color& color, render_flags flags)
+void renderer::draw_rect(const common::point4Di &area, const common::color &color, render_flags flags)
 {
 }
 
-void renderer::draw_rect_gradient(const common::point4Di& area, const common::color& color1, const common::color& color2, render_flags flags)
+void renderer::draw_rect_gradient(
+	const common::point4Di &area, const common::color &color1, const common::color &color2, render_flags flags)
 {
 }
 
-void renderer::draw_rect_filled(const common::point4Di& area, const common::color& color, render_flags flags)
+void renderer::draw_rect_filled(const common::point4Di &area, const common::color &color, render_flags flags)
 {
 }
 
-void renderer::draw_rect_filled_gradient(const common::point4Di& area, const common::color& color1, const common::color& color2, render_flags flags)
+void renderer::draw_rect_filled_gradient(
+	const common::point4Di &area, const common::color &color1, const common::color &color2, render_flags flags)
 {
 }
 
-void renderer::draw_circle(const common::point2Di& pos, float radius, const common::color& color, render_flags flags)
+void renderer::draw_circle(const common::point2Di &pos, float radius, const common::color &color, render_flags flags)
 {
 }
 
-void renderer::draw_circle_filled(const common::point2Di& pos, float radius, const common::color& color, render_flags flags)
+void renderer::draw_circle_filled(
+	const common::point2Di &pos, float radius, const common::color &color, render_flags flags)
 {
 }
 
-void renderer::draw_circle_filled_gradient(const common::point2Di& pos, float radius, const common::color& color1, const common::color& color2, render_flags flags)
+void renderer::draw_circle_filled_gradient(
+	const common::point2Di &pos,
+	float radius,
+	const common::color &color1,
+	const common::color &color2,
+	render_flags flags)
 {
 }
 
-void renderer::draw_triangle(const common::point2Di& pos1, const common::point2Di& pos2, const common::point2Di& pos3, const common::color& color, render_flags flags)
+void renderer::draw_triangle(
+	const common::point2Di &pos1,
+	const common::point2Di &pos2,
+	const common::point2Di &pos3,
+	const common::color &color,
+	render_flags flags)
 {
 }
 
-void renderer::draw_triangle_filled(const common::point2Di& pos1, const common::point2Di& pos2, const common::point2Di& pos3, const common::color& color, render_flags flags)
+void renderer::draw_triangle_filled(
+	const common::point2Di &pos1,
+	const common::point2Di &pos2,
+	const common::point2Di &pos3,
+	const common::color &color,
+	render_flags flags)
 {
 }

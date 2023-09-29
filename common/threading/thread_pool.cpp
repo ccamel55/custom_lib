@@ -1,5 +1,5 @@
-#include <common/threading/thread_pool.hpp>
 #include <common/logger.hpp>
+#include <common/threading/thread_pool.hpp>
 
 using namespace lib::common;
 
@@ -29,8 +29,7 @@ void thread_pool::spawn_threads(size_t max_threads)
 	num_thread = std::min(num_thread, max_threads);
 
 	// define worker thread task
-	const auto worker_thread_task = [&]() -> void
-	{
+	const auto worker_thread_task = [&]() -> void {
 		while (_worker_threads_running)
 		{
 			std::unique_lock<std::mutex> mutex(_tasks_mutex);
@@ -92,13 +91,13 @@ void thread_pool::kill_threads()
 	_received_tasks.notify_all();
 
 	// wait until all threads terminates
-	for (auto& thread : _worker_threads)
+	for (auto &thread : _worker_threads)
 	{
 		thread.join();
 	}
 }
 
-void thread_pool::queue_task(std::function<void()>&& function)
+void thread_pool::queue_task(std::function<void()> &&function)
 {
 	if (!_worker_threads_running)
 	{

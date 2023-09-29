@@ -1,5 +1,5 @@
-#include <common/threading/async_caller.hpp>
 #include <common/logger.hpp>
+#include <common/threading/async_caller.hpp>
 
 using namespace lib::common;
 
@@ -18,7 +18,7 @@ async_caller::~async_caller()
 	_async_caller_thread.join();
 }
 
-void async_caller::add_function(std::function<void()>&& callback)
+void async_caller::add_function(std::function<void()> &&callback)
 {
 	std::unique_lock<std::mutex> mutex(_callbacks_mutex);
 	_callbacks.push_back(std::move(callback));
@@ -41,8 +41,7 @@ void async_caller::spawn_exec_thread()
 		return;
 	}
 
-	const auto async_caller_thread = [&]() -> void
-	{
+	const auto async_caller_thread = [&]() -> void {
 		while (_caller_thread_running)
 		{
 			std::unique_lock<std::mutex> mutex(_callbacks_mutex);
@@ -69,7 +68,7 @@ void async_caller::spawn_exec_thread()
 	lib_log_d("async_caller: created exec thread");
 }
 
-void async_caller::exec_callbacks_internal(std::unique_lock<std::mutex>& mutex)
+void async_caller::exec_callbacks_internal(std::unique_lock<std::mutex> &mutex)
 {
 	while (!_callbacks.empty())
 	{
