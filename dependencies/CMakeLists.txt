@@ -2,6 +2,7 @@
 set(JSON_BuildTests OFF CACHE INTERNAL "")
 CPMAddPackage("gh:fmtlib/fmt#10.1.1")
 CPMAddPackage("gh:nlohmann/json@3.11.2")
+CPMAddPackage("gh:jarro2783/cxxopts@3.1.1")
 
 CPMAddPackage(
         NAME Boost
@@ -13,6 +14,7 @@ CPMAddPackage(
 target_link_libraries(${PROJECT_NAME} PUBLIC
         nlohmann_json::nlohmann_json
         fmt::fmt
+        cxxopts
 )
 
 if (LIB_BACKEND_WINDOW_CREATION STREQUAL glfw)
