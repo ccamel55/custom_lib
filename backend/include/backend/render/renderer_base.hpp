@@ -33,7 +33,7 @@ struct circle_cache_t
 
 class renderer_base
 {
-  public:
+public:
 	renderer_base()
 	{
 		// cache circle segments
@@ -48,7 +48,7 @@ class renderer_base
 	}
 
 	//! returns the cos/sin value of a particular circle segment
-	[[nodiscard]] const circle_cache_t &get_circle_cache(uint8_t segment) const
+	[[nodiscard]] const circle_cache_t& get_circle_cache(uint8_t segment) const
 	{
 		return _circle_cache.at(segment);
 	}
@@ -65,19 +65,19 @@ class renderer_base
 		return _frame_time;
 	}
 
-	void set_window_size(const common::point2Di &window_size)
+	void set_window_size(const common::point2Di& window_size)
 	{
 		_window_size = window_size;
 		lib_log_d(fmt::format("renderer: updated window size, width {} height {}", window_size._x, window_size._y));
 	}
 
 	//! returns the size of the window the renderer is running in
-	[[nodiscard]] const common::point2Di &get_window_size() const
+	[[nodiscard]] const common::point2Di& get_window_size() const
 	{
 		return _window_size;
 	}
 
-  public:
+public:
 	//! create an instance of the rendering context
 	virtual void init_instance() = 0;
 
@@ -85,7 +85,7 @@ class renderer_base
 	virtual void destroy_instance() = 0;
 
 	//! bind the render context to the renderer, used when not calling \a init_instance
-	virtual void bind_context(void *context) = 0;
+	virtual void bind_context(void* context) = 0;
 
 	//! removes the render context, used when not calling \a destroy_context
 	virtual void remove_context() = 0;
@@ -100,63 +100,63 @@ class renderer_base
 	virtual void render_finish() = 0;
 
 	//! create a new font with the given param, \param font_hash is the name of the font hashed to fn1v
-	virtual void add_font(common::fnv1a_t font_hash, const std::string &font_name, size_t height, size_t weight) = 0;
+	virtual void add_font(common::fnv1a_t font_hash, const std::string& font_name, size_t height, size_t weight) = 0;
 
 	//! draw a string
 	virtual void draw_string(
 		common::fnv1a_t font_hash,
-		const common::point2Di &pos,
-		const common::color &color,
-		const std::string &string,
+		const common::point2Di& pos,
+		const common::color& color,
+		const std::string& string,
 		render_flags flags) = 0;
 
 	//! draw a rectangle
-	virtual void draw_rect(const common::point4Di &area, const common::color &color, render_flags flags) = 0;
+	virtual void draw_rect(const common::point4Di& area, const common::color& color, render_flags flags) = 0;
 
 	//! draw a gradient rectangle
 	virtual void draw_rect_gradient(
-		const common::point4Di &area, const common::color &color1, const common::color &color2, render_flags flags) = 0;
+		const common::point4Di& area, const common::color& color1, const common::color& color2, render_flags flags) = 0;
 
 	//! draw a filled rectangle
-	virtual void draw_rect_filled(const common::point4Di &area, const common::color &color, render_flags flags) = 0;
+	virtual void draw_rect_filled(const common::point4Di& area, const common::color& color, render_flags flags) = 0;
 
 	//! draw a filled gradient rectangle
 	virtual void draw_rect_filled_gradient(
-		const common::point4Di &area, const common::color &color1, const common::color &color2, render_flags flags) = 0;
+		const common::point4Di& area, const common::color& color1, const common::color& color2, render_flags flags) = 0;
 
 	//! draw a circle
 	virtual void draw_circle(
-		const common::point2Di &pos, float radius, const common::color &color, render_flags flags) = 0;
+		const common::point2Di& pos, float radius, const common::color& color, render_flags flags) = 0;
 
 	//! draw a filled circle
 	virtual void draw_circle_filled(
-		const common::point2Di &pos, float radius, const common::color &color, render_flags flags) = 0;
+		const common::point2Di& pos, float radius, const common::color& color, render_flags flags) = 0;
 
 	//! draw a filled gradient circle
 	virtual void draw_circle_filled_gradient(
-		const common::point2Di &pos,
+		const common::point2Di& pos,
 		float radius,
-		const common::color &color1,
-		const common::color &color2,
+		const common::color& color1,
+		const common::color& color2,
 		render_flags flags) = 0;
 
 	//! draw a triangle
 	virtual void draw_triangle(
-		const common::point2Di &pos1,
-		const common::point2Di &pos2,
-		const common::point2Di &pos3,
-		const common::color &color,
+		const common::point2Di& pos1,
+		const common::point2Di& pos2,
+		const common::point2Di& pos3,
+		const common::color& color,
 		render_flags flags) = 0;
 
 	//! draw a filled triangle
 	virtual void draw_triangle_filled(
-		const common::point2Di &pos1,
-		const common::point2Di &pos2,
-		const common::point2Di &pos3,
-		const common::color &color,
+		const common::point2Di& pos1,
+		const common::point2Di& pos2,
+		const common::point2Di& pos3,
+		const common::color& color,
 		render_flags flags) = 0;
 
-  protected:
+protected:
 	float _frame_time = 0.f;
 	bool _created_instance = false;
 

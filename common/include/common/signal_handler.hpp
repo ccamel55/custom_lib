@@ -10,7 +10,7 @@ namespace lib::common
 //! Signal handler, like linux but doesnt interrupt :(
 template <typename... a> class signal_handler
 {
-  public:
+public:
 	~signal_handler()
 	{
 		// wait until function has finished running by waiting for a lock
@@ -19,7 +19,7 @@ template <typename... a> class signal_handler
 	}
 
 	//! Add a new \a callback to the \c _callbacks list.
-	void register_callback(std::function<void(a...)> &&callback)
+	void register_callback(std::function<void(a...)>&& callback)
 	{
 		std::unique_lock<std::mutex> mutex(_queue_mutex);
 
@@ -33,7 +33,7 @@ template <typename... a> class signal_handler
 	{
 		std::unique_lock<std::mutex> mutex(_queue_mutex);
 
-		for (const auto &callback : _callbacks)
+		for (const auto& callback : _callbacks)
 		{
 			mutex.unlock();
 
@@ -45,7 +45,7 @@ template <typename... a> class signal_handler
 		mutex.unlock();
 	}
 
-  private:
+private:
 	std::mutex _queue_mutex = {};
 	std::vector<std::function<void(a...)>> _callbacks = {};
 };

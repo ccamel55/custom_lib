@@ -91,13 +91,13 @@ void thread_pool::kill_threads()
 	_received_tasks.notify_all();
 
 	// wait until all threads terminates
-	for (auto &thread : _worker_threads)
+	for (auto& thread : _worker_threads)
 	{
 		thread.join();
 	}
 }
 
-void thread_pool::queue_task(std::function<void()> &&function)
+void thread_pool::queue_task(std::function<void()>&& function)
 {
 	if (!_worker_threads_running)
 	{

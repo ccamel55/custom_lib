@@ -7,8 +7,8 @@ namespace lib::common
 //! Copy and lock free triple buffer.
 template <class t> class triple_buffer
 {
-  public:
-	triple_buffer(t &read_buffer, t &write_buffer, t &ready_buffer) :
+public:
+	triple_buffer(t& read_buffer, t& write_buffer, t& ready_buffer) :
 		_reading(&read_buffer), _writing(&write_buffer), _ready(&ready_buffer)
 	{
 		// dont swap by default
@@ -16,7 +16,7 @@ template <class t> class triple_buffer
 	}
 
 	//! Return a pointer to the write buffer.
-	const t *get_write_buffer() const
+	const t* get_write_buffer() const
 	{
 		return _writing.load();
 	}
@@ -33,7 +33,7 @@ template <class t> class triple_buffer
 	}
 
 	//! Return a pointer to the read buffer.
-	const t *get_read_buffer() const
+	const t* get_read_buffer() const
 	{
 		return _reading.load();
 	}
@@ -52,10 +52,10 @@ template <class t> class triple_buffer
 		_reading.store(p);
 	}
 
-  private:
-	std::atomic<t *> _reading = nullptr;
-	std::atomic<t *> _writing = nullptr;
-	std::atomic<t *> _ready = nullptr;
+private:
+	std::atomic<t*> _reading = nullptr;
+	std::atomic<t*> _writing = nullptr;
+	std::atomic<t*> _ready = nullptr;
 	std::atomic_bool _updated = false;
 };
 }  // namespace lib::common

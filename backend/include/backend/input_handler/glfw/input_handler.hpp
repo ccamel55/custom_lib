@@ -6,6 +6,6 @@ namespace lib::backend
 {
 class input_handler : public input_handler_base
 {
-  public:
+public:
 };
 }  // namespace lib::backend

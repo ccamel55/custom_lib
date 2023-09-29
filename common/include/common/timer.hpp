@@ -18,10 +18,10 @@ enum class timer_mode_e
 //! Function timer, will delay the call of a function until timer expires. Does create a thread.
 class timer
 {
-  public:
+public:
 	timer(
-		async_caller &async_caller,
-		std::function<void()> &&callback,
+		async_caller& async_caller,
+		std::function<void()>&& callback,
 		timer_mode_e timer_mode,
 		std::chrono::milliseconds timeout);
 	~timer();
@@ -32,8 +32,8 @@ class timer
 	//! Reset timout, stop from calling callback if timer has started.
 	void reset_timer();
 
-  private:
-	async_caller &_async_caller;
+private:
+	async_caller& _async_caller;
 	timer_mode_e _timer_mode = timer_mode_e::ONE_SHOT;
 
 	std::atomic_bool _is_running = false;

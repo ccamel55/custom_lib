@@ -4,7 +4,7 @@ namespace lib::common
 {
 class color_f
 {
-  public:
+public:
 	constexpr color_f() = default;
 
 	constexpr color_f(float r, float g, float b, float a = 255) : _r(r), _g(g), _b(b), _a(a)
@@ -17,7 +17,7 @@ class color_f
 	{
 	}
 
-  private:
+private:
 	float _r = 0.f;
 	float _g = 0.f;
 	float _b = 0.f;
@@ -26,7 +26,7 @@ class color_f
 
 class color
 {
-  public:
+public:
 	constexpr color() = default;
 
 	constexpr color(int r, int g, int b, int a = 255) : _r(r), _g(g), _b(b), _a(a)
@@ -38,7 +38,7 @@ class color
 		return {_r, _g, _b, _a};
 	}
 
-  public:
+public:
 	int _r = 0;
 	int _g = 0;
 	int _b = 0;

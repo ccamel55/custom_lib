@@ -8,7 +8,7 @@
 
 namespace lib::scripts
 {
-inline void file_to_hex(const std::string &file_path, const std::string &destination_path)
+inline void file_to_hex(const std::string& file_path, const std::string& destination_path)
 {
 	try
 	{
@@ -55,7 +55,7 @@ inline void file_to_hex(const std::string &file_path, const std::string &destina
 		out_file << "};";
 		out_file.close();
 	}
-	catch (const std::exception &e)
+	catch (const std::exception& e)
 	{
 		lib_log_e("file_to_hex: something retarded happened: " << e.what());
 		return;

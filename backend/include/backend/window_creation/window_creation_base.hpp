@@ -24,7 +24,7 @@ enum window_flags : common::bitflag_t
 //! base class for os window creation
 class window_creation_base
 {
-  public:
+public:
 	window_creation_base(std::string window_name, int pos_x, int pos_y, int width, int height, window_flags flags) :
 		_window_name(std::move(window_name)), _window_position(pos_x, pos_y), _window_size(width, height), _flags(flags)
 	{
@@ -45,7 +45,7 @@ class window_creation_base
 	}
 
 	//! register the input renderer used
-	void register_renderer(const std::shared_ptr<renderer_base> &renderer)
+	void register_renderer(const std::shared_ptr<renderer_base>& renderer)
 	{
 		lib_log_d("window_creation: registered renderer");
 		_renderer = renderer;
@@ -55,14 +55,14 @@ class window_creation_base
 	}
 
 	//! register the input handler.
-	void register_input_handler(const std::shared_ptr<input_handler_base> &input_handler)
+	void register_input_handler(const std::shared_ptr<input_handler_base>& input_handler)
 	{
 		lib_log_d("window_creation: registered input_handler");
 		_input_handler = input_handler;
 	}
 
 	//! return the size of the current window
-	[[nodiscard]] const common::point2Di &get_size() const
+	[[nodiscard]] const common::point2Di& get_size() const
 	{
 		return _window_size;
 	}
@@ -76,7 +76,7 @@ class window_creation_base
 	//! run the loop that handles inputs from the window
 	virtual void window_loop() = 0;
 
-  protected:
+protected:
 	std::function<void()> _render_callback = nullptr;
 
 	std::shared_ptr<renderer_base> _renderer = nullptr;

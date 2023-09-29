@@ -8,7 +8,7 @@ using bitflag_t = uint32_t;
 
 class bitflag
 {
-  public:
+public:
 	bitflag() = default;
 
 	explicit bitflag(bitflag_t flags) : _flags(flags)
@@ -39,7 +39,7 @@ class bitflag
 		_flags ^= flag;
 	}
 
-  private:
+private:
 	bitflag_t _flags = 0;
 };
 }  // namespace lib::common

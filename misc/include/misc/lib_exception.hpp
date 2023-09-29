@@ -7,7 +7,7 @@ namespace lib
 {
 class lib_exception : public std::exception
 {
-  public:
+public:
 	lib_exception() : _exception_message("custom lib: exception thrown")
 	{
 	}
@@ -16,12 +16,12 @@ class lib_exception : public std::exception
 	{
 	}
 
-	[[nodiscard]] const char *what() const noexcept override
+	[[nodiscard]] const char* what() const noexcept override
 	{
 		return _exception_message.c_str();
 	}
 
-  private:
+private:
 	std::string _exception_message = {};
 };
 }  // namespace lib

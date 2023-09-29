@@ -4,8 +4,8 @@
 using namespace lib::common;
 
 timer::timer(
-	async_caller &async_caller,
-	std::function<void()> &&callback,
+	async_caller& async_caller,
+	std::function<void()>&& callback,
 	timer_mode_e timer_mode,
 	std::chrono::milliseconds timeout) :
 	_async_caller(async_caller),

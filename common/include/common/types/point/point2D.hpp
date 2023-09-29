@@ -4,25 +4,25 @@ namespace lib::common
 {
 template <class t> class _point2D
 {
-  public:
+public:
 	constexpr _point2D() = default;
-	constexpr _point2D &operator=(const _point2D &in) = default;
+	constexpr _point2D& operator=(const _point2D& in) = default;
 
 	constexpr _point2D(t x, t y) : _x(x), _y(y)
 	{
 	}
 
-	_point2D operator+(const _point2D &in) const
+	_point2D operator+(const _point2D& in) const
 	{
 		return {_x + in._x, _y + in._y};
 	}
 
-	_point2D operator-(const _point2D &in) const
+	_point2D operator-(const _point2D& in) const
 	{
 		return {_x - in._x, _y - in._y};
 	}
 
-  public:
+public:
 	t _x = static_cast<t>(0);
 	t _y = static_cast<t>(0);
 };

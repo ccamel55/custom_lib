@@ -4,25 +4,25 @@ namespace lib::common
 {
 template <class t> class _point4D
 {
-  public:
+public:
 	constexpr _point4D() = default;
-	constexpr _point4D &operator=(const _point4D &in) = default;
+	constexpr _point4D& operator=(const _point4D& in) = default;
 
 	constexpr _point4D(t x, t y, t z, t w) : _x(x), _y(y), _z(z), _w(w)
 	{
 	}
 
-	_point4D operator+(const _point4D &in) const
+	_point4D operator+(const _point4D& in) const
 	{
 		return {_x + in._x, _y + in._y, _z + in._z, _w + in._w};
 	}
 
-	_point4D operator-(const _point4D &in) const
+	_point4D operator-(const _point4D& in) const
 	{
 		return {_x - in._x, _y - in._y, _z - in._z, _w - in._w};
 	}
 
-  public:
+public:
 	t _x = static_cast<t>(0);
 	t _y = static_cast<t>(0);
 	t _z = static_cast<t>(0);
