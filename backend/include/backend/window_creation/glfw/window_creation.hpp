@@ -7,16 +7,16 @@
 
 namespace lib::backend
 {
-	class window_creation : public window_creation_base
-	{
-	public:
-		window_creation(std::string window_name, int pos_x, int pos_y, int width, int height, window_flags flags);
+class window_creation : public window_creation_base
+{
+  public:
+	window_creation(std::string window_name, int pos_x, int pos_y, int width, int height, window_flags flags);
 
-		void close_window() override;
-		void focus_window() override;
-		void window_loop() override;
+	void close_window() override;
+	void focus_window() override;
+	void window_loop() override;
 
-	private:
-		GLFWwindow* _glfw_window_ptr = nullptr;
-	};
-}
+  private:
+	GLFWwindow *_glfw_window_ptr = nullptr;
+};
+}  // namespace lib::backend

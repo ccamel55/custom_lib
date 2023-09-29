@@ -1,53 +1,52 @@
 #pragma once
 
-#include <mutex>
+#include <condition_variable>
 #include <deque>
 #include <functional>
-#include <condition_variable>
+#include <mutex>
 
 namespace lib::common
 {
-	//! Signal handler, like linux but doesnt interrupt :(
-	template <typename... a>
-	class signal_handler
+//! Signal handler, like linux but doesnt interrupt :(
+template <typename... a> class signal_handler
+{
+  public:
+	~signal_handler()
 	{
-	public:
-		~signal_handler()
+		// wait until function has finished running by waiting for a lock
+		std::unique_lock<std::mutex> mutex(_queue_mutex);
+		mutex.unlock();
+	}
+
+	//! Add a new \a callback to the \c _callbacks list.
+	void register_callback(std::function<void(a...)> &&callback)
+	{
+		std::unique_lock<std::mutex> mutex(_queue_mutex);
+
+		_callbacks.push_back(std::move(callback));
+
+		mutex.unlock();
+	}
+
+	//! Execute all callbacks with exec parameters.
+	void exec(a... Args)
+	{
+		std::unique_lock<std::mutex> mutex(_queue_mutex);
+
+		for (const auto &callback : _callbacks)
 		{
-			// wait until function has finished running by waiting for a lock
-			std::unique_lock<std::mutex> mutex(_queue_mutex);
 			mutex.unlock();
+
+			callback(Args...);
+
+			mutex.lock();
 		}
 
-		//! Add a new \a callback to the \c _callbacks list.
-		void register_callback(std::function<void(a...)>&& callback)
-		{
-			std::unique_lock<std::mutex> mutex(_queue_mutex);
+		mutex.unlock();
+	}
 
-			_callbacks.push_back(std::move(callback));
-
-			mutex.unlock();
-		}
-
-		//! Execute all callbacks with exec parameters.
-		void exec(a... Args)
-		{
-			std::unique_lock<std::mutex> mutex(_queue_mutex);
-
-			for (const auto& callback : _callbacks)
-			{
-				mutex.unlock();
-
-				callback(Args...);
-
-				mutex.lock();
-			}
-
-			mutex.unlock();
-		}
-
-	private:
-		std::mutex _queue_mutex = {};
-		std::vector<std::function<void(a...)>> _callbacks = {};
-	};
-}
+  private:
+	std::mutex _queue_mutex = {};
+	std::vector<std::function<void(a...)>> _callbacks = {};
+};
+}  // namespace lib::common

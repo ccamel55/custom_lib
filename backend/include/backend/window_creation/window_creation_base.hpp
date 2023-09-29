@@ -13,80 +13,80 @@
 
 namespace lib::backend
 {
-	enum window_flags : common::bitflag_t
+enum window_flags : common::bitflag_t
+{
+	window_flag_none = 0 << 0,
+	window_flag_no_border = 1 << 0,
+	window_flag_resizeable = 1 << 1,
+	window_flag_opengl3 = 1 << 2,
+};
+
+//! base class for os window creation
+class window_creation_base
+{
+  public:
+	window_creation_base(std::string window_name, int pos_x, int pos_y, int width, int height, window_flags flags) :
+		_window_name(std::move(window_name)), _window_position(pos_x, pos_y), _window_size(width, height), _flags(flags)
 	{
-		window_flag_none = 0 << 0,
-		window_flag_no_border = 1 << 0,
-		window_flag_resizeable = 1 << 1,
-		window_flag_opengl3 = 1 << 2,
-	};
+	}
 
-	//! base class for os window creation
-	class window_creation_base
+	virtual ~window_creation_base()
 	{
-	public:
-		window_creation_base(std::string window_name, int pos_x, int pos_y, int width, int height, window_flags flags) :
-			_window_name(std::move(window_name)), _window_position(pos_x, pos_y), _window_size(width, height), _flags(flags)
+		if (_renderer)
 		{
+			_renderer->destroy_instance();
 		}
+	}
 
-		virtual ~window_creation_base()
-		{
-			if (_renderer)
-			{
-				_renderer->destroy_instance();
-			}
-		}
+	//! register a callback function \param render_callback that is called every render frame
+	void register_render_callback(std::function<void()> render_callback)
+	{
+		_render_callback = std::move(render_callback);
+	}
 
-		//! register a callback function \param render_callback that is called every render frame
-		void register_render_callback(std::function<void()> render_callback)
-		{
-			_render_callback = std::move(render_callback);
-		}
+	//! register the input renderer used
+	void register_renderer(const std::shared_ptr<renderer_base> &renderer)
+	{
+		lib_log_d("window_creation: registered renderer");
+		_renderer = renderer;
 
-		//! register the input renderer used
-		void register_renderer(const std::shared_ptr<renderer_base>& renderer)
-		{
-			lib_log_d("window_creation: registered renderer");
-			_renderer = renderer;
+		_renderer->init_instance();
+		_renderer->set_window_size(_window_size);
+	}
 
-			_renderer->init_instance();
-			_renderer->set_window_size(_window_size);
-		}
+	//! register the input handler.
+	void register_input_handler(const std::shared_ptr<input_handler_base> &input_handler)
+	{
+		lib_log_d("window_creation: registered input_handler");
+		_input_handler = input_handler;
+	}
 
-		//! register the input handler.
-		void register_input_handler(const std::shared_ptr<input_handler_base>& input_handler)
-		{
-			lib_log_d("window_creation: registered input_handler");
-			_input_handler = input_handler;
-		}
+	//! return the size of the current window
+	[[nodiscard]] const common::point2Di &get_size() const
+	{
+		return _window_size;
+	}
 
-		//! return the size of the current window
-		[[nodiscard]] const common::point2Di& get_size() const
-		{
-			return _window_size;
-		}
+	//! close the os window
+	virtual void close_window() = 0;
 
-		//! close the os window
-		virtual void close_window() = 0;
+	//! bring the os window to focus
+	virtual void focus_window() = 0;
 
-		//! bring the os window to focus
-		virtual void focus_window() = 0;
+	//! run the loop that handles inputs from the window
+	virtual void window_loop() = 0;
 
-		//! run the loop that handles inputs from the window
-		virtual void window_loop() = 0;
+  protected:
+	std::function<void()> _render_callback = nullptr;
 
-	protected:
-		std::function<void()> _render_callback = nullptr;
+	std::shared_ptr<renderer_base> _renderer = nullptr;
+	std::shared_ptr<input_handler_base> _input_handler = nullptr;
 
-		std::shared_ptr<renderer_base> _renderer = nullptr;
-		std::shared_ptr<input_handler_base> _input_handler = nullptr;
+	std::string _window_name = {};
 
-		std::string _window_name = {};
+	common::point2Di _window_position = {100, 100};
+	common::point2Di _window_size = {720, 480};
 
-		common::point2Di _window_position = { 100, 100 };
-		common::point2Di _window_size = { 720, 480 };
-
-		common::bitflag _flags = {};
-	};
-}
+	common::bitflag _flags = {};
+};
+}  // namespace lib::backend

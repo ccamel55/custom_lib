@@ -2,10 +2,9 @@
 
 namespace lib::backend
 {
-	//! base class for input handling
-	class input_handler_base
-	{
-	public:
-
-	};
-}
+//! base class for input handling
+class input_handler_base
+{
+  public:
+};
+}  // namespace lib::backend
