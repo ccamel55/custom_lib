@@ -21,13 +21,6 @@ target_link_libraries(${PROJECT_NAME}
 set(LIB_BUILD_DEPS false)
 ```
 
-4) (Optional) use predefined build flags and/or configs
-```cmake
-include([location to custom_lib]/cmake/build_options/gcc_base.cmake)
-include([location to custom_lib]/cmake/build_options/gcc_debug.cmake)
-include([location to custom_lib]/cmake/configs/minimal.cmake)
-```
-
 ## Structure
 
 `backend` contains abstractions for specific features
