@@ -74,10 +74,17 @@ void window_creation::window_loop()
 	// run main render thread from current thread
 	while (glfwGetKey(_glfw_window_ptr, GLFW_KEY_ESCAPE) != GLFW_PRESS && glfwWindowShouldClose(_glfw_window_ptr) == 0)
 	{
-		// draw stuff here
-		if (_render_callback)
+		if (_renderer)
 		{
-			_render_callback();
+			_renderer->render_start();
+
+			// draw stuff here
+			if (_render_callback)
+			{
+				_render_callback();
+			}
+
+			_renderer->render_finish();
 		}
 
 		glfwSwapBuffers(_glfw_window_ptr);

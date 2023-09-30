@@ -35,6 +35,12 @@ public:
 		if (_renderer)
 		{
 			_renderer->destroy_instance();
+			_renderer.reset();
+		}
+
+		if (_input_handler)
+		{
+			_input_handler.reset();
 		}
 	}
 
@@ -44,21 +50,29 @@ public:
 		_render_callback = std::move(render_callback);
 	}
 
-	//! register the input renderer used
-	void register_renderer(const std::shared_ptr<renderer_base>& renderer)
+	//! Transfer ownership of the renderer to the window
+	//! return a reference to the renderer, because this window owns the renderer, there should never be a case
+	//! where our window is destroyed and our renderer still exists
+	std::weak_ptr<renderer_base> register_renderer(std::shared_ptr<renderer_base> renderer)
 	{
 		lib_log_d("window_creation: registered renderer");
-		_renderer = renderer;
+		_renderer = std::move(renderer);
 
-		_renderer->init_instance();
+		_renderer->init_instance(nullptr);
 		_renderer->set_window_size(_window_size);
+
+		return _renderer;
 	}
 
-	//! register the input handler.
-	void register_input_handler(const std::shared_ptr<input_handler_base>& input_handler)
+	//! Transfer ownership of the input handler to the window
+	//! return a reference to the input handler, because this window owns the input handler, there should never be a
+	//! case where our window is destroyed and our input handler still exists
+	std::weak_ptr<input_handler_base> register_input_handler(std::shared_ptr<input_handler_base> input_handler)
 	{
 		lib_log_d("window_creation: registered input_handler");
-		_input_handler = input_handler;
+		_input_handler = std::move(input_handler);
+
+		return _input_handler;
 	}
 
 	//! return the size of the current window

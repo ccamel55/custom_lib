@@ -5,7 +5,7 @@
 
 using namespace lib::backend;
 
-void renderer::init_instance()
+void renderer::init_instance(void* init_data)
 {
 	if (_created_instance)
 	{

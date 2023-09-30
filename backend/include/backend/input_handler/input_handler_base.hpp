@@ -6,5 +6,6 @@ namespace lib::backend
 class input_handler_base
 {
 public:
+	virtual ~input_handler_base() = default;
 };
 }  // namespace lib::backend

@@ -6,9 +6,9 @@ namespace lib::backend
 class renderer : public renderer_base
 {
 public:
-	void init_instance() override;
+	void init_instance(void* init_data) override;
 	void destroy_instance() override;
-	void bind_context(void* context) override;
+	void bind_context(void* bind_data) override;
 	void remove_context() override;
 	void reset() override;
 	void render_start() override;

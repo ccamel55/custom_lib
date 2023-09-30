@@ -34,7 +34,7 @@ struct circle_cache_t
 class renderer_base
 {
 public:
-	renderer_base()
+	explicit renderer_base()
 	{
 		// cache circle segments
 		for (size_t i = 0; i <= CIRCLE_CACHE_SEGMENTS; i++)
@@ -46,6 +46,8 @@ public:
 				std::cos(6.283185f * (static_cast<float>(i) / static_cast<float>(CIRCLE_CACHE_SEGMENTS)));
 		}
 	}
+
+	virtual ~renderer_base() = default;
 
 	//! returns the cos/sin value of a particular circle segment
 	[[nodiscard]] const circle_cache_t& get_circle_cache(uint8_t segment) const
@@ -79,13 +81,13 @@ public:
 
 public:
 	//! create an instance of the rendering context
-	virtual void init_instance() = 0;
+	virtual void init_instance(void* init_data) = 0;
 
 	//! destroys current render instance
 	virtual void destroy_instance() = 0;
 
 	//! bind the render context to the renderer, used when not calling \a init_instance
-	virtual void bind_context(void* context) = 0;
+	virtual void bind_context(void* bind_data) = 0;
 
 	//! removes the render context, used when not calling \a destroy_context
 	virtual void remove_context() = 0;
