@@ -5,6 +5,7 @@ if (LIB_BACKEND_RENDER STREQUAL gl3)
             opengl3/render.cpp
             opengl3/types/shader.cpp
             opengl3/types/texture.cpp
+            opengl3/utils/state_manager.cpp
             opengl3/utils/vertex_array_object.cpp
             opengl3/utils/vertex_buffer_object.cpp
             opengl3/utils/vertex_layout.cpp

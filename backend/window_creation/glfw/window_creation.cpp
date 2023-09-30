@@ -1,6 +1,6 @@
 #include <backend/window_creation/glfw/window_creation.hpp>
-#include <chrono>
 #include <cassert>
+#include <chrono>
 
 using namespace lib::backend;
 

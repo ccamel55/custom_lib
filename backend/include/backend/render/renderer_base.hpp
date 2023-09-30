@@ -51,7 +51,7 @@ public:
 	virtual ~renderer_base() = default;
 
 	//! returns the time between frames
-	void set_frame_time(float frame_time)
+	virtual void set_frame_time(float frame_time)
 	{
 		_frame_time = frame_time;
 	}
@@ -62,7 +62,7 @@ public:
 		return _frame_time;
 	}
 
-	void set_window_size(const common::point2Di& window_size)
+	virtual void set_window_size(const common::point2Di& window_size)
 	{
 		_window_size = window_size;
 		lib_log_d(fmt::format("renderer: updated window size, width {} height {}", window_size._x, window_size._y));
@@ -95,6 +95,10 @@ public:
 
 	//! called at the end of drawing in draw loop
 	virtual void render_finish() = 0;
+
+	//! A scissor rect is a area of clipping, this state is kept for each render pass and will be reset
+	//! to the window size after each frame.
+	virtual void set_scissor_rect(const common::point4Di& rect) = 0;
 
 	//! create a new font with the given param, \param font_hash is the name of the font hashed to fn1v
 	virtual void add_font(common::fnv1a_t font_hash, const std::string& font_name, size_t height, size_t weight) = 0;
@@ -155,6 +159,8 @@ protected:
 	bool _created_instance = false;
 
 	common::point2Di _window_size = {};
+	common::point4Di _current_scissor_rect = {};
+
 	std::array<circle_cache_t, CIRCLE_CACHE_SEGMENTS + 1> _circle_cache = {};
 };
 }  // namespace lib::backend

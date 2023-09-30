@@ -1,22 +1,27 @@
 #pragma once
+#include <common/types/color.hpp>
+#include <common/types/point/point4D.hpp>
 #include <cstdint>
 
 namespace lib::backend::opengl3
 {
 struct vertex_t
 {
+	vertex_t() = default;
+	vertex_t(int x, int y, const common::color& color, float u, float v) :
+		x(static_cast<float>(x)), y(static_cast<float>(y)), color(color), u(u), v(v)
+	{
+	}
+
 	// position
-	float x;
-	float y;
+	float x = 0.f;
+	float y = 0.f;
 
 	// color
-	uint8_t r;
-	uint8_t g;
-	uint8_t b;
-	uint8_t a;
+	common::color color = {};
 
 	// tex-coords
-	float u;
-	float v;
+	float u = 0.f;
+	float v = 0.f;
 };
 }  // namespace lib::backend::opengl3
