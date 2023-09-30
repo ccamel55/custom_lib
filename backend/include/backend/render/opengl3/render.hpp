@@ -1,6 +1,13 @@
 #pragma once
 #include <backend/render/opengl3/types/batch.hpp>
+#include <backend/render/opengl3/types/shader.hpp>
+#include <backend/render/opengl3/types/texture.hpp>
+#include <backend/render/opengl3/utils/vertex_layout.hpp>
+#include <backend/render/opengl3/utils/vertex_array_object.hpp>
+#include <backend/render/opengl3/utils/vertex_buffer_object.hpp>
 #include <backend/render/renderer_base.hpp>
+#include <unordered_map>
+#include <queue>
 
 namespace lib::backend
 {
@@ -12,6 +19,7 @@ public:
 	void bind_context(void* bind_data) override;
 	void remove_context() override;
 	void reset() override;
+	void set_window_size(const common::point2Di& window_size) override;
 	void render_start() override;
 	void render_finish() override;
 	void add_font(common::fnv1a_t font_hash, const std::string& font_name, size_t height, size_t weight) override;
@@ -56,5 +64,16 @@ public:
 		const common::color& color1,
 		const common::color& color2,
 		render_flags flags) override;
+
+private:
+	void init_opengl();
+	void add_vertex(const opengl3::vertex_t* vertices, GLsizei num_vertices, GLenum primitive, GLuint texture_id = 0);
+
+private:
+	std::unique_ptr<opengl3::vertex_array_object> _vertex_array_object = nullptr;
+	std::queue<opengl3::batch_t> _internal_batches = {};
+
+	std::unique_ptr<opengl3::shader_t> _color_shader = nullptr;
+	std::unique_ptr<opengl3::shader_t> _texture_shader = nullptr;
 };
 }  // namespace lib::backend

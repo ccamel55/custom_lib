@@ -11,7 +11,7 @@ public:
 	{
 	}
 
-	constexpr color_f(int r, int g, int b, int a = 255) :
+	constexpr color_f(uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255) :
 		_r(static_cast<float>(r) / 255.f), _g(static_cast<float>(g) / 255.f), _b(static_cast<float>(b) / 255.f),
 		_a(static_cast<float>(a) / 255.f)
 	{
@@ -29,7 +29,7 @@ class color
 public:
 	constexpr color() = default;
 
-	constexpr color(int r, int g, int b, int a = 255) : _r(r), _g(g), _b(b), _a(a)
+	constexpr color(uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255) : _r(r), _g(g), _b(b), _a(a)
 	{
 	}
 
@@ -39,9 +39,9 @@ public:
 	}
 
 public:
-	int _r = 0;
-	int _g = 0;
-	int _b = 0;
-	int _a = 255;
+	uint8_t _r = 0;
+	uint8_t _g = 0;
+	uint8_t _b = 0;
+	uint8_t _a = 255;
 };
 }  // namespace lib::common

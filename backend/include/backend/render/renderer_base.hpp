@@ -51,7 +51,7 @@ public:
 	virtual ~renderer_base() = default;
 
 	//! returns the time between frames
-	void set_frame_time(float frame_time)
+	virtual void set_frame_time(float frame_time)
 	{
 		_frame_time = frame_time;
 	}
@@ -62,7 +62,7 @@ public:
 		return _frame_time;
 	}
 
-	void set_window_size(const common::point2Di& window_size)
+	virtual void set_window_size(const common::point2Di& window_size)
 	{
 		_window_size = window_size;
 		lib_log_d(fmt::format("renderer: updated window size, width {} height {}", window_size._x, window_size._y));
