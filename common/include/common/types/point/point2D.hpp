@@ -22,6 +22,16 @@ public:
 		return {_x - in._x, _y - in._y};
 	}
 
+	bool operator==(const _point2D& in) const
+	{
+		return _x == in._x && _y == in._y;
+	}
+
+	bool operator!=(const _point2D& in) const
+	{
+		return _x != in._x || _y != in._y;
+	}
+
 public:
 	t _x = static_cast<t>(0);
 	t _y = static_cast<t>(0);
