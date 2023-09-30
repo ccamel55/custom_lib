@@ -1,4 +1,5 @@
 #pragma once
+#include <backend/render/opengl3/types/batch.hpp>
 #include <backend/render/renderer_base.hpp>
 
 namespace lib::backend
