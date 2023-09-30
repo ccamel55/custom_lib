@@ -4,7 +4,6 @@
 #include <vector>
 
 #include <common/logger.hpp>
-#include <misc/lib_exception.hpp>
 
 namespace lib::scripts
 {
