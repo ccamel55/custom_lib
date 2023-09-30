@@ -17,7 +17,7 @@ public:
 	{
 	}
 
-private:
+public:
 	float _r = 0.f;
 	float _g = 0.f;
 	float _b = 0.f;
