@@ -73,11 +73,15 @@ void window_creation::window_loop()
 {
 	lib_log_d("window_creation: starting window loop");
 
+	std::chrono::high_resolution_clock::time_point frame_start_time = {};
+	std::chrono::high_resolution_clock::time_point frame_end_time = {};
+
 	// run main render thread from current thread
 	while (glfwGetKey(_glfw_window_ptr, GLFW_KEY_ESCAPE) != GLFW_PRESS && glfwWindowShouldClose(_glfw_window_ptr) == 0)
 	{
 		if (_renderer)
 		{
+			frame_start_time = std::chrono::high_resolution_clock::now();
 			_renderer->render_start();
 
 			// draw stuff here
@@ -87,6 +91,12 @@ void window_creation::window_loop()
 			}
 
 			_renderer->render_finish();
+			frame_end_time = std::chrono::high_resolution_clock::now();
+
+			_renderer->set_frame_time(
+				static_cast<float>(
+					std::chrono::duration_cast<std::chrono::nanoseconds>(frame_end_time - frame_start_time).count()) /
+				1000000.f);
 		}
 
 		glfwSwapBuffers(_glfw_window_ptr);
