@@ -23,6 +23,7 @@ enum render_flags : common::bitflag_t
 	render_flags_center_y = 1 << 2,
 	render_flags_gradient_horizontal = 1 << 3,
 	render_flags_gradient_vertical = 1 << 4,
+	render_flags_filled = 1 << 5
 };
 
 struct circle_cache_t
@@ -48,12 +49,6 @@ public:
 	}
 
 	virtual ~renderer_base() = default;
-
-	//! returns the cos/sin value of a particular circle segment
-	[[nodiscard]] const circle_cache_t& get_circle_cache(uint8_t segment) const
-	{
-		return _circle_cache.at(segment);
-	}
 
 	//! returns the time between frames
 	void set_frame_time(float frame_time)
@@ -119,23 +114,12 @@ public:
 	virtual void draw_rect_gradient(
 		const common::point4Di& area, const common::color& color1, const common::color& color2, render_flags flags) = 0;
 
-	//! draw a filled rectangle
-	virtual void draw_rect_filled(const common::point4Di& area, const common::color& color, render_flags flags) = 0;
-
-	//! draw a filled gradient rectangle
-	virtual void draw_rect_filled_gradient(
-		const common::point4Di& area, const common::color& color1, const common::color& color2, render_flags flags) = 0;
-
 	//! draw a circle
 	virtual void draw_circle(
 		const common::point2Di& pos, float radius, const common::color& color, render_flags flags) = 0;
 
-	//! draw a filled circle
-	virtual void draw_circle_filled(
-		const common::point2Di& pos, float radius, const common::color& color, render_flags flags) = 0;
-
-	//! draw a filled gradient circle
-	virtual void draw_circle_filled_gradient(
+	//! draw a gradient circle
+	virtual void draw_circle_gradient(
 		const common::point2Di& pos,
 		float radius,
 		const common::color& color1,
@@ -150,13 +134,21 @@ public:
 		const common::color& color,
 		render_flags flags) = 0;
 
-	//! draw a filled triangle
-	virtual void draw_triangle_filled(
+	//! draw a triangle with gradient
+	virtual void draw_triangle_gradient(
 		const common::point2Di& pos1,
 		const common::point2Di& pos2,
 		const common::point2Di& pos3,
-		const common::color& color,
+		const common::color& color1,
+		const common::color& color2,
 		render_flags flags) = 0;
+
+protected:
+	//! returns the cos/sin value of a particular circle segment
+	[[nodiscard]] const circle_cache_t& get_circle_cache(uint8_t segment) const
+	{
+		return _circle_cache.at(segment);
+	}
 
 protected:
 	float _frame_time = 0.f;

@@ -22,42 +22,38 @@ public:
 		const common::color& color,
 		const std::string& string,
 		render_flags flags) override;
+
 	void draw_rect(const common::point4Di& area, const common::color& color, render_flags flags) override;
+
 	void draw_rect_gradient(
 		const common::point4Di& area,
 		const common::color& color1,
 		const common::color& color2,
 		render_flags flags) override;
-	void draw_rect_filled(const common::point4Di& area, const common::color& color, render_flags flags) override;
-	void draw_rect_filled_gradient(
-		const common::point4Di& area,
-		const common::color& color1,
-		const common::color& color2,
-		render_flags flags) override;
+
 	void draw_circle(
 		const common::point2Di& pos, float radius, const common::color& color, render_flags flags) override;
-	void draw_circle_filled(
-		const common::point2Di& pos, float radius, const common::color& color, render_flags flags) override;
-	void draw_circle_filled_gradient(
+
+	void draw_circle_gradient(
 		const common::point2Di& pos,
 		float radius,
 		const common::color& color1,
 		const common::color& color2,
 		render_flags flags) override;
+
 	void draw_triangle(
 		const common::point2Di& pos1,
 		const common::point2Di& pos2,
 		const common::point2Di& pos3,
 		const common::color& color,
 		render_flags flags) override;
-	void draw_triangle_filled(
+
+	void draw_triangle_gradient(
 		const common::point2Di& pos1,
 		const common::point2Di& pos2,
 		const common::point2Di& pos3,
-		const common::color& color,
+		const common::color& color1,
+		const common::color& color2,
 		render_flags flags) override;
-
-private:
-private:
 };
 }  // namespace lib::backend

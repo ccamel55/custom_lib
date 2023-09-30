@@ -77,64 +77,55 @@ void renderer::add_font(common::fnv1a_t font_hash, const std::string& font_name,
 }
 
 void renderer::draw_string(
-	common::fnv1a_t font_hash,
-	const common::point2Di& pos,
-	const common::color& color,
+	lib::common::fnv1a_t font_hash,
+	const lib::common::point2Di& pos,
+	const lib::common::color& color,
 	const std::string& string,
 	render_flags flags)
 {
 }
 
-void renderer::draw_rect(const common::point4Di& area, const common::color& color, render_flags flags)
+void renderer::draw_rect(const lib::common::point4Di& area, const lib::common::color& color, render_flags flags)
 {
 }
 
 void renderer::draw_rect_gradient(
-	const common::point4Di& area, const common::color& color1, const common::color& color2, render_flags flags)
+	const lib::common::point4Di& area,
+	const lib::common::color& color1,
+	const lib::common::color& color2,
+	render_flags flags)
 {
 }
 
-void renderer::draw_rect_filled(const common::point4Di& area, const common::color& color, render_flags flags)
+void renderer::draw_circle(
+	const lib::common::point2Di& pos, float radius, const lib::common::color& color, render_flags flags)
 {
 }
 
-void renderer::draw_rect_filled_gradient(
-	const common::point4Di& area, const common::color& color1, const common::color& color2, render_flags flags)
-{
-}
-
-void renderer::draw_circle(const common::point2Di& pos, float radius, const common::color& color, render_flags flags)
-{
-}
-
-void renderer::draw_circle_filled(
-	const common::point2Di& pos, float radius, const common::color& color, render_flags flags)
-{
-}
-
-void renderer::draw_circle_filled_gradient(
-	const common::point2Di& pos,
+void renderer::draw_circle_gradient(
+	const lib::common::point2Di& pos,
 	float radius,
-	const common::color& color1,
-	const common::color& color2,
+	const lib::common::color& color1,
+	const lib::common::color& color2,
 	render_flags flags)
 {
 }
 
 void renderer::draw_triangle(
-	const common::point2Di& pos1,
-	const common::point2Di& pos2,
-	const common::point2Di& pos3,
-	const common::color& color,
+	const lib::common::point2Di& pos1,
+	const lib::common::point2Di& pos2,
+	const lib::common::point2Di& pos3,
+	const lib::common::color& color,
 	render_flags flags)
 {
 }
 
-void renderer::draw_triangle_filled(
-	const common::point2Di& pos1,
-	const common::point2Di& pos2,
-	const common::point2Di& pos3,
-	const common::color& color,
+void renderer::draw_triangle_gradient(
+	const lib::common::point2Di& pos1,
+	const lib::common::point2Di& pos2,
+	const lib::common::point2Di& pos3,
+	const lib::common::color& color1,
+	const lib::common::color& color2,
 	render_flags flags)
 {
 }

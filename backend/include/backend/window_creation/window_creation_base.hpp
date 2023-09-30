@@ -53,7 +53,7 @@ public:
 	//! Transfer ownership of the renderer to the window
 	//! return a reference to the renderer, because this window owns the renderer, there should never be a case
 	//! where our window is destroyed and our renderer still exists
-	std::weak_ptr<renderer_base> register_renderer(std::shared_ptr<renderer_base> renderer)
+	std::unique_ptr<renderer_base>& register_renderer(std::unique_ptr<renderer_base> renderer)
 	{
 		lib_log_d("window_creation: registered renderer");
 		_renderer = std::move(renderer);
@@ -67,7 +67,7 @@ public:
 	//! Transfer ownership of the input handler to the window
 	//! return a reference to the input handler, because this window owns the input handler, there should never be a
 	//! case where our window is destroyed and our input handler still exists
-	std::weak_ptr<input_handler_base> register_input_handler(std::shared_ptr<input_handler_base> input_handler)
+	std::unique_ptr<input_handler_base>& register_input_handler(std::unique_ptr<input_handler_base> input_handler)
 	{
 		lib_log_d("window_creation: registered input_handler");
 		_input_handler = std::move(input_handler);
@@ -93,8 +93,8 @@ public:
 protected:
 	std::function<void()> _render_callback = nullptr;
 
-	std::shared_ptr<renderer_base> _renderer = nullptr;
-	std::shared_ptr<input_handler_base> _input_handler = nullptr;
+	std::unique_ptr<renderer_base> _renderer = nullptr;
+	std::unique_ptr<input_handler_base> _input_handler = nullptr;
 
 	std::string _window_name = {};
 
