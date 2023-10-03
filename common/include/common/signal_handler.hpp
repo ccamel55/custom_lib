@@ -1,9 +1,7 @@
 #pragma once
-
-#include <condition_variable>
-#include <deque>
 #include <functional>
 #include <mutex>
+#include <vector>
 
 namespace lib::common
 {
@@ -11,6 +9,8 @@ namespace lib::common
 template <typename... a> class signal_handler
 {
 public:
+	// we usually only ever register callbacks during initialisation which means the cost of copying when the vector
+	// expands is not going to be important
 	~signal_handler()
 	{
 		// wait until function has finished running by waiting for a lock
