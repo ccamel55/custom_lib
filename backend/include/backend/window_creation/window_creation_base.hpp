@@ -45,7 +45,7 @@ public:
 	}
 
 	//! register a callback function \param render_callback that is called every render frame
-	void register_render_callback(std::function<void()> render_callback)
+	virtual void register_render_callback(std::function<void()> render_callback)
 	{
 		_render_callback = std::move(render_callback);
 	}
@@ -53,13 +53,10 @@ public:
 	//! Transfer ownership of the renderer to the window
 	//! return a reference to the renderer, because this window owns the renderer, there should never be a case
 	//! where our window is destroyed and our renderer still exists
-	std::unique_ptr<renderer_base>& register_renderer(std::unique_ptr<renderer_base> renderer)
+	virtual std::unique_ptr<renderer_base>& register_renderer(std::unique_ptr<renderer_base> renderer)
 	{
 		lib_log_d("window_creation: registered renderer");
 		_renderer = std::move(renderer);
-
-		_renderer->init_instance(nullptr);
-		_renderer->set_window_size(_window_size);
 
 		return _renderer;
 	}
@@ -67,7 +64,8 @@ public:
 	//! Transfer ownership of the input handler to the window
 	//! return a reference to the input handler, because this window owns the input handler, there should never be a
 	//! case where our window is destroyed and our input handler still exists
-	std::unique_ptr<input_handler_base>& register_input_handler(std::unique_ptr<input_handler_base> input_handler)
+	virtual std::unique_ptr<input_handler_base>& register_input_handler(
+		std::unique_ptr<input_handler_base> input_handler)
 	{
 		lib_log_d("window_creation: registered input_handler");
 		_input_handler = std::move(input_handler);

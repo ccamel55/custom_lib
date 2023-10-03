@@ -1,8 +1,34 @@
+#include <backend/input_handler/glfw/input_handler.hpp>	 // todo: move the handler data stuff into another class
 #include <backend/window_creation/glfw/window_creation.hpp>
 #include <cassert>
 #include <chrono>
 
 using namespace lib::backend;
+
+namespace
+{
+// this is very annoying, there is nothing we can really do to get around this besides using an exposed variable.
+window_creation* this_ptr = nullptr;
+}  // namespace
+
+void window_creation::input_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+	if (!this_ptr->_input_handler)
+	{
+		return;
+	}
+
+	glfw_input_handler_data_t data = {};
+	{
+		data.window = window;
+		data.key = key;
+		data.scancode = scancode;
+		data.action = action;
+		data.modifiers = mods;
+	}
+
+	this_ptr->_input_handler->update_state(&data);
+}
 
 window_creation::window_creation(
 	std::string window_name, int pos_x, int pos_y, int width, int height, window_flags flags) :
@@ -59,6 +85,13 @@ window_creation::window_creation(
 	glfwSwapInterval(1);
 
 	glfwSetInputMode(_glfw_window_ptr, GLFW_STICKY_KEYS, GLFW_TRUE);
+
+	this_ptr = this;
+}
+
+window_creation::~window_creation()
+{
+	this_ptr = nullptr;
 }
 
 void window_creation::close_window()
@@ -107,4 +140,28 @@ void window_creation::window_loop()
 
 	lib_log_d("window_creation: destroying window");
 	glfwTerminate();
+}
+
+std::unique_ptr<renderer_base>& window_creation::register_renderer(std::unique_ptr<renderer_base> renderer)
+{
+	// pass renderer ownership to this window class
+	auto& renderer_ref = window_creation_base::register_renderer(std::move(renderer));
+
+	// initialize renderer using glfw stuff
+	renderer_ref->init_instance(nullptr);
+	renderer_ref->set_window_size(_window_size);
+
+	return renderer_ref;
+}
+
+std::unique_ptr<input_handler_base>& window_creation::register_input_handler(
+	std::unique_ptr<input_handler_base> input_handler)
+{
+	// pass renderer ownership to this window class
+	auto& input_ref = window_creation_base::register_input_handler(std::move(input_handler));
+
+	// register callback to glfw
+	glfwSetKeyCallback(_glfw_window_ptr, input_callback);
+
+	return input_ref;
 }
