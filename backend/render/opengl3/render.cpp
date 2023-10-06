@@ -69,11 +69,8 @@ void renderer::init_opengl()
 	// texture positions u v
 	vertex_layout.add_parameter(2, GL_FLOAT, false);
 
-	auto vertex_buffer_object =
-		std::make_unique<opengl3::vertex_buffer_object>(nullptr, sizeof(opengl3::vertex_t) * opengl3::MAX_VERTICES);
-
-	_vertex_array_object =
-		std::make_unique<opengl3::vertex_array_object>(std::move(vertex_buffer_object), vertex_layout);
+	_vertex_array_object = std::make_unique<opengl3::vertex_array_object>(
+		vertex_layout, sizeof(opengl3::vertex_t) * opengl3::MAX_VERTICES);
 
 	_color_texture = std::make_unique<opengl3::texture_t>(white_bitmap, 1, 1, GL_RGBA);
 	_shader = std::make_unique<opengl3::shader_t>(vertex_shader, fragment_shader);
@@ -136,6 +133,16 @@ void renderer::add_vertex(const opengl3::vertex_t* vertices, GLsizei num_vertice
 
 	current_internal_batch->vertex_count += num_vertices;
 	_current_batch->vertex_count += num_vertices;
+}
+
+void renderer::add_batch_break()
+{
+	auto current_internal_batch = &_internal_batches.front();
+
+	// add emtpy batch and update current batch, new batch will be skipped because we check for vertex count
+	// in the render function
+	current_internal_batch->batch_count += 1;
+	_current_batch = &current_internal_batch->vertex_batch.at(current_internal_batch->batch_count - 1);
 }
 
 void renderer::init_instance(void* init_data)
@@ -284,6 +291,11 @@ void renderer::render_finish()
 		{
 			const auto& batch = data.vertex_batch.at(i);
 
+			if (batch.vertex_count == 0)
+			{
+				continue;
+			}
+
 			// apply scissor
 			glScissor(
 				batch.scissor_rect._x,
@@ -373,6 +385,7 @@ void renderer::draw_circle(
 	}
 
 	add_vertex(vertices, num_vertices, GL_TRIANGLE_FAN, 0);
+	add_batch_break();
 }
 
 void renderer::draw_circle_gradient(

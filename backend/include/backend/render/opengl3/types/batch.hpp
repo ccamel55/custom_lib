@@ -1,8 +1,8 @@
 #pragma once
 #include <array>
-#include <cstddef>
 #include <backend/render/opengl3/types/vertex.hpp>
 #include <backend/render/opengl3/types/vertex_batch.hpp>
+#include <cstddef>
 
 namespace lib::backend::opengl3
 {

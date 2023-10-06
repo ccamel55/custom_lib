@@ -4,7 +4,6 @@
 #include <backend/render/opengl3/types/texture.hpp>
 #include <backend/render/opengl3/utils/state_manager.hpp>
 #include <backend/render/opengl3/utils/vertex_array_object.hpp>
-#include <backend/render/opengl3/utils/vertex_buffer_object.hpp>
 #include <backend/render/opengl3/utils/vertex_layout.hpp>
 #include <backend/render/renderer_base.hpp>
 #include <queue>
@@ -70,6 +69,7 @@ public:
 private:
 	void init_opengl();
 	void add_vertex(const opengl3::vertex_t* vertices, GLsizei num_vertices, GLenum primitive, GLuint texture_id = 0);
+	void add_batch_break();
 
 private:
 	std::unique_ptr<opengl3::vertex_array_object> _vertex_array_object = nullptr;
