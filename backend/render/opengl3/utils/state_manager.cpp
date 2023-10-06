@@ -90,6 +90,7 @@ void state_manager::restore() const
 		_last_viewport[1],
 		static_cast<GLsizei>(_last_viewport[2]),
 		static_cast<GLsizei>(_last_viewport[3]));
+
 	glScissor(
 		_last_scissor_box[0],
 		_last_scissor_box[1],

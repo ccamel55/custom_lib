@@ -5,12 +5,11 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-// todo: add index buffer support, should make rendering a little bit faster and reduce the amount of memory we use
 using namespace lib::backend;
 
 namespace
 {
-constexpr char vertex_shader[] = R"(
+    constexpr char vertex_shader[] = R"(
         #version 410 core
         layout(location = 0) in vec2 position;
         layout(location = 1) in vec4 color;
@@ -28,7 +27,7 @@ constexpr char vertex_shader[] = R"(
         }
     )";
 
-constexpr char fragment_shader[] = R"(
+    constexpr char fragment_shader[] = R"(
         #version 410 core
         in vec4 fragment_color;
 		in vec2 fragment_uv;
@@ -42,292 +41,285 @@ constexpr char fragment_shader[] = R"(
         }
     )";
 
-constexpr uint8_t white_bitmap[] = {0xff, 0xff, 0xff, 0xff};
+    constexpr uint8_t white_bitmap[] = {0xff, 0xff, 0xff, 0xff};
 }  // namespace
 
 void renderer::init_opengl()
 {
-	// setup opengl states
-	glEnable(GL_BLEND);
-	glEnable(GL_SCISSOR_TEST);
+    // setup opengl states
+    glEnable(GL_BLEND);
+    glEnable(GL_SCISSOR_TEST);
 
-	glDisable(GL_CULL_FACE);
-	glDisable(GL_DEPTH_TEST);
-	glDisable(GL_STENCIL_TEST);
+    glDisable(GL_CULL_FACE);
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_STENCIL_TEST);
 
-	glBlendEquation(GL_FUNC_ADD);
-	glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+    glBlendEquation(GL_FUNC_ADD);
+    glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
-	opengl3::vertex_layout vertex_layout = {};
+    _vertex_array_object = std::make_unique<opengl3::vertex_array_object>(opengl3::MAX_VERTICES);
 
-	// pos x y
-	vertex_layout.add_parameter(2, GL_FLOAT, false);
+    _color_texture = std::make_unique<opengl3::texture_t>(white_bitmap, 1, 1, GL_RGBA);
+    _shader = std::make_unique<opengl3::shader_t>(vertex_shader, fragment_shader);
 
-	// colours r g b a
-	vertex_layout.add_parameter(4, GL_UNSIGNED_BYTE, true);
+    GLenum last_shader = 0;
+    glGetIntegerv(GL_CURRENT_PROGRAM, reinterpret_cast<GLint*>(&last_shader));
 
-	// texture positions u v
-	vertex_layout.add_parameter(2, GL_FLOAT, false);
+    // bind texture to slot 0
+    glUseProgram(_shader->shader_program_id);
+    glUniform1i(glGetUniformLocation(_shader->shader_program_id, "Texture"), 0);
 
-	_vertex_array_object = std::make_unique<opengl3::vertex_array_object>(
-		vertex_layout, sizeof(opengl3::vertex_t) * opengl3::MAX_VERTICES);
-
-	_color_texture = std::make_unique<opengl3::texture_t>(white_bitmap, 1, 1, GL_RGBA);
-	_shader = std::make_unique<opengl3::shader_t>(vertex_shader, fragment_shader);
-
-	GLenum last_shader = 0;
-	glGetIntegerv(GL_CURRENT_PROGRAM, reinterpret_cast<GLint*>(&last_shader));
-
-	// bind texture to slot 0
-	glUseProgram(_shader->shader_program_id);
-	glUniform1i(glGetUniformLocation(_shader->shader_program_id, "Texture"), 0);
-
-	glUseProgram(last_shader);
-}
-
-void renderer::add_vertex(const opengl3::vertex_t* vertices, GLsizei num_vertices, GLenum primitive, GLuint texture_id)
-{
-	opengl3::batch_t* current_internal_batch = nullptr;
-
-	const auto add_new_batch = [&, this]() {
-		// increment render batch count
-		current_internal_batch->batch_count += 1;
-		_current_batch = &current_internal_batch->vertex_batch.at(current_internal_batch->batch_count - 1);
-
-		// set new batch data to current data
-		_current_batch->primitive = primitive;
-		_current_batch->texture_id = texture_id;
-		_current_batch->scissor_rect = _current_scissor_rect;
-	};
-
-	if (_current_batch == nullptr)
-	{
-		current_internal_batch = &_internal_batches.emplace();
-		add_new_batch();
-	}
-	else
-	{
-		current_internal_batch = &_internal_batches.front();
-
-		// make sure we have enough space for our vertices
-		if (current_internal_batch->vertex_count + num_vertices > opengl3::MAX_VERTICES)
-		{
-			// if not enough space, add new internal batch
-			current_internal_batch = &_internal_batches.emplace();
-			add_new_batch();
-		}
-	}
-
-	// check if previous render batch can be used
-	if (_current_batch->primitive != primitive || _current_batch->texture_id != texture_id ||
-		_current_batch->scissor_rect != _current_scissor_rect)
-	{
-		add_new_batch();
-	}
-
-	// write vector to our vertices vector
-	std::memcpy(
-		&current_internal_batch->vertices.at(current_internal_batch->vertex_count),
-		vertices,
-		num_vertices * sizeof(opengl3::vertex_t));
-
-	current_internal_batch->vertex_count += num_vertices;
-	_current_batch->vertex_count += num_vertices;
+    glUseProgram(last_shader);
 }
 
 void renderer::add_batch_break()
 {
-	auto current_internal_batch = &_internal_batches.front();
+    // add emtpy batch and update current batch, new batch will be skipped because we check for vertex count
+    // in the render function
+    _current_internal_batch->batch_count += 1;
+    _current_batch = &_current_internal_batch->vertex_batch.at(_current_internal_batch->batch_count - 1);
+}
 
-	// add emtpy batch and update current batch, new batch will be skipped because we check for vertex count
-	// in the render function
-	current_internal_batch->batch_count += 1;
-	_current_batch = &current_internal_batch->vertex_batch.at(current_internal_batch->batch_count - 1);
+void renderer::draw_vertices(
+        const opengl3::vertex_t* vertices,
+        uint16_t num_vertices,
+        GLenum primitive,
+        GLuint texture_id)
+{
+    if (_internal_batches.empty())
+    {
+        _current_internal_batch = &_internal_batches.emplace();
+        _current_batch = nullptr;
+    }
+    else
+    {
+        _current_internal_batch = &_internal_batches.front();
+
+        // make sure we have enough space for our vertices
+        if (_current_internal_batch->vertex_count + num_vertices > opengl3::MAX_VERTICES)
+        {
+            // if not enough space, add new internal batch
+            _current_internal_batch = &_internal_batches.emplace();
+            _current_batch = nullptr;
+        }
+    }
+
+    if (_current_batch == nullptr || _current_batch->primitive != primitive ||
+        _current_batch->texture_id != texture_id || _current_batch->scissor_rect != _current_scissor_rect)
+    {
+        // increment render batch count
+        add_batch_break();
+
+        // set new batch data to current data
+        _current_batch->primitive = primitive;
+        _current_batch->texture_id = texture_id;
+        _current_batch->scissor_rect = _current_scissor_rect;
+    }
+
+    // copy vertices
+    std::memcpy(
+            &_current_internal_batch->vertices.at(_current_internal_batch->vertex_count),
+            vertices,
+            num_vertices * sizeof(opengl3::vertex_t));
+
+    _current_internal_batch->vertex_count += num_vertices;
+    _current_batch->vertex_count += num_vertices;
+}
+
+uint16_t renderer::get_num_vertices() const
+{
+    if (!_current_internal_batch)
+    {
+        return 0;
+    }
+
+    return _current_internal_batch->vertex_count;
 }
 
 void renderer::init_instance(void* init_data)
 {
-	if (_created_instance)
-	{
-		lib_log_w("renderer: could not create new instance, instance already exists");
-		return;
-	}
+    if (_created_instance)
+    {
+        lib_log_w("renderer: could not create new instance, instance already exists");
+        return;
+    }
 
-	if (gladLoadGL() == 0)
-	{
-		lib_log_e("renderer: could not load opengl");
-		return;
-	}
+    if (gladLoadGL() == 0)
+    {
+        lib_log_e("renderer: could not load opengl");
+        return;
+    }
 
-	_created_instance = true;
+    _created_instance = true;
 
-	lib_log_d("renderer: initialised new opengl instance");
-	lib_log_d("renderer: " << glGetString(GL_VERSION));
+    lib_log_d("renderer: initialised new opengl instance");
+    lib_log_d("renderer: " << glGetString(GL_VERSION));
 
-	init_opengl();
+    init_opengl();
 }
 
 void renderer::destroy_instance()
 {
-	if (!_created_instance)
-	{
-		lib_log_w("renderer: destroy instance, maybe using context?");
-		return;
-	}
+    if (!_created_instance)
+    {
+        lib_log_w("renderer: destroy instance, maybe using context?");
+        return;
+    }
 
-	_created_instance = false;
-	reset();
+    _created_instance = false;
+    reset();
 }
 
 void renderer::bind_context(void* context)
 {
-	if (_created_instance)
-	{
-		lib_log_w("renderer: could not bind context, instance exists?");
-		return;
-	}
+    if (_created_instance)
+    {
+        lib_log_w("renderer: could not bind context, instance exists?");
+        return;
+    }
 
-	_created_instance = true;
-	init_opengl();
+    _created_instance = true;
+    init_opengl();
 }
 
 void renderer::remove_context()
 {
-	if (!_created_instance)
-	{
-		lib_log_w("renderer: could unbind context");
-		return;
-	}
+    if (!_created_instance)
+    {
+        lib_log_w("renderer: could unbind context");
+        return;
+    }
 
-	_created_instance = false;
-	reset();
+    _created_instance = false;
+    reset();
 }
 
 void renderer::reset()
 {
-	if (_vertex_array_object)
-	{
-		_vertex_array_object.reset();
-		_vertex_array_object = nullptr;
-	}
+    if (_vertex_array_object)
+    {
+        _vertex_array_object.reset();
+        _vertex_array_object = nullptr;
+    }
 
-	if (_shader)
-	{
-		_shader.reset();
-		_shader = nullptr;
-	}
+    if (_shader)
+    {
+        _shader.reset();
+        _shader = nullptr;
+    }
 
-	if (_color_texture)
-	{
-		_color_texture.reset();
-		_color_texture = nullptr;
-	}
+    if (_color_texture)
+    {
+        _color_texture.reset();
+        _color_texture = nullptr;
+    }
 }
 
 void renderer::set_window_size(const common::point2Di& window_size)
 {
-	if (!_created_instance)
-	{
-		lib_log_e("renderer: updated window size without initialising renderer");
-		return;
-	}
+    if (!_created_instance)
+    {
+        lib_log_e("renderer: updated window size without initialising renderer");
+        return;
+    }
 
-	// call original function
-	renderer_base::set_window_size(window_size);
+    // call original function
+    renderer_base::set_window_size(window_size);
 
-	// generate new projection matrix and update projection matrix in shaders
-	const auto projection_matrix =
-		glm::ortho(0.f, static_cast<float>(window_size._x), static_cast<float>(window_size._y), 0.f);
+    // generate new projection matrix and update projection matrix in shaders
+    const auto projection_matrix =
+            glm::ortho(0.f, static_cast<float>(window_size._x), static_cast<float>(window_size._y), 0.f);
 
-	GLenum last_shader = 0;
-	glGetIntegerv(GL_CURRENT_PROGRAM, reinterpret_cast<GLint*>(&last_shader));
+    GLenum last_shader = 0;
+    glGetIntegerv(GL_CURRENT_PROGRAM, reinterpret_cast<GLint*>(&last_shader));
 
-	// update uniform
-	glUseProgram(_shader->shader_program_id);
-	glUniformMatrix4fv(
-		glGetUniformLocation(_shader->shader_program_id, "projection_matrix"), 1, GL_FALSE, &projection_matrix[0][0]);
+    // update uniform
+    glUseProgram(_shader->shader_program_id);
+    glUniformMatrix4fv(
+            glGetUniformLocation(_shader->shader_program_id, "projection_matrix"), 1, GL_FALSE, &projection_matrix[0][0]);
 
-	// restore previous shader
-	glUseProgram(last_shader);
+    // restore previous shader
+    glUseProgram(last_shader);
 }
 
 void renderer::render_start()
 {
-	// save current render state before rending anything, so we can restore states as to not screw anything up
-	_render_state.capture();
+    // save current render state before rending anything, so we can restore states as to not screw anything up
+    _render_state.capture();
 
-	_current_batch = nullptr;
-	_current_scissor_rect = common::point4Di(0, 0, _window_size._x, _window_size._y);
+    _current_batch = nullptr;
+    _current_scissor_rect = common::point4Di(0, 0, _window_size._x, _window_size._y);
 
-	// set viewport to the whole screen in case it has been changed
-	glViewport(0, 0, _window_size._x, _window_size._y);
+    // set viewport to the whole screen in case it has been changed
+    glViewport(0, 0, _window_size._x, _window_size._y);
 
-	// enable texture slot 0, which is what we will bind our fonts to
-	glActiveTexture(GL_TEXTURE0);
+    // enable texture slot 0, which is what we will bind our fonts to
+    glActiveTexture(GL_TEXTURE0);
 }
 
 void renderer::render_finish()
 {
-	_vertex_array_object->bind();
+    _vertex_array_object->bind();
 
-	// use our own shader to render our shapes and stuff
-	glUseProgram(_shader->shader_program_id);
+    // use our own shader to render our shapes and stuff
+    glUseProgram(_shader->shader_program_id);
 
-	while (!_internal_batches.empty())
-	{
-		const auto& data = _internal_batches.front();
+    while (!_internal_batches.empty())
+    {
+        const auto& data = _internal_batches.front();
 
-		// bind vertex array
-		glBufferSubData(
-			GL_ARRAY_BUFFER,
-			0,
-			static_cast<GLsizeiptr>(data.vertex_count * sizeof(opengl3::vertex_t)),
-			data.vertices.data());
+        // bind vertex positions, color and tex coord
+        glBindBuffer(GL_ARRAY_BUFFER, _vertex_array_object->get_vertex_buffer());
+        glBufferSubData(
+                GL_ARRAY_BUFFER,
+                0,
+                static_cast<GLsizeiptr>(data.vertex_count * sizeof(opengl3::vertex_t)),
+                data.vertices.data());
 
-		// render each batch
-		GLint offset = 0;
+        // render each batch
+        GLint offset = 0;
 
-		for (size_t i = 0; i < data.batch_count; i++)
-		{
-			const auto& batch = data.vertex_batch.at(i);
+        for (size_t i = 0; i < data.batch_count; i++)
+        {
+            const auto& batch = data.vertex_batch.at(i);
 
-			if (batch.vertex_count == 0)
-			{
-				continue;
-			}
+            if (batch.vertex_count == 0)
+            {
+                continue;
+            }
 
-			// apply scissor
-			glScissor(
-				batch.scissor_rect._x,
-				batch.scissor_rect._y,
-				batch.scissor_rect._z - batch.scissor_rect._x,
-				batch.scissor_rect._w - batch.scissor_rect._y);
+            // apply scissor
+            glScissor(
+                    batch.scissor_rect._x,
+                    batch.scissor_rect._y,
+                    batch.scissor_rect._z - batch.scissor_rect._x,
+                    batch.scissor_rect._w - batch.scissor_rect._y);
 
-			// apply texture
-			if (batch.texture_id != 0)
-			{
-				// only apply custom texture when texture id is not 0, else apply "color" texture
-				glBindTexture(GL_TEXTURE_2D, batch.texture_id);
-			}
-			else
-			{
-				glBindTexture(GL_TEXTURE_2D, _color_texture->texture_id);
-			}
+            // apply texture
+            if (batch.texture_id != 0)
+            {
+                // only apply custom texture when texture id is not 0, else apply "color" texture
+                glBindTexture(GL_TEXTURE_2D, batch.texture_id);
+            }
+            else
+            {
+                glBindTexture(GL_TEXTURE_2D, _color_texture->texture_id);
+            }
 
-			glDrawArrays(batch.primitive, offset, batch.vertex_count);
-			offset += batch.vertex_count;
-		}
+            glDrawArrays(batch.primitive, offset, batch.vertex_count);
+            offset += batch.vertex_count;
+        }
 
-		_internal_batches.pop();
-	}
+        _internal_batches.pop();
+    }
 
-	_vertex_array_object->unbind();
-	_render_state.restore();
+    _vertex_array_object->unbind();
+    _render_state.restore();
 }
 
 void renderer::set_scissor_rect(const lib::common::point4Di& rect)
 {
-	_current_scissor_rect = rect;
+    _current_scissor_rect = rect;
 }
 
 void renderer::add_font(common::fnv1a_t font_hash, const std::string& font_name, size_t height, size_t weight)
@@ -335,91 +327,89 @@ void renderer::add_font(common::fnv1a_t font_hash, const std::string& font_name,
 }
 
 void renderer::draw_string(
-	lib::common::fnv1a_t font_hash,
-	const lib::common::point2Di& pos,
-	const lib::common::color& color,
-	const std::string& string,
-	render_flags flags)
+        lib::common::fnv1a_t font_hash,
+        const lib::common::point2Di& pos,
+        const lib::common::color& color,
+        const std::string& string,
+        render_flags flags)
 {
 }
 
 void renderer::draw_rect(const lib::common::point4Di& area, const lib::common::color& color, render_flags flags)
 {
-	constexpr auto num_vertices = 6;
-	opengl3::vertex_t vertices[num_vertices] = {};
+    constexpr auto num_vertices = 6;
+    opengl3::vertex_t vertices[num_vertices] = {};
 
-	vertices[0] = {area._x, area._y, color, 0.f, 0.f};
-	vertices[1] = {area._x + area._z, area._y + area._w, color, 1.f, 1.f};
-	vertices[2] = {area._x + area._z, area._y, color, 1.f, 0.0};
+    vertices[0] = {{area._x, area._y}, color, {0.f, 0.f}};
+    vertices[1] = {{area._x + area._z, area._y + area._w}, color, {1.f, 1.f}};
+    vertices[2] = {{area._x + area._z, area._y}, color, {1.f, 0.0}};
 
-	vertices[3] = {area._x, area._y, color, 0.f, 1.f};
-	vertices[4] = {area._x + area._z, area._y + area._w, color, 1.f, 1.f};
-	vertices[5] = {area._x, area._y + area._w, color, 0.f, 1.f};
+    vertices[3] = {{area._x, area._y}, color, {0.f, 1.f}};
+    vertices[4] = {{area._x + area._z, area._y + area._w}, color, {1.f, 1.f}};
+    vertices[5] = {{area._x, area._y + area._w}, color, {0.f, 1.f}};
 
-	add_vertex(vertices, num_vertices, GL_TRIANGLES, 0);
+    draw_vertices(vertices, num_vertices, GL_TRIANGLES, 0);
 }
 
 void renderer::draw_rect_gradient(
-	const lib::common::point4Di& area,
-	const lib::common::color& color1,
-	const lib::common::color& color2,
-	render_flags flags)
+        const lib::common::point4Di& area,
+        const lib::common::color& color1,
+        const lib::common::color& color2,
+        render_flags flags)
 {
 }
 
 void renderer::draw_circle(
-	const lib::common::point2Di& pos, float radius, const lib::common::color& color, render_flags flags)
+        const lib::common::point2Di& pos, float radius, const lib::common::color& color, render_flags flags)
 {
-	constexpr auto num_vertices = CIRCLE_CACHE_SEGMENTS + 1;
-	opengl3::vertex_t vertices[num_vertices] = {};
+    constexpr auto num_vertices = CIRCLE_CACHE_SEGMENTS + 1;
+    opengl3::vertex_t vertices[num_vertices] = {};
 
-	for (size_t i = 0; i <= CIRCLE_CACHE_SEGMENTS; i++)
-	{
-		const auto& lookup = _circle_cache.at(i);
-		vertices[i] = {
-			pos._x + static_cast<int>(radius * lookup.cos),
-			pos._y + static_cast<int>(radius * lookup.sin),
-			color,
-			0.f,
-			0.f};
-	}
+    for (size_t i = 0; i <= CIRCLE_CACHE_SEGMENTS; i++)
+    {
+        const auto& lookup = _circle_cache.at(i);
+        vertices[i] = {
+                {pos._x + static_cast<int>(radius * lookup.cos),pos._y + static_cast<int>(radius * lookup.sin)},
+                color,
+                {0.f,0.f}};
+    }
 
-	add_vertex(vertices, num_vertices, GL_TRIANGLE_FAN, 0);
-	add_batch_break();
+    draw_vertices(vertices, num_vertices, GL_TRIANGLE_FAN, 0);
+    add_batch_break();
 }
 
 void renderer::draw_circle_gradient(
-	const lib::common::point2Di& pos,
-	float radius,
-	const lib::common::color& color1,
-	const lib::common::color& color2,
-	render_flags flags)
+        const lib::common::point2Di& pos,
+        float radius,
+        const lib::common::color& color1,
+        const lib::common::color& color2,
+        render_flags flags)
 {
 }
 
 void renderer::draw_triangle(
-	const lib::common::point2Di& pos1,
-	const lib::common::point2Di& pos2,
-	const lib::common::point2Di& pos3,
-	const lib::common::color& color,
-	render_flags flags)
+        const lib::common::point2Di& pos1,
+        const lib::common::point2Di& pos2,
+        const lib::common::point2Di& pos3,
+        const lib::common::color& color,
+        render_flags flags)
 {
-	constexpr auto num_vertices = 3;
-	opengl3::vertex_t vertices[num_vertices] = {};
+    constexpr auto num_vertices = 3;
+    opengl3::vertex_t vertices[num_vertices] = {};
 
-	vertices[0] = {pos1._x, pos1._y, color, 0, 0};
-	vertices[1] = {pos2._x, pos2._y, color, 0, 0};
-	vertices[2] = {pos3._x, pos3._y, color, 0, 0};
+    vertices[0] = {{pos1._x, pos1._y}, color, {0, 0}};
+    vertices[1] = {{pos2._x, pos2._y}, color, {0, 0}};
+    vertices[2] = {{pos3._x, pos3._y}, color, {0, 0}};
 
-	add_vertex(vertices, num_vertices, GL_TRIANGLES, 0);
+    draw_vertices(vertices, num_vertices, GL_TRIANGLES, 0);
 }
 
 void renderer::draw_triangle_gradient(
-	const lib::common::point2Di& pos1,
-	const lib::common::point2Di& pos2,
-	const lib::common::point2Di& pos3,
-	const lib::common::color& color1,
-	const lib::common::color& color2,
-	render_flags flags)
+        const lib::common::point2Di& pos1,
+        const lib::common::point2Di& pos2,
+        const lib::common::point2Di& pos3,
+        const lib::common::color& color1,
+        const lib::common::color& color2,
+        render_flags flags)
 {
 }

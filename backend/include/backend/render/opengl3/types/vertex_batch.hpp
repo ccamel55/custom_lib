@@ -1,4 +1,7 @@
 #pragma once
+#include <common/types/color.hpp>
+#include <common/types/point/point2D.hpp>
+#include <common/types/point/point4D.hpp>
 #include <glad/glad.h>
 
 namespace lib::backend::opengl3
