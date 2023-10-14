@@ -13,7 +13,7 @@ namespace fnv1a
 constexpr fnv1a_t FNV_PRIME = 0x01000193;
 constexpr fnv1a_t FNV_OFFSET_BASIS = 0x811c9dc5;
 
-constexpr fnv1a_t get_compile_time(const char* string, fnv1a_t value = FNV_OFFSET_BASIS)
+consteval fnv1a_t get_compile_time(const char* string, fnv1a_t value = FNV_OFFSET_BASIS)
 {
 	if (string[0] == '\0')
 	{
