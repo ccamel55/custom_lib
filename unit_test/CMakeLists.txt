@@ -6,8 +6,8 @@ CPMAddPackage("gh:catchorg/Catch2@3.4.0")
 
 add_executable(${PROJECT_NAME}
         cryptography_tests.cpp
+        macro_tests.cpp
         math_tests.cpp
-        threading_tests.cpp
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
