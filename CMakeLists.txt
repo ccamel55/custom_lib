@@ -1,10 +1,11 @@
-cmake_minimum_required(VERSION 3.19)
+cmake_minimum_required(VERSION 3.26)
+
 project (custom_lib)
 
 include(cmake/CPM.cmake)
 include(cmake/functions.cmake)
 
-# if we load custom_lib as the top level directory, use default setup, build the library and then run unit tests
+# if we load custom_lib as the top level directory, use default setup
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     include(cmake/configs/default.cmake)
 endif()
@@ -13,6 +14,7 @@ endif()
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_library(${PROJECT_NAME} STATIC custom_lib.cpp)
 include(cmake/build_options.cmake)

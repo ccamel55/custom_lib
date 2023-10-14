@@ -2,7 +2,7 @@ lib_create_options(LIB_COMMON_LOGGER "Set log level (0 = Off, 1 = Errors, 2 = Wa
 
 add_subdirectory(threading)
 
-target_sources(${PROJECT_NAME} PUBLIC
+target_sources(${PROJECT_NAME} PRIVATE
         config_manager.cpp
         timer.cpp
         )

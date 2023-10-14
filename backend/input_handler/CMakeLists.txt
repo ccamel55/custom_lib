@@ -5,7 +5,7 @@ if ((NOT LIB_BACKEND_WINDOW_CREATION STREQUAL none) AND (NOT LIB_BACKEND_INPUT S
 endif()
 
 if (LIB_BACKEND_INPUT STREQUAL glfw)
-    target_sources(${PROJECT_NAME} PUBLIC
+    target_sources(${PROJECT_NAME} PRIVATE
             glfw/input_handler.cpp
             )
 endif ()
