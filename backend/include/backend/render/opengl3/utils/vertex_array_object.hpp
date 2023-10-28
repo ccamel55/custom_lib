@@ -1,20 +1,21 @@
 #pragma once
-#include <backend/render/opengl3/utils/vertex_layout.hpp>
-#include <memory>
+#include <glad/glad.h>
 
 namespace lib::backend::opengl3
 {
 class vertex_array_object
 {
 public:
-	vertex_array_object(const vertex_layout& vertex_layout, GLuint size);
+	explicit vertex_array_object(GLuint size);
 	~vertex_array_object();
+
+	[[nodiscard]] GLuint get_vertex_buffer() const;
 
 	void bind() const;
 	static void unbind();
 
 private:
 	GLuint _vertex_array_object;
-	GLuint _vertex_buffer_object;
+	GLuint _vertex_buffer;
 };
 }  // namespace lib::backend::opengl3

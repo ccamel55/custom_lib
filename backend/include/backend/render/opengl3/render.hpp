@@ -4,7 +4,6 @@
 #include <backend/render/opengl3/types/texture.hpp>
 #include <backend/render/opengl3/utils/state_manager.hpp>
 #include <backend/render/opengl3/utils/vertex_array_object.hpp>
-#include <backend/render/opengl3/utils/vertex_layout.hpp>
 #include <backend/render/renderer_base.hpp>
 #include <queue>
 #include <unordered_map>
@@ -68,8 +67,14 @@ public:
 
 private:
 	void init_opengl();
-	void add_vertex(const opengl3::vertex_t* vertices, GLsizei num_vertices, GLenum primitive, GLuint texture_id = 0);
 	void add_batch_break();
+
+	void draw_vertices(
+		const opengl3::vertex_t* vertices,
+		uint16_t num_vertices,
+		GLenum primitive,
+		GLuint texture_id);
+	[[nodiscard]] uint16_t get_num_vertices() const;
 
 private:
 	std::unique_ptr<opengl3::vertex_array_object> _vertex_array_object = nullptr;
@@ -80,5 +85,6 @@ private:
 	opengl3::state_manager _render_state = {};
 
 	opengl3::vertex_batch_t* _current_batch = nullptr;
+	opengl3::batch_t* _current_internal_batch = nullptr;
 };
 }  // namespace lib::backend

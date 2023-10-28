@@ -1,47 +1,52 @@
+#include <backend/render/opengl3/types/batch.hpp>
 #include <backend/render/opengl3/utils/vertex_array_object.hpp>
+#include <common/types/color.hpp>
+#include <common/types/point/point2D.hpp>
 
 using namespace lib::backend::opengl3;
 
-vertex_array_object::vertex_array_object(const vertex_layout& vertex_layout, GLuint size) :
-	_vertex_array_object(0), _vertex_buffer_object(0)
+vertex_array_object::vertex_array_object(GLuint size) :
+	_vertex_array_object(0), _vertex_buffer(0)
 {
-	// create vertex buffer
-	{
-		glGenBuffers(1, &_vertex_buffer_object);
-		glBindBuffer(GL_ARRAY_BUFFER, _vertex_buffer_object);
-
-		// dynamic draw because we will likely be writing data to it in the future
-		glBufferData(GL_ARRAY_BUFFER, size, nullptr, GL_DYNAMIC_DRAW);
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
-	}
-
 	// create vertex array object
 	{
 		glGenVertexArrays(1, &_vertex_array_object);
-
-		// map our VBO to the VAO, so we only need to apply the VAO to draw buffer
 		glBindVertexArray(_vertex_array_object);
-		glBindBuffer(GL_ARRAY_BUFFER, _vertex_buffer_object);
+	}
 
-		// apply layout for the buffer
-		uint32_t offset = 0;
-		const auto& layout = vertex_layout.get_layout();
+	// create vertex buffers and bind layout to VAO
+	{
+		// vertex buffer
+		glGenBuffers(1, &_vertex_buffer);
+		glBindBuffer(GL_ARRAY_BUFFER, _vertex_buffer);
+		glBufferData(GL_ARRAY_BUFFER, static_cast<GLuint>(size * sizeof(common::point2Df)), nullptr, GL_DYNAMIC_DRAW);
 
-		for (size_t i = 0; i < layout.size(); i++)
-		{
-			const auto& curParam = layout.at(i);
+		// position
+		glEnableVertexAttribArray(0);
+		glBindBuffer(GL_ARRAY_BUFFER, _vertex_buffer);
+		glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(opengl3::vertex_t), reinterpret_cast<void*>(0));
 
-			glEnableVertexAttribArray(i);
-			glVertexAttribPointer(
-				i,
-				curParam.count,
-				curParam.type,
-				curParam.normalized,
-				vertex_layout.get_stride(),
-				reinterpret_cast<void*>(offset));
+		// color
+		glEnableVertexAttribArray(1);
+		glBindBuffer(GL_ARRAY_BUFFER, _vertex_buffer);
+		glVertexAttribPointer(
+			1,
+			4,
+			GL_UNSIGNED_BYTE,
+			GL_TRUE,
+			sizeof(opengl3::vertex_t),
+			reinterpret_cast<void*>(sizeof(common::point2Df)));
 
-			offset += curParam.count * vertex_layout::size_of_gl_type(curParam.type);
-		}
+		// tex coord
+		glEnableVertexAttribArray(2);
+		glBindBuffer(GL_ARRAY_BUFFER, _vertex_buffer);
+		glVertexAttribPointer(
+			2,
+			2,
+			GL_FLOAT,
+			GL_FALSE,
+			sizeof(opengl3::vertex_t),
+			reinterpret_cast<void*>(sizeof(common::point2Df) + sizeof(common::color)));
 
 		glBindVertexArray(0);
 	}
@@ -49,8 +54,8 @@ vertex_array_object::vertex_array_object(const vertex_layout& vertex_layout, GLu
 
 vertex_array_object::~vertex_array_object()
 {
-	glDeleteBuffers(1, &_vertex_buffer_object);
 	glDeleteVertexArrays(1, &_vertex_array_object);
+	glDeleteBuffers(1, &_vertex_buffer);
 }
 
 void vertex_array_object::bind() const
@@ -62,4 +67,9 @@ void vertex_array_object::bind() const
 void vertex_array_object::unbind()
 {
 	glBindVertexArray(0);
+}
+
+GLuint vertex_array_object::get_vertex_buffer() const
+{
+	return _vertex_buffer;
 }
