@@ -56,7 +56,7 @@ inline void file_to_hex(const std::string& file_path, const std::string& destina
 	}
 	catch (const std::exception& e)
 	{
-		lib_log_e("file_to_hex: something retarded happened: " << e.what());
+		lib_log_e("file_to_hex: something retarded happened: {}", e.what());
 		return;
 	}
 }

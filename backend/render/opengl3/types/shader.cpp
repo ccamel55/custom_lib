@@ -28,9 +28,8 @@ GLuint compile_shader(const char* shader_src, GLuint shader_type)
 		error_message.resize(logLength + 1);
 
 		glGetShaderInfoLog(shader_id, logLength, nullptr, &error_message[0]);
-		std::cout << &error_message[0] << std::endl;
 
-		lib_log_e("opengl3: could not compile shader: " + error_message);
+		lib_log_e("opengl3: could not compile shader: {}", error_message);
 		assert(false);
 	}
 
