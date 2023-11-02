@@ -65,7 +65,7 @@ public:
 	virtual void set_window_size(const common::point2Di& window_size)
 	{
 		_window_size = window_size;
-		lib_log_d(fmt::format("renderer: updated window size, width {} height {}", window_size._x, window_size._y));
+		lib_log_d("renderer: updated window size, width {} height {}", window_size._x, window_size._y);
 	}
 
 	//! returns the size of the window the renderer is running in

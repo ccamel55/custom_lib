@@ -153,7 +153,7 @@ void renderer::init_instance(void* init_data)
     _created_instance = true;
 
     lib_log_d("renderer: initialised new opengl instance");
-    lib_log_d("renderer: " << glGetString(GL_VERSION));
+    lib_log_d("renderer: {}", *glGetString(GL_VERSION));
 
     init_opengl();
 }
