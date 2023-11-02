@@ -8,9 +8,7 @@ public:
 	constexpr _point2D() = default;
 	constexpr _point2D& operator=(const _point2D& in) = default;
 
-	constexpr _point2D(auto x, auto y)
-		: _x(static_cast<t>(x))
-		, _y(static_cast<t>(y))
+	constexpr _point2D(auto x, auto y) : _x(static_cast<t>(x)), _y(static_cast<t>(y))
 	{
 	}
 

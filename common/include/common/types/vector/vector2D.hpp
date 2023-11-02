@@ -10,7 +10,7 @@ class vector2D
 public:
 	constexpr vector2D() = default;
 
-	constexpr vector2D(float x, float y) : _x(x), _y(y)
+	constexpr vector2D(auto x, auto y) : _x(static_cast<float>(x)), _y(static_cast<float>(y))
 	{
 	}
 
@@ -142,6 +142,21 @@ public:
 	[[nodiscard]] float length_sqr() const
 	{
 		return (_x * _x + _y * _y);
+	}
+
+	[[nodiscard]] common::vector2D normalised() const
+	{
+		// normalise vector so that magnitude is 1
+		const auto x_x_y_y = (this->_x * this->_x) + (this->_y * this->_y);
+
+		if (x_x_y_y <= 0.f)
+		{
+			return *this;
+		}
+
+		const auto inverse_sqrt = (1.f / std::sqrtf(x_x_y_y));
+
+		return {this->_x * inverse_sqrt, this->_y * inverse_sqrt};
 	}
 
 public:
