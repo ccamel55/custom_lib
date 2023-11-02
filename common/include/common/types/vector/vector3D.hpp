@@ -10,7 +10,8 @@ class vector3D
 public:
 	constexpr vector3D() = default;
 
-	constexpr vector3D(float x, float y, float z) : _x(x), _y(y), _z(z)
+	constexpr vector3D(auto x, auto y, auto z) :
+		_x(static_cast<float>(x)), _y(static_cast<float>(y)), _z(static_cast<float>(z))
 	{
 	}
 

@@ -1,5 +1,8 @@
-#include <backend/input_handler/glfw/input_handler.hpp>	 // todo: move the handler data stuff into another class
+#include <glad/glad.h>
+
+#include <backend/input_handler/glfw/input_handler.hpp>
 #include <backend/window_creation/glfw/window_creation.hpp>
+
 #include <cassert>
 #include <chrono>
 
@@ -117,15 +120,14 @@ void window_creation::window_loop()
 		if (_renderer)
 		{
 			frame_start_time = std::chrono::high_resolution_clock::now();
-			_renderer->render_start();
 
 			// draw stuff here
 			if (_render_callback)
 			{
 				_render_callback();
+				_renderer->draw_frame();
 			}
 
-			_renderer->render_finish();
 			frame_end_time = std::chrono::high_resolution_clock::now();
 
 			_renderer->set_frame_time(
@@ -142,13 +144,13 @@ void window_creation::window_loop()
 	glfwTerminate();
 }
 
-std::unique_ptr<renderer_base>& window_creation::register_renderer(std::unique_ptr<renderer_base> renderer)
+std::unique_ptr<renderer>& window_creation::register_renderer(std::unique_ptr<renderer> renderer)
 {
 	// pass renderer ownership to this window class
 	auto& renderer_ref = window_creation_base::register_renderer(std::move(renderer));
 
 	// initialize renderer using glfw stuff
-	renderer_ref->init_instance(nullptr);
+	renderer_ref->bind_api(nullptr);
 	renderer_ref->set_window_size(_window_size);
 
 	return renderer_ref;

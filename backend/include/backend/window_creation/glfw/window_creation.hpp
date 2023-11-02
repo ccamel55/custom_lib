@@ -17,7 +17,7 @@ public:
 	void focus_window() override;
 	void window_loop() override;
 
-	std::unique_ptr<renderer_base>& register_renderer(std::unique_ptr<renderer_base> renderer) override;
+	std::unique_ptr<renderer>& register_renderer(std::unique_ptr<renderer> renderer) override;
 	std::unique_ptr<input_handler_base>& register_input_handler(
 		std::unique_ptr<input_handler_base> input_handler) override;
 

@@ -101,5 +101,4 @@ TEST_CASE("Points", "[math]")
 
 TEST_CASE("Vectors - todo", "[math]")
 {
-
 }

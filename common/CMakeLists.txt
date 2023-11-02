@@ -4,6 +4,7 @@ add_subdirectory(threading)
 
 target_sources(${PROJECT_NAME} PRIVATE
         config_manager.cpp
+        math.cpp
         timer.cpp
         )
 

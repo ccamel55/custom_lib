@@ -8,10 +8,7 @@ public:
 	constexpr _point3D() = default;
 	constexpr _point3D& operator=(const _point3D& in) = default;
 
-	constexpr _point3D(auto x, auto y, auto z)
-		: _x(static_cast<t>(x))
-		, _y(static_cast<t>(y))
-		, _z(static_cast<t>(z))
+	constexpr _point3D(auto x, auto y, auto z) : _x(static_cast<t>(x)), _y(static_cast<t>(y)), _z(static_cast<t>(z))
 	{
 	}
 

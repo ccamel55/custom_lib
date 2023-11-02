@@ -1,7 +1,7 @@
 #pragma once
 
 #include <backend/input_handler/input_handler_base.hpp>
-#include <backend/render/renderer_base.hpp>
+#include <backend/render/renderer.hpp>
 
 #include <common/logger.hpp>
 #include <common/types/bitflag.hpp>
@@ -34,7 +34,7 @@ public:
 	{
 		if (_renderer)
 		{
-			_renderer->destroy_instance();
+			_renderer->unbind_api();
 			_renderer.reset();
 		}
 
@@ -53,7 +53,7 @@ public:
 	//! Transfer ownership of the renderer to the window
 	//! return a reference to the renderer, because this window owns the renderer, there should never be a case
 	//! where our window is destroyed and our renderer still exists
-	virtual std::unique_ptr<renderer_base>& register_renderer(std::unique_ptr<renderer_base> renderer)
+	virtual std::unique_ptr<renderer>& register_renderer(std::unique_ptr<renderer> renderer)
 	{
 		lib_log_d("window_creation: registered renderer");
 		_renderer = std::move(renderer);
@@ -91,7 +91,7 @@ public:
 protected:
 	std::function<void()> _render_callback = nullptr;
 
-	std::unique_ptr<renderer_base> _renderer = nullptr;
+	std::unique_ptr<renderer> _renderer = nullptr;
 	std::unique_ptr<input_handler_base> _input_handler = nullptr;
 
 	std::string _window_name = {};

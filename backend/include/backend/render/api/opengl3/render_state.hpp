@@ -1,9 +1,10 @@
 #pragma once
+
 #include <glad/glad.h>
 
-namespace lib::backend::opengl3
+namespace lib::backend::render::gl3
 {
-class state_manager
+class render_state
 {
 public:
 	void capture();
@@ -15,6 +16,7 @@ private:
 	GLuint _last_program = 0;
 	GLuint _last_texture = 0;
 	GLuint _last_array_buffer = 0;
+	GLuint _last_index_buffer = 0;
 	GLuint _last_vertex_array_object = 0;
 	GLint _last_viewport[4] = {};
 	GLint _last_scissor_box[4] = {};
@@ -30,4 +32,4 @@ private:
 	GLboolean _last_enable_stencil_test = 0;
 	GLboolean _last_enable_scissor_test = 0;
 };
-}  // namespace lib::backend::opengl3
+}  // namespace lib::backend::render::gl3

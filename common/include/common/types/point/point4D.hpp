@@ -8,11 +8,8 @@ public:
 	constexpr _point4D() = default;
 	constexpr _point4D& operator=(const _point4D& in) = default;
 
-	constexpr _point4D(auto x, auto y, auto z, auto w)
-		: _x(static_cast<t>(x))
-		, _y(static_cast<t>(y))
-		, _z(static_cast<t>(z))
-		, _w(static_cast<t>(w))
+	constexpr _point4D(auto x, auto y, auto z, auto w) :
+		_x(static_cast<t>(x)), _y(static_cast<t>(y)), _z(static_cast<t>(z)), _w(static_cast<t>(w))
 	{
 	}
 
