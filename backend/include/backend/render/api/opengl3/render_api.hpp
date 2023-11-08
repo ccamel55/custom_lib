@@ -13,7 +13,7 @@ public:
 	render_api();
 	~render_api() override;
 
-	texture_id add_texture() override;
+	void add_texture(render::texture_id id, const uint8_t* data, int width, int height) override;
 	void update_screen_size(const common::point2Di& window_size) override;
 	void draw_render_command(const render_command& render_command) override;
 
@@ -26,5 +26,8 @@ private:
 	GLuint _vertex_array;
 	GLuint _vertex_buffer;
 	GLuint _index_buffer;
+
+	// indexes by texture_id
+	std::vector<GLuint> _textures = {};
 };
 }  // namespace lib::backend::render

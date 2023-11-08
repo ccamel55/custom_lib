@@ -39,11 +39,14 @@ struct vertex_t
 // ensure nothing funky happens on different architectures
 static_assert(sizeof(vertex_t) == 20);
 
+//! texture ID used to identify a texture and get it's properties
+using texture_id = uint8_t;
+
 struct batch_t
 {
 	batch_t() = default;
 
-	explicit batch_t(const common::point4Di& clipped_area) : clipped_area(clipped_area)
+	explicit batch_t(const common::point4Di& clipped_area) : clipped_area(clipped_area), texture_id(0)
 	{
 	}
 
@@ -55,18 +58,23 @@ struct batch_t
 
 	// where should we clip the drawing space to
 	common::point4Di clipped_area = {};
+
+	// what texture we should be using
+	texture_id texture_id = {};
 };
 
-//! texture ID used to identify a texture and get it's properties
-using texture_id = uint8_t;
-
-//! information about our texture for use in high level renderer
 struct texture_properties_t
 {
-	// start position of our texture in the atlas
-	common::point2Di start = {};
+	// texture start location in pixels
+	common::point2Di start_pixel = {};
 
-	// size of our texture
-	common::point2Di size = {};
+	// texture size in pixels
+	common::point2Di size_pixel = {};
+
+	// texture start normalised
+	common::point2Df start_normalised = {};
+
+	// texture end normalised
+	common::point2Df end_normalised = {};
 };
 }  // namespace lib::backend::render

@@ -11,6 +11,8 @@ endif ()
 if (NOT LIB_BACKEND_RENDER STREQUAL none)
     target_sources(${PROJECT_NAME} PRIVATE
             renderer.cpp
+            common/font_loader.cpp
+            common/image_loader.cpp
             common/render_command.cpp
     )
 endif ()
