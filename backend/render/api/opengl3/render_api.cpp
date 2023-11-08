@@ -28,7 +28,7 @@ constexpr char vertex_shader[] = R"(
 constexpr char fragment_shader[] = R"(
         #version 410 core
 
-		uniform sampler2D texture;
+		uniform sampler2D texture_sample;
 
         in vec4 fragment_color;
 		in vec2 fragment_uv;
@@ -37,18 +37,19 @@ constexpr char fragment_shader[] = R"(
 
         void main()
 		{
-            out_color = fragment_color;
+            out_color = fragment_color * texture(texture_sample, fragment_uv.st);
         }
     )";
 }  // namespace
 
 render_api::render_api() :
 	_window_size(), _render_state(), _shader(vertex_shader, fragment_shader), _vertex_array(0), _vertex_buffer(0),
-	_index_buffer(0)
+	_index_buffer(0), _textures()
 {
 	_render_state.capture();
 
 	// generate buffers
+
 	glGenBuffers(1, &_vertex_buffer);
 	glGenBuffers(1, &_index_buffer);
 	glGenVertexArrays(1, &_vertex_array);
@@ -82,15 +83,40 @@ render_api::render_api() :
 
 render_api::~render_api()
 {
+	for (auto texture : _textures)
+	{
+		glDeleteTextures(1, &texture);
+	}
+
 	glDeleteBuffers(1, &_vertex_buffer);
 	glDeleteBuffers(1, &_index_buffer);
-
 	glDeleteVertexArrays(1, &_vertex_array);
 }
 
-texture_id render_api::add_texture()
+void render_api::add_texture(render::texture_id id, const uint8_t* data, int width, int height)
 {
-	return 0;
+	// setup how our texture will act
+	auto& new_texture = _textures.emplace_back();
+
+	// make sure IDs match
+	assert(id == _textures.size() - 1);
+
+	GLuint last_texture = 0;
+	glGetIntegerv(GL_TEXTURE_BINDING_2D, reinterpret_cast<GLint*>(&last_texture));
+
+	glGenTextures(1, &new_texture);
+	glBindTexture(GL_TEXTURE_2D, new_texture);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+	glGenerateMipmap(GL_TEXTURE_2D);
+
+	glBindTexture(GL_TEXTURE_2D, last_texture);
 }
 
 void render_api::update_screen_size(const common::point2Di& window_size)
@@ -99,26 +125,27 @@ void render_api::update_screen_size(const common::point2Di& window_size)
 	_window_size = window_size;
 
 	// update our projection matrix :P im lazy so we using IMGUi's matrix
-	constexpr float L = 0.f;
-	constexpr float T = 0.f;
+	const auto w = static_cast<float>(window_size._x);
+	const auto h = static_cast<float>(window_size._y);
 
-	const auto R = static_cast<float>(window_size._x);
-	const auto B = static_cast<float>(window_size._y);
-
+	// orthographic projection matrix, very swag i know
 	const float projection_matrix[4][4] = {
-		{2.0f / (R - L),	 0.0f,			   0.0f,	 0.0f},
-		{0.0f,			   2.0f / (T - B),	   0.0f,	 0.0f},
-		{0.0f,			   0.0f,				 -1.0f, 0.0f},
-		{(R + L) / (L - R), (T + B) / (B - T), 0.0f,	 1.0f},
+		{2.f / w, 0.f,	   0.f,	0.f},
+		{0.f,	  -2.f / h, 0.f,	 0.f},
+		{0.f,	  0.f,	   -1.f, 0.f},
+		{-1.f,	   1.f,		0.f,	 1.f},
 	};
 
 	// bind uniforms n shit to our shader
-	GLuint last_program;
+	GLuint last_program = 0;
 	glGetIntegerv(GL_CURRENT_PROGRAM, reinterpret_cast<GLint*>(&last_program));
 
 	_shader.bind();
 
-	glUniform1i(_shader.get_attribute_location("texture"), 0);
+	// bind sampler to use texture slot 0
+	glUniform1i(_shader.get_attribute_location("texture_sample"), 0);
+
+	// bind projection matrix
 	glUniformMatrix4fv(_shader.get_attribute_location("projection_matrix"), 1, GL_FALSE, &projection_matrix[0][0]);
 
 	glUseProgram(last_program);
@@ -141,6 +168,9 @@ void render_api::draw_render_command(const render_command& render_command)
 
 	glBlendEquation(GL_FUNC_ADD);
 	glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+
+	// bind master texture
+	glActiveTexture(GL_TEXTURE0);
 
 	// use whole screen as viewport, but we scissor regions in each batch
 	glViewport(0, 0, _window_size._x, _window_size._y);
@@ -166,6 +196,8 @@ void render_api::draw_render_command(const render_command& render_command)
 	for (uint32_t i = 0; i < render_command.batch_count; i++)
 	{
 		const auto& batch = render_command.batches.at(i);
+
+		glBindTexture(GL_TEXTURE_2D, _textures.at(batch.texture_id));
 
 		glScissor(
 			batch.clipped_area._x,

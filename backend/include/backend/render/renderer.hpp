@@ -1,10 +1,13 @@
 #pragma once
 
 #include <backend/render/api/render_api_base.hpp>
+#include <backend/render/common/font_loader.hpp>
+#include <backend/render/common/image_loader.hpp>
 
 #include <array>
 #include <filesystem>
 #include <memory>
+#include <unordered_map>
 
 namespace lib::backend
 {
@@ -21,7 +24,7 @@ public:
 	void unbind_api();
 
 	//! add an image to the texture atlas to be drawn later
-	void add_image(const std::filesystem::path& image);
+	render::texture_id add_image(const std::filesystem::path& image);
 
 	//! send render commands to render API and then get render API to draw them
 	void draw_frame();
@@ -75,7 +78,11 @@ public:
 		const common::color& c4);
 
 private:
-	common::point2Df opaque_texture_uv = {};
+	//! used to draw color
+	render::texture_id _opaque_texture_id = 0;
+
+	//! contains texture properties for respective texture id, texture_id indexes into array
+	std::vector<render::texture_properties_t> _texture_properties = {};
 
 	//! frame time given in milliseconds
 	float _frame_time = 0.1f;

@@ -10,10 +10,10 @@ void render_command::reset()
 	batch_count = 0;
 }
 
-uint32_t render_command::prepare_batch(const common::point4Di& clipped_area)
+uint32_t render_command::prepare_batch(const common::point4Di& clipped_area, texture_id id)
 {
 	// only update batch when batch count is empty or if we update clipped area
-	if (batch_count != 0 && current_batch->clipped_area == clipped_area)
+	if (batch_count != 0 && current_batch->clipped_area == clipped_area && current_batch->texture_id == id)
 	{
 		return vertex_count;
 	}
@@ -26,6 +26,7 @@ uint32_t render_command::prepare_batch(const common::point4Di& clipped_area)
 	current_batch->offset = index_count;
 	current_batch->count = 0;
 	current_batch->clipped_area = clipped_area;
+	current_batch->texture_id = id;
 
 	return vertex_count;
 }

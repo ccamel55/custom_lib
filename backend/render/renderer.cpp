@@ -11,6 +11,19 @@
 
 using namespace lib::backend;
 
+namespace
+{
+constexpr uint8_t opaque_texture_width = 1;
+constexpr uint8_t opaque_texture_height = 1;
+
+constexpr uint8_t opaque_texture_data[] = {
+	// r g b a
+	0xff,
+	0xff,
+	0xff,
+	0xff};
+}  // namespace
+
 renderer::~renderer()
 {
 	if (_render_api)
@@ -48,6 +61,12 @@ void renderer::bind_api(void* api_context)
 
 	_render_api = std::make_unique<backend::render::render_api>();
 #endif
+
+	// create opaque texture for us to draw into
+	_texture_properties.emplace_back();
+	_opaque_texture_id = 0;
+
+	_render_api->add_texture(_opaque_texture_id, opaque_texture_data, opaque_texture_width, opaque_texture_height);
 }
 
 void renderer::unbind_api()
@@ -60,10 +79,26 @@ void renderer::unbind_api()
 	// call destructor
 	_render_api.reset();
 	_render_command.reset();
+
+	_texture_properties.clear();
 }
 
-void renderer::add_image(const std::filesystem::path& image)
+render::texture_id renderer::add_image(const std::filesystem::path& image)
 {
+	// create opaque texture for us to draw into
+	auto& properties = _texture_properties.emplace_back();
+	const auto id = static_cast<render::texture_id>(_texture_properties.size() - 1);
+
+	render::image_loader loader(image);
+	const auto data = loader.generate_byte_array();
+
+	properties.size_pixel = {loader.get_width(), loader.get_height()};
+	properties.end_normalised = {1.f, 1.f};
+
+	_render_api->add_texture(id, data, loader.get_width(), loader.get_height());
+
+	loader.free_byte_array();
+	return id;
 }
 
 void renderer::draw_frame()
@@ -105,6 +140,38 @@ void renderer::draw_image(
 	const lib::common::color& color,
 	render::texture_id texture_id)
 {
+	const auto vertex_index = _render_command.prepare_batch(_clipped_area, texture_id);
+	const auto vertex_iterator = _render_command.insert_vertices(4);
+
+	vertex_iterator[0].position = {pos._x, pos._y};
+	vertex_iterator[1].position = {pos._x + size._x, pos._y};
+	vertex_iterator[2].position = {pos._x + size._x, pos._y + size._y};
+	vertex_iterator[3].position = {pos._x, pos._y + size._y};
+
+	const auto& texture_properties = _texture_properties.at(texture_id);
+
+	vertex_iterator[0].texture_position = texture_properties.start_normalised;
+	vertex_iterator[2].texture_position = texture_properties.end_normalised;
+
+	vertex_iterator[1].texture_position = {
+		texture_properties.end_normalised._x, texture_properties.start_normalised._y};
+	vertex_iterator[3].texture_position = {
+		texture_properties.start_normalised._x, texture_properties.end_normalised._y};
+
+	vertex_iterator[0].color = color;
+	vertex_iterator[1].color = color;
+	vertex_iterator[2].color = color;
+	vertex_iterator[3].color = color;
+
+	const auto index_iterator = _render_command.insert_indices(6);
+
+	index_iterator[0] = vertex_index;
+	index_iterator[1] = vertex_index + 1;
+	index_iterator[2] = vertex_index + 2;
+
+	index_iterator[3] = vertex_index;
+	index_iterator[4] = vertex_index + 2;
+	index_iterator[5] = vertex_index + 3;
 }
 
 void renderer::draw_line(
@@ -114,7 +181,7 @@ void renderer::draw_line(
 	auto dir = common::vector2D(p2._x - p1._x, p2._y - p1._y).normalised();
 	dir *= (thickness * 0.5f);
 
-	const auto vertex_index = _render_command.prepare_batch(_clipped_area);
+	const auto vertex_index = _render_command.prepare_batch(_clipped_area, _opaque_texture_id);
 	const auto vertex_iterator = _render_command.insert_vertices(4);
 
 	vertex_iterator[0].position = {static_cast<float>(p1._x) + dir._y, static_cast<float>(p1._y) - dir._x};
@@ -122,10 +189,12 @@ void renderer::draw_line(
 	vertex_iterator[2].position = {static_cast<float>(p2._x) - dir._y, static_cast<float>(p2._y) + dir._x};
 	vertex_iterator[3].position = {static_cast<float>(p1._x) - dir._y, static_cast<float>(p1._y) + dir._x};
 
-	vertex_iterator[0].texture_position = opaque_texture_uv;
-	vertex_iterator[1].texture_position = opaque_texture_uv;
-	vertex_iterator[2].texture_position = opaque_texture_uv;
-	vertex_iterator[3].texture_position = opaque_texture_uv;
+	const auto& texture_properties = _texture_properties.at(_opaque_texture_id);
+
+	vertex_iterator[0].texture_position = texture_properties.start_normalised;
+	vertex_iterator[1].texture_position = texture_properties.start_normalised;
+	vertex_iterator[2].texture_position = texture_properties.start_normalised;
+	vertex_iterator[3].texture_position = texture_properties.start_normalised;
 
 	vertex_iterator[0].color = color;
 	vertex_iterator[1].color = color;
@@ -161,16 +230,18 @@ void renderer::draw_triangle_filled(
 	const lib::common::point2Di& p3,
 	const lib::common::color& color)
 {
-	const auto vertex_index = _render_command.prepare_batch(_clipped_area);
+	const auto vertex_index = _render_command.prepare_batch(_clipped_area, _opaque_texture_id);
 	const auto vertex_iterator = _render_command.insert_vertices(3);
 
 	vertex_iterator[0].position = {static_cast<float>(p1._x), static_cast<float>(p1._y)};
 	vertex_iterator[1].position = {static_cast<float>(p2._x), static_cast<float>(p2._y)};
 	vertex_iterator[2].position = {static_cast<float>(p3._x), static_cast<float>(p3._y)};
 
-	vertex_iterator[0].texture_position = opaque_texture_uv;
-	vertex_iterator[1].texture_position = opaque_texture_uv;
-	vertex_iterator[2].texture_position = opaque_texture_uv;
+	const auto& texture_properties = _texture_properties.at(_opaque_texture_id);
+
+	vertex_iterator[0].texture_position = texture_properties.start_normalised;
+	vertex_iterator[1].texture_position = texture_properties.start_normalised;
+	vertex_iterator[2].texture_position = texture_properties.start_normalised;
 
 	vertex_iterator[0].color = color;
 	vertex_iterator[1].color = color;
@@ -227,8 +298,7 @@ void renderer::draw_rect_gradient_filled(
 	const lib::common::color& c3,
 	const lib::common::color& c4)
 {
-
-	const auto vertex_index = _render_command.prepare_batch(_clipped_area);
+	const auto vertex_index = _render_command.prepare_batch(_clipped_area, _opaque_texture_id);
 	const auto vertex_iterator = _render_command.insert_vertices(4);
 
 	vertex_iterator[0].position = {pos._x, pos._y};
@@ -236,10 +306,12 @@ void renderer::draw_rect_gradient_filled(
 	vertex_iterator[2].position = {pos._x + size._x, pos._y + size._y};
 	vertex_iterator[3].position = {pos._x, pos._y + size._y};
 
-	vertex_iterator[0].texture_position = opaque_texture_uv;
-	vertex_iterator[1].texture_position = opaque_texture_uv;
-	vertex_iterator[2].texture_position = opaque_texture_uv;
-	vertex_iterator[3].texture_position = opaque_texture_uv;
+	const auto& texture_properties = _texture_properties.at(_opaque_texture_id);
+
+	vertex_iterator[0].texture_position = texture_properties.start_normalised;
+	vertex_iterator[1].texture_position = texture_properties.start_normalised;
+	vertex_iterator[2].texture_position = texture_properties.start_normalised;
+	vertex_iterator[3].texture_position = texture_properties.start_normalised;
 
 	vertex_iterator[0].color = c1;
 	vertex_iterator[1].color = c2;
