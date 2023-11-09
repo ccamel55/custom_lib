@@ -1,4 +1,4 @@
-#include <glad/glad.h>
+#include "glad/glad.hpp"
 
 #include <backend/input_handler/glfw/input_handler.hpp>
 #include <backend/window_creation/glfw/window_creation.hpp>

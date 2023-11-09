@@ -1,6 +1,6 @@
 #pragma once
 
-#include <glad/glad.h>
+#include "glad/glad.hpp"
 
 namespace lib::backend::render::gl3
 {

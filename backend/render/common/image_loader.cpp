@@ -2,7 +2,7 @@
 #include <common/logger.hpp>
 
 #define STB_IMAGE_IMPLEMENTATION
-#include "backend/render/common/stb/stb_image.h"
+#include "backend/render/common/stb/stb_image.hpp"
 
 using namespace lib::backend::render;
 
