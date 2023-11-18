@@ -1,0 +1,8 @@
+add_subdirectory(lib_command_parser)
+add_subdirectory(lib_gui)
+add_subdirectory(lib_hashing)
+add_subdirectory(lib_input)
+add_subdirectory(lib_json_config)
+add_subdirectory(lib_rendering)
+add_subdirectory(lib_threading)
+add_subdirectory(lib_window_creation)

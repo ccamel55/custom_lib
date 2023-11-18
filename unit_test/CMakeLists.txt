@@ -1,8 +1,5 @@
-# create test target
 project(custom_lib_tests)
-
 include(CTest)
-CPMAddPackage("gh:catchorg/Catch2@3.4.0")
 
 add_executable(${PROJECT_NAME}
         cryptography_tests.cpp
@@ -11,8 +8,8 @@ add_executable(${PROJECT_NAME}
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
-        Catch2::Catch2WithMain
         custom_lib
+        Catch2::Catch2WithMain
 )
 
 # add target to CTest

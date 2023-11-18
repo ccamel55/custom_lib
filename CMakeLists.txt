@@ -1,14 +1,6 @@
 cmake_minimum_required(VERSION 3.26)
 
-project (custom_lib)
-
-include(cmake/CPM.cmake)
-include(cmake/functions.cmake)
-
-# if we load custom_lib as the top level directory, use default setup
-if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
-    include(cmake/configs/default.cmake)
-endif()
+project(custom_lib)
 
 # force modern c/c++ standards
 set(CMAKE_C_STANDARD 11)
@@ -16,11 +8,21 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-add_library(${PROJECT_NAME} STATIC custom_lib.cpp)
-include(cmake/build_options.cmake)
+# todo: add flag for dynamic library
+add_library(${PROJECT_NAME} STATIC
+        custom_lib.cpp
+)
 
-add_subdirectory(backend)
-add_subdirectory(common)
+include(cmake/options/lib_option.cmake)
+include(cmake/options/build_options.cmake)
+
+include(cmake/components/lib_component.cmake)
+include(cmake/components/lib_sub_component.cmake)
+
+# build options that will propagate to the whole project
 add_subdirectory(dependencies)
-add_subdirectory(misc)
+add_subdirectory(components)
+add_subdirectory(core_sdk)
+
+# all unit tests should be automatically registered by catch2
 add_subdirectory(unit_test)
