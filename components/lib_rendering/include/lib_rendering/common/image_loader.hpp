@@ -1,7 +1,6 @@
 #pragma once
 
 #include <filesystem>
-#include <lib_rendering/common/types.hpp>
 
 namespace lib::rendering
 {
@@ -9,13 +8,15 @@ namespace lib::rendering
 class image_loader
 {
 public:
+	image_loader (const image_loader&) = delete;
+	image_loader& operator= (const image_loader&) = delete;
+
 	explicit image_loader(const std::filesystem::path& image);
-
-	[[nodiscard]] uint8_t* generate_byte_array();
-	void free_byte_array();
-
+	~image_loader();
+	
 	[[nodiscard]] int get_width() const;
 	[[nodiscard]] int get_height() const;
+	[[nodiscard]] uint8_t* get_byte_buffer() const;
 
 private:
 	std::filesystem::path _filepath;

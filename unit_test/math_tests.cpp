@@ -1,13 +1,13 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include <common/types/point/point2D.hpp>
-#include <common/types/point/point3D.hpp>
-#include <common/types/point/point4D.hpp>
+#include <core_sdk/types/point/point2D.hpp>
+#include <core_sdk/types/point/point3D.hpp>
+#include <core_sdk/types/point/point4D.hpp>
 
-#include <common/types/vector/vector2D.hpp>
-#include <common/types/vector/vector3D.hpp>
+#include <core_sdk/types/vector/vector2D.hpp>
+#include <core_sdk/types/vector/vector3D.hpp>
 
-namespace types = lib::common;
+namespace types = lib;
 
 TEST_CASE("Points", "[math]")
 {

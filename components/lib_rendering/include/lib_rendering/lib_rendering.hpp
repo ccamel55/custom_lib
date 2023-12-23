@@ -24,7 +24,10 @@ public:
 	void unbind_api();
 
 	//! add an image to the texture atlas to be drawn later
-	texture_id add_image(const std::filesystem::path& image);
+	[[nodiscard]] texture_id add_image(const std::filesystem::path& image);
+
+	//! add font to texture atlas to be drawn later
+	[[nodiscard]] texture_id add_font(const uint8_t* font_data, float weight, float height);
 
 	//! send render commands to render API and then get render API to draw them
 	void draw_frame();
@@ -39,8 +42,10 @@ public:
 	[[nodiscard]] const lib::point2Di& get_window_size() const;
 
 public:
-	void draw_image(
-		const lib::point2Di& pos, const lib::point2Di& size, const lib::color& color, texture_id texture_id);
+	void draw_image(const lib::point2Di& pos,
+                    const lib::point2Di& size,
+                    const lib::color& color,
+                    texture_id texture_id);
 
 	void draw_line(const lib::point2Di& p1, const lib::point2Di& p2, const lib::color& color, float thickness = 1);
 
@@ -51,27 +56,34 @@ public:
 		const lib::color& color,
 		float thickness = 1);
 
-	void draw_triangle_filled(
-		const lib::point2Di& p1, const lib::point2Di& p2, const lib::point2Di& p3, const lib::color& color);
+	void draw_triangle_filled(const lib::point2Di& p1,
+                              const lib::point2Di& p2,
+                              const lib::point2Di& p3,
+                              const lib::color& color);
 
-	void draw_rectangle(
-		const lib::point2Di& pos, const lib::point2Di& size, const lib::color& color, float thickness = 1);
+	void draw_rectangle(const lib::point2Di& pos,
+                        const lib::point2Di& size,
+                        const lib::color& color,
+                        float thickness = 1);
 
 	void draw_rectangle_filled(const lib::point2Di& pos, const lib::point2Di& size, const lib::color& color);
 
-	void draw_rect_gradient_h_filled(
-		const lib::point2Di& pos, const lib::point2Di& size, const lib::color& c1, const lib::color& c2);
+	void draw_rect_gradient_h_filled(const lib::point2Di& pos,
+                                     const lib::point2Di& size,
+                                     const lib::color& c1,
+                                     const lib::color& c2);
 
-	void draw_rect_gradient_v_filled(
-		const lib::point2Di& pos, const lib::point2Di& size, const lib::color& c1, const lib::color& c2);
+	void draw_rect_gradient_v_filled(const lib::point2Di& pos,
+                                     const lib::point2Di& size,
+                                     const lib::color& c1,
+                                     const lib::color& c2);
 
-	void draw_rect_gradient_filled(
-		const lib::point2Di& pos,
-		const lib::point2Di& size,
-		const lib::color& c1,
-		const lib::color& c2,
-		const lib::color& c3,
-		const lib::color& c4);
+	void draw_rect_gradient_filled(const lib::point2Di& pos,
+                                   const lib::point2Di& size,
+                                   const lib::color& c1,
+                                   const lib::color& c2,
+                                   const lib::color& c3,
+                                   const lib::color& c4);
 
 private:
 	//! used to draw color

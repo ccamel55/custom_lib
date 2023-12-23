@@ -99,14 +99,17 @@ void window_creation_impl::window_loop()
 	// run main render thread from current thread
 	while (glfwGetKey(_glfw_window_ptr, GLFW_KEY_ESCAPE) != GLFW_PRESS && glfwWindowShouldClose(_glfw_window_ptr) == 0)
 	{
+		glfwPollEvents();
+
+		// draw stuff here
+		if (_render_callback)
+		{
+			_render_callback();
+		}
+
 		if (_renderer)
 		{
-			// draw stuff here
-			if (_render_callback)
-			{
-				_render_callback();
-				_renderer->draw_frame();
-			}
+			_renderer->draw_frame();
 
 			last_frame_time = std::chrono::high_resolution_clock::now();
 
@@ -118,7 +121,6 @@ void window_creation_impl::window_loop()
 		}
 
 		glfwSwapBuffers(_glfw_window_ptr);
-		glfwPollEvents();
 	}
 
 	lib_log_d("window_creation: destroying window");

@@ -1,5 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
-#include <common/hash/fnv1a.hpp>
+#include <lib_hashing/fnv1a.hpp>
 
 namespace hash = lib::common;
 

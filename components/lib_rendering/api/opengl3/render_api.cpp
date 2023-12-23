@@ -1,4 +1,5 @@
 #include <lib_rendering/render_api.hpp>
+#include <cassert>
 
 using namespace lib::rendering;
 
@@ -28,6 +29,9 @@ constexpr char vertex_shader[] = R"(
 constexpr char fragment_shader[] = R"(
         #version 410 core
 
+		// best sharpness = 0.25 / (spread * scale)
+		const float smoothing = 1.0 / 16.0;
+
 		uniform sampler2D texture_sample;
 
         in vec4 fragment_color;
@@ -37,14 +41,16 @@ constexpr char fragment_shader[] = R"(
 
         void main()
 		{
-            out_color = fragment_color * texture(texture_sample, fragment_uv.st);
+			vec4 sampled_texture = texture(texture_sample, fragment_uv.st);
+			vec4 sdf_texture = vec4(sampled_texture.rgb, smoothstep(0.5 - smoothing, 0.5 + smoothing, sampled_texture.a));
+
+            out_color = sdf_texture * fragment_color;
         }
     )";
 }  // namespace
 
 render_api::render_api() :
-	_window_size(), _render_state(), _shader(vertex_shader, fragment_shader), _vertex_array(0), _vertex_buffer(0),
-	_index_buffer(0), _textures()
+	_shader(vertex_shader, fragment_shader), _vertex_array(0), _vertex_buffer(0), _index_buffer(0)
 {
 	_render_state.capture();
 
@@ -65,15 +71,16 @@ render_api::render_api() :
 
 		// position
 		glEnableVertexAttribArray(0);
-		glEnableVertexAttribArray(1);
-		glEnableVertexAttribArray(2);
-
 		glVertexAttribPointer(
 			0, 2, GL_FLOAT, GL_FALSE, sizeof(vertex_t), reinterpret_cast<void*>(offsetof(vertex_t, position)));
 
+		// color
+		glEnableVertexAttribArray(1);
 		glVertexAttribPointer(
-			1, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(vertex_t), reinterpret_cast<void*>(offsetof(vertex_t, color)));
+				1, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(vertex_t), reinterpret_cast<void*>(offsetof(vertex_t, color)));
 
+		// texture position
+		glEnableVertexAttribArray(2);
 		glVertexAttribPointer(
 			2, 2, GL_FLOAT, GL_FALSE, sizeof(vertex_t), reinterpret_cast<void*>(offsetof(vertex_t, texture_position)));
 	}
@@ -153,9 +160,10 @@ void render_api::update_screen_size(const lib::point2Di& window_size)
 
 void render_api::draw_render_command(const render_command& render_command)
 {
+	glClear(GL_COLOR_BUFFER_BIT);
+
 	// backup render state
 	_render_state.capture();
-
 	_shader.bind();
 
 	// set up our own render state

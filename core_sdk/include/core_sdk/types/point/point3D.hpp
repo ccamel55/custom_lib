@@ -123,15 +123,15 @@ public:
 		return *this;
 	}
 
-	bool operator==(const _point3D& vec_base) const
-	{
-		return this->is_equal(vec_base);
-	}
+    bool operator==(const _point3D& in) const
+    {
+        return _x == in._x && _y == in._y && _z == in._z;
+    }
 
-	bool operator!=(const _point3D& vec_base) const
-	{
-		return !this->is_equal(vec_base);
-	}
+    bool operator!=(const _point3D& in) const
+    {
+        return _x != in._x || _y != in._y || _z != in._z;
+    }
 
 	constexpr _point3D& operator=(const _point3D& vec_base)
 	{

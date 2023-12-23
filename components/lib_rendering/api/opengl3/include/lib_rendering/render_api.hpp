@@ -4,6 +4,8 @@
 #include <lib_rendering/render_state.hpp>
 #include <lib_rendering/shaders.hpp>
 
+#include <vector>
+
 namespace lib::rendering
 {
 class render_api : public render_api_base

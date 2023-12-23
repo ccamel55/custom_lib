@@ -34,7 +34,7 @@ inline void file_to_hex(const std::string& file_path, const std::string& destina
 		}
 
 		// write as an array
-		out_file << "constexpr std::array<byte, " << file_as_bytes.size() << "> file_as_byte = " << std::endl;
+		out_file << "constexpr std::array<uint8_t, " << file_as_bytes.size() << "> file_as_byte = " << std::endl;
 		out_file << "{";
 
 		out_file << "\t";

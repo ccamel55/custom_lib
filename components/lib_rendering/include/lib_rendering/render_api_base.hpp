@@ -4,9 +4,6 @@
 #include <lib_rendering/common/render_command.hpp>
 #include <lib_rendering/common/types.hpp>
 
-#include <cassert>
-#include <vector>
-
 namespace lib::rendering
 {
 //! all render API implementations must inherit this class

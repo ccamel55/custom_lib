@@ -9,7 +9,6 @@
 namespace lib::rendering
 {
 //! defines the maximum number of vertices we can render at a time
-//! our vertex_t struct is 20 bytes and we want an 8mb vertex buffer, therefore 8mb / 20 = 419430.4
 constexpr uint32_t MAX_VERTICES = 419430;
 
 //! defines the maximum number of indices we can draw at a time
@@ -20,8 +19,10 @@ struct vertex_t
 {
 	vertex_t() = default;
 
-	vertex_t(const lib::point2Df& position, const lib::color& color, const lib::point2Df& texture_position) :
-		position(position), color(color), texture_position(texture_position)
+	vertex_t(const lib::point2Df& position,
+			 const lib::color& color,
+			 const lib::point2Df& texture_position)
+		: position(position), color(color), texture_position(texture_position)
 	{
 	}
 
@@ -75,5 +76,10 @@ struct texture_properties_t
 
 	// texture end normalised
 	lib::point2Df end_normalised = {};
+};
+
+struct font_data_t
+{
+
 };
 }  // namespace lib::rendering

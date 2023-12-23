@@ -84,15 +84,28 @@ texture_id renderer::add_image(const std::filesystem::path& image)
 	auto& properties = _texture_properties.emplace_back();
 	const auto id = static_cast<texture_id>(_texture_properties.size() - 1);
 
-	image_loader loader(image);
-	const auto data = loader.generate_byte_array();
+	const auto loader = image_loader(image);
 
 	properties.size_pixel = {loader.get_width(), loader.get_height()};
 	properties.end_normalised = {1.f, 1.f};
 
-	_render_api->add_texture(id, data, loader.get_width(), loader.get_height());
+	_render_api->add_texture(id, loader.get_byte_buffer(), loader.get_width(), loader.get_height());
 
-	loader.free_byte_array();
+	return id;
+}
+
+texture_id renderer::add_font(const uint8_t* font_data, float weight, float height)
+{
+	auto& properties = _texture_properties.emplace_back();
+	const auto id = static_cast<texture_id>(_texture_properties.size() - 1);
+
+	const auto font = font_loader(font_data, weight, height);
+
+	properties.size_pixel = {font.get_width(), font.get_height()};
+	properties.end_normalised = {1.f, 1.f};
+
+	_render_api->add_texture(id, font.get_byte_buffer(), font.get_width(), font.get_height());
+
 	return id;
 }
 
@@ -129,8 +142,10 @@ const lib::point2Di& renderer::get_window_size() const
 	return _window_size;
 }
 
-void renderer::draw_image(
-	const lib::point2Di& pos, const lib::point2Di& size, const lib::color& color, texture_id texture_id)
+void renderer::draw_image(const lib::point2Di& pos,
+                          const lib::point2Di& size,
+                          const lib::color& color,
+                          texture_id texture_id)
 {
 	const auto vertex_index = _render_command.prepare_batch(_clipped_area, texture_id);
 	const auto vertex_iterator = _render_command.insert_vertices(4);
@@ -169,7 +184,10 @@ void renderer::draw_image(
 void renderer::draw_line(const lib::point2Di& p1, const lib::point2Di& p2, const lib::color& color, float thickness)
 {
 	// get direction of line and scale to thickness
-	auto dir = lib::vector2D(p2._x - p1._x, p2._y - p1._y).normalised();
+	auto dir = lib::vector2D(
+		static_cast<float>(p2._x - p1._x),
+		static_cast<float>(p2._y - p1._y)).normalised();
+
 	dir *= (thickness * 0.5f);
 
 	const auto vertex_index = _render_command.prepare_batch(_clipped_area, _opaque_texture_id);
@@ -203,16 +221,21 @@ void renderer::draw_line(const lib::point2Di& p1, const lib::point2Di& p2, const
 	index_iterator[5] = vertex_index + 3;
 }
 
-void renderer::draw_triangle(
-	const lib::point2Di& p1, const lib::point2Di& p2, const lib::point2Di& p3, const lib::color& color, float thickness)
+void renderer::draw_triangle(const lib::point2Di& p1,
+                             const lib::point2Di& p2,
+                             const lib::point2Di& p3,
+                             const lib::color& color,
+                             float thickness)
 {
 	draw_line(p1, p2, color, thickness);
 	draw_line(p2, p3, color, thickness);
 	draw_line(p3, p1, color, thickness);
 }
 
-void renderer::draw_triangle_filled(
-	const lib::point2Di& p1, const lib::point2Di& p2, const lib::point2Di& p3, const lib::color& color)
+void renderer::draw_triangle_filled(const lib::point2Di& p1,
+                                    const lib::point2Di& p2,
+                                    const lib::point2Di& p3,
+                                    const lib::color& color)
 {
 	const auto vertex_index = _render_command.prepare_batch(_clipped_area, _opaque_texture_id);
 	const auto vertex_iterator = _render_command.insert_vertices(3);
@@ -238,8 +261,10 @@ void renderer::draw_triangle_filled(
 	index_iterator[2] = vertex_index + 2;
 }
 
-void renderer::draw_rectangle(
-	const lib::point2Di& pos, const lib::point2Di& size, const lib::color& color, float thickness)
+void renderer::draw_rectangle(const lib::point2Di& pos,
+                              const lib::point2Di& size,
+                              const lib::color& color,
+                              float thickness)
 {
 	draw_line({pos._x, pos._y}, {pos._x + size._x, pos._y}, color, thickness);
 	draw_line({pos._x + size._x, pos._y}, {pos._x + size._x, pos._y + size._y}, color, thickness);
@@ -252,25 +277,28 @@ void renderer::draw_rectangle_filled(const lib::point2Di& pos, const lib::point2
 	draw_rect_gradient_filled(pos, size, color, color, color, color);
 }
 
-void renderer::draw_rect_gradient_h_filled(
-	const lib::point2Di& pos, const lib::point2Di& size, const lib::color& c1, const lib::color& c2)
+void renderer::draw_rect_gradient_h_filled(const lib::point2Di& pos,
+                                           const lib::point2Di& size,
+                                           const lib::color& c1, const
+                                           lib::color& c2)
 {
 	draw_rect_gradient_filled(pos, size, c1, c2, c2, c1);
 }
 
-void renderer::draw_rect_gradient_v_filled(
-	const lib::point2Di& pos, const lib::point2Di& size, const lib::color& c1, const lib::color& c2)
+void renderer::draw_rect_gradient_v_filled(const lib::point2Di& pos,
+                                           const lib::point2Di& size,
+                                           const lib::color& c1,
+                                           const lib::color& c2)
 {
 	draw_rect_gradient_filled(pos, size, c1, c1, c2, c2);
 }
 
-void renderer::draw_rect_gradient_filled(
-	const lib::point2Di& pos,
-	const lib::point2Di& size,
-	const lib::color& c1,
-	const lib::color& c2,
-	const lib::color& c3,
-	const lib::color& c4)
+void renderer::draw_rect_gradient_filled(const lib::point2Di& pos,
+                                         const lib::point2Di& size,
+                                         const lib::color& c1,
+                                         const lib::color& c2,
+                                         const lib::color& c3,
+                                         const lib::color& c4)
 {
 	const auto vertex_index = _render_command.prepare_batch(_clipped_area, _opaque_texture_id);
 	const auto vertex_iterator = _render_command.insert_vertices(4);
