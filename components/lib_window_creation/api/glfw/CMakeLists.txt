@@ -1,0 +1,10 @@
+lib_sub_component(
+    PARENT
+        lib_window_creation
+    SOURCES
+        window_creation_impl.cpp
+    INCLUDES
+        include
+    LINK_LIBS
+        glfw
+)

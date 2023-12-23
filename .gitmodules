@@ -1,0 +1,15 @@
+[submodule "components/lib_json_config/dependencies/json"]
+	path = dependencies/json
+	url = git@github.com:nlohmann/json.git
+[submodule "core_sdk/dependencies/fmt"]
+	path = dependencies/fmt
+	url = git@github.com:fmtlib/fmt.git
+[submodule "core_sdk/dependencies/cxxopts"]
+	path = dependencies/cxxopts
+	url = git@github.com:jarro2783/cxxopts.git
+[submodule "components/lib_window_creation/dependencies/glfw"]
+	path = dependencies/glfw
+	url = git@github.com:glfw/glfw.git
+[submodule "unit_test/dependencies/Catch2"]
+	path = dependencies/Catch2
+	url = git@github.com:catchorg/Catch2.git

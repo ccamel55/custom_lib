@@ -1,1 +1,0 @@
-python python/run-clang-format.py -r backend/ common/ misc/ unit_test/ -i
