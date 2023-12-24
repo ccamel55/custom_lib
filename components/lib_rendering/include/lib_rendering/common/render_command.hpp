@@ -18,7 +18,7 @@ public:
 	//! 1) called first
 	//! add currently written vertices and indices to a render batch
 	//! return start position of vertex buffer
-	uint32_t prepare_batch(const lib::point4Di& clipped_area, texture_id id);
+	uint32_t prepare_batch(const lib::point4Di& clipped_area);
 
 	//! 2) called second
 	//! resize vertices list and return iterator to start writing to vertices directly

@@ -46,7 +46,7 @@ struct batch_t
 {
 	batch_t() = default;
 
-	explicit batch_t(const lib::point4Di& clipped_area) : clipped_area(clipped_area), texture_id(0)
+	explicit batch_t(const lib::point4Di& clipped_area) : clipped_area(clipped_area)
 	{
 	}
 
@@ -58,9 +58,6 @@ struct batch_t
 
 	// where should we clip the drawing space to
 	lib::point4Di clipped_area = {};
-
-	// what texture we should be using
-	texture_id texture_id = {};
 };
 
 struct texture_properties_t
@@ -80,6 +77,20 @@ struct texture_properties_t
 
 struct font_data_t
 {
+	// holds texture data in ABGR
+	// todo: make this all smart pointers
+	uint8_t* data = nullptr;
 
+	// size of font data
+	int width = 0;
+	int height = 0;
+
+	// number of pixels to offset in x and y to align with other characters
+	int offset_x = 0;
+	int offset_y = 0;
 };
+
+using font_id = uint8_t;
+using font_properties = std::array<texture_id, 127 - 32>;
+
 }  // namespace lib::rendering

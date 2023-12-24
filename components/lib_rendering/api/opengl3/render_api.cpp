@@ -100,7 +100,7 @@ render_api::~render_api()
 	glDeleteVertexArrays(1, &_vertex_array);
 }
 
-void render_api::add_texture(texture_id id, const uint8_t* data, int width, int height)
+void render_api::add_texture(int id, const uint8_t* data, int width, int height)
 {
 	// setup how our texture will act
 	auto& new_texture = _textures.emplace_back();
@@ -158,7 +158,7 @@ void render_api::update_screen_size(const lib::point2Di& window_size)
 	glUseProgram(last_program);
 }
 
-void render_api::draw_render_command(const render_command& render_command)
+void render_api::draw_render_command(const render_command& render_command, int texture_id)
 {
 	glClear(GL_COLOR_BUFFER_BIT);
 
@@ -205,7 +205,7 @@ void render_api::draw_render_command(const render_command& render_command)
 	{
 		const auto& batch = render_command.batches.at(i);
 
-		glBindTexture(GL_TEXTURE_2D, _textures.at(batch.texture_id));
+		glBindTexture(GL_TEXTURE_2D, _textures.at(texture_id));
 
 		glScissor(
 			batch.clipped_area._x,

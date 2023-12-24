@@ -14,9 +14,9 @@ public:
 	render_api();
 	~render_api() override;
 
-	void add_texture(texture_id id, const uint8_t* data, int width, int height) override;
+	void add_texture(int id, const uint8_t* data, int width, int height) override;
 	void update_screen_size(const lib::point2Di& window_size) override;
-	void draw_render_command(const render_command& render_command) override;
+	void draw_render_command(const render_command& render_command, int texture_id) override;
 
 private:
 	lib::point2Di _window_size;

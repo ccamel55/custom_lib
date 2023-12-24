@@ -10,16 +10,13 @@ using namespace lib::rendering;
 
 namespace
 {
-constexpr uint8_t opaque_texture_width = 1;
-constexpr uint8_t opaque_texture_height = 1;
+// sometimes if this is too small we might end up with some weird artifacts
+constexpr uint8_t opaque_texture_width = 2;
+constexpr uint8_t opaque_texture_height = 2;
 
-constexpr uint8_t opaque_texture_data[] = {
-	// r g b a
-	0xff,
-	0xff,
-	0xff,
-	0xff};
+constexpr int render_api_texture_id = 0;
 }  // namespace
+
 
 renderer::~renderer()
 {
@@ -55,13 +52,11 @@ void renderer::bind_api(void* api_context)
 
 	lib_log_i("renderer:: opengl version {}.{}", major, minor);
 
+	auto opaque_texture_data = std::array<uint8_t, opaque_texture_width * opaque_texture_height * 4>{};
+	std::fill(opaque_texture_data.begin(), opaque_texture_data.end(), 0xff);
+
 	_render_api = std::make_unique<render_api>();
-
-	// create opaque texture for us to draw into
-	_texture_properties.emplace_back();
-	_opaque_texture_id = 0;
-
-	_render_api->add_texture(_opaque_texture_id, opaque_texture_data, opaque_texture_width, opaque_texture_height);
+	_opaque_texture_id = _atlas_generator.add_texture(opaque_texture_data.data(), opaque_texture_width, opaque_texture_height);
 }
 
 void renderer::unbind_api()
@@ -74,45 +69,68 @@ void renderer::unbind_api()
 	// call destructor
 	_render_api.reset();
 	_render_command.reset();
-
-	_texture_properties.clear();
+	_atlas_generator.reset();
 }
 
 texture_id renderer::add_image(const std::filesystem::path& image)
 {
-	// create opaque texture for us to draw into
-	auto& properties = _texture_properties.emplace_back();
-	const auto id = static_cast<texture_id>(_texture_properties.size() - 1);
-
 	const auto loader = image_loader(image);
-
-	properties.size_pixel = {loader.get_width(), loader.get_height()};
-	properties.end_normalised = {1.f, 1.f};
-
-	_render_api->add_texture(id, loader.get_byte_buffer(), loader.get_width(), loader.get_height());
+	const auto id = _atlas_generator.add_texture(loader.get_byte_buffer(), loader.get_width(), loader.get_height());
 
 	return id;
 }
 
-texture_id renderer::add_font(const uint8_t* font_data, float weight, float height)
+font_id renderer::add_font(const uint8_t* font_data, float height)
 {
-	auto& properties = _texture_properties.emplace_back();
-	const auto id = static_cast<texture_id>(_texture_properties.size() - 1);
+	auto& font_properties= _font_properties.emplace_back();
+	const auto id = static_cast<font_id>(_font_properties.size() - 1);
 
-	const auto font = font_loader(font_data, weight, height);
+	const auto font = font_loader(font_data, height);
 
-	properties.size_pixel = {font.get_width(), font.get_height()};
-	properties.end_normalised = {1.f, 1.f};
+	// for each printable character add to our texture atlas
+	for (uint8_t c = 32; c < 127; c++)
+	{
+		const auto& font_loader_data = font.get_font_data(c);
 
-	_render_api->add_texture(id, font.get_byte_buffer(), font.get_width(), font.get_height());
+		if (font_loader_data.width == 0 || font_loader_data.height == 0)
+		{
+			// dont really know what to do here, rather than crash map a white square
+			font_properties.at(c - 32) = _opaque_texture_id;
+			continue;
+		}
+
+		const auto texture_id = _atlas_generator.add_texture(
+			font_loader_data.data,
+			font_loader_data.width,
+			font_loader_data.height);
+
+		font_properties.at(c - 32) = texture_id;
+	}
 
 	return id;
+}
+
+void renderer::build_texture()
+{
+	if (!_atlas_generator.build_atlas())
+	{
+		lib_log_w("renderer: did not build texture atlas");
+		return;
+	}
+
+	// add to render API as one giant texture,
+	// note: render_api_texture_id != texture_id
+	_render_api->add_texture(
+		render_api_texture_id,
+		_atlas_generator.get_byte_buffer(),
+		_atlas_generator.get_width(),
+		_atlas_generator.get_height());
 }
 
 void renderer::draw_frame()
 {
 	// get our render api to draw our vertices
-	_render_api->draw_render_command(_render_command);
+	_render_api->draw_render_command(_render_command, render_api_texture_id);
 
 	// flush command, reset states back to default
 	_render_command.reset();
@@ -147,7 +165,7 @@ void renderer::draw_image(const lib::point2Di& pos,
                           const lib::color& color,
                           texture_id texture_id)
 {
-	const auto vertex_index = _render_command.prepare_batch(_clipped_area, texture_id);
+	const auto vertex_index = _render_command.prepare_batch(_clipped_area);
 	const auto vertex_iterator = _render_command.insert_vertices(4);
 
 	vertex_iterator[0].position = {pos._x, pos._y};
@@ -155,15 +173,20 @@ void renderer::draw_image(const lib::point2Di& pos,
 	vertex_iterator[2].position = {pos._x + size._x, pos._y + size._y};
 	vertex_iterator[3].position = {pos._x, pos._y + size._y};
 
-	const auto& texture_properties = _texture_properties.at(texture_id);
+	const auto& texture_properties = _atlas_generator.get_texture_properties(texture_id);
 
 	vertex_iterator[0].texture_position = texture_properties.start_normalised;
 	vertex_iterator[2].texture_position = texture_properties.end_normalised;
 
 	vertex_iterator[1].texture_position = {
-		texture_properties.end_normalised._x, texture_properties.start_normalised._y};
+		texture_properties.end_normalised._x,
+		texture_properties.start_normalised._y
+	};
+
 	vertex_iterator[3].texture_position = {
-		texture_properties.start_normalised._x, texture_properties.end_normalised._y};
+		texture_properties.start_normalised._x,
+		texture_properties.end_normalised._y
+	};
 
 	vertex_iterator[0].color = color;
 	vertex_iterator[1].color = color;
@@ -190,7 +213,7 @@ void renderer::draw_line(const lib::point2Di& p1, const lib::point2Di& p2, const
 
 	dir *= (thickness * 0.5f);
 
-	const auto vertex_index = _render_command.prepare_batch(_clipped_area, _opaque_texture_id);
+	const auto vertex_index = _render_command.prepare_batch(_clipped_area);
 	const auto vertex_iterator = _render_command.insert_vertices(4);
 
 	vertex_iterator[0].position = {static_cast<float>(p1._x) + dir._y, static_cast<float>(p1._y) - dir._x};
@@ -198,12 +221,15 @@ void renderer::draw_line(const lib::point2Di& p1, const lib::point2Di& p2, const
 	vertex_iterator[2].position = {static_cast<float>(p2._x) - dir._y, static_cast<float>(p2._y) + dir._x};
 	vertex_iterator[3].position = {static_cast<float>(p1._x) - dir._y, static_cast<float>(p1._y) + dir._x};
 
-	const auto& texture_properties = _texture_properties.at(_opaque_texture_id);
+	const auto& texture_properties = _atlas_generator.get_texture_properties(_opaque_texture_id);
 
-	vertex_iterator[0].texture_position = texture_properties.start_normalised;
-	vertex_iterator[1].texture_position = texture_properties.start_normalised;
-	vertex_iterator[2].texture_position = texture_properties.start_normalised;
-	vertex_iterator[3].texture_position = texture_properties.start_normalised;
+	const auto texture_diff = texture_properties.end_normalised - texture_properties.start_normalised;
+	const auto texture_center = texture_properties.start_normalised + (texture_diff * 0.5f);
+
+	vertex_iterator[0].texture_position = texture_center;
+	vertex_iterator[1].texture_position = texture_center;
+	vertex_iterator[2].texture_position = texture_center;
+	vertex_iterator[3].texture_position = texture_center;
 
 	vertex_iterator[0].color = color;
 	vertex_iterator[1].color = color;
@@ -237,18 +263,21 @@ void renderer::draw_triangle_filled(const lib::point2Di& p1,
                                     const lib::point2Di& p3,
                                     const lib::color& color)
 {
-	const auto vertex_index = _render_command.prepare_batch(_clipped_area, _opaque_texture_id);
+	const auto vertex_index = _render_command.prepare_batch(_clipped_area);
 	const auto vertex_iterator = _render_command.insert_vertices(3);
 
 	vertex_iterator[0].position = {static_cast<float>(p1._x), static_cast<float>(p1._y)};
 	vertex_iterator[1].position = {static_cast<float>(p2._x), static_cast<float>(p2._y)};
 	vertex_iterator[2].position = {static_cast<float>(p3._x), static_cast<float>(p3._y)};
 
-	const auto& texture_properties = _texture_properties.at(_opaque_texture_id);
+	const auto& texture_properties = _atlas_generator.get_texture_properties(_opaque_texture_id);
 
-	vertex_iterator[0].texture_position = texture_properties.start_normalised;
-	vertex_iterator[1].texture_position = texture_properties.start_normalised;
-	vertex_iterator[2].texture_position = texture_properties.start_normalised;
+	const auto texture_diff = texture_properties.end_normalised - texture_properties.start_normalised;
+	const auto texture_center = texture_properties.start_normalised + (texture_diff * 0.5f);
+
+	vertex_iterator[0].texture_position = texture_center;
+	vertex_iterator[1].texture_position = texture_center;
+	vertex_iterator[2].texture_position = texture_center;
 
 	vertex_iterator[0].color = color;
 	vertex_iterator[1].color = color;
@@ -300,7 +329,7 @@ void renderer::draw_rect_gradient_filled(const lib::point2Di& pos,
                                          const lib::color& c3,
                                          const lib::color& c4)
 {
-	const auto vertex_index = _render_command.prepare_batch(_clipped_area, _opaque_texture_id);
+	const auto vertex_index = _render_command.prepare_batch(_clipped_area);
 	const auto vertex_iterator = _render_command.insert_vertices(4);
 
 	vertex_iterator[0].position = {pos._x, pos._y};
@@ -308,12 +337,15 @@ void renderer::draw_rect_gradient_filled(const lib::point2Di& pos,
 	vertex_iterator[2].position = {pos._x + size._x, pos._y + size._y};
 	vertex_iterator[3].position = {pos._x, pos._y + size._y};
 
-	const auto& texture_properties = _texture_properties.at(_opaque_texture_id);
+	const auto& texture_properties = _atlas_generator.get_texture_properties(_opaque_texture_id);
 
-	vertex_iterator[0].texture_position = texture_properties.start_normalised;
-	vertex_iterator[1].texture_position = texture_properties.start_normalised;
-	vertex_iterator[2].texture_position = texture_properties.start_normalised;
-	vertex_iterator[3].texture_position = texture_properties.start_normalised;
+	const auto texture_diff = texture_properties.end_normalised - texture_properties.start_normalised;
+	const auto texture_center = texture_properties.start_normalised + (texture_diff * 0.5f);
+
+	vertex_iterator[0].texture_position = texture_center;
+	vertex_iterator[1].texture_position = texture_center;
+	vertex_iterator[2].texture_position = texture_center;
+	vertex_iterator[3].texture_position = texture_center;
 
 	vertex_iterator[0].color = c1;
 	vertex_iterator[1].color = c2;

@@ -10,6 +10,7 @@ lib_option(
 lib_component(lib_rendering
     SOURCES
         lib_rendering.cpp
+        common/atlas_generator.cpp
         common/font_loader.cpp
         common/image_loader.cpp
         common/render_command.cpp

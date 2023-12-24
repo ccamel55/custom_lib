@@ -2,6 +2,7 @@
 
 #include <lib_rendering/common/font_loader.hpp>
 #include <lib_rendering/common/image_loader.hpp>
+#include <lib_rendering/common/atlas_generator.hpp>
 #include <lib_rendering/render_api_base.hpp>
 
 #include <array>
@@ -23,11 +24,14 @@ public:
 	//! remove our render API from an existing context and reset the renderer
 	void unbind_api();
 
+	//! build our texture atlas. must be called before any drawing can be done
+	void build_texture();
+
 	//! add an image to the texture atlas to be drawn later
 	[[nodiscard]] texture_id add_image(const std::filesystem::path& image);
 
 	//! add font to texture atlas to be drawn later
-	[[nodiscard]] texture_id add_font(const uint8_t* font_data, float weight, float height);
+	[[nodiscard]] font_id add_font(const uint8_t* font_data, float height);
 
 	//! send render commands to render API and then get render API to draw them
 	void draw_frame();
@@ -86,11 +90,14 @@ public:
                                    const lib::color& c4);
 
 private:
+	//! atlas generator is used to generate a texture atlas
+	atlas_generator _atlas_generator = {};
+
+	//! font id wraps a texture id, this is very messy and dumb but it fast and works
+	std::vector<font_properties> _font_properties = {};
+
 	//! used to draw color
 	texture_id _opaque_texture_id = 0;
-
-	//! contains texture properties for respective texture id, texture_id indexes into array
-	std::vector<texture_properties_t> _texture_properties = {};
 
 	//! frame time given in milliseconds
 	float _frame_time = 0.1f;

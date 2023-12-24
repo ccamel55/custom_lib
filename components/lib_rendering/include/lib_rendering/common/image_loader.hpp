@@ -8,9 +8,6 @@ namespace lib::rendering
 class image_loader
 {
 public:
-	image_loader (const image_loader&) = delete;
-	image_loader& operator= (const image_loader&) = delete;
-
 	explicit image_loader(const std::filesystem::path& image);
 	~image_loader();
 	
