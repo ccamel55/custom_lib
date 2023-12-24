@@ -110,14 +110,11 @@ void window_creation_impl::window_loop()
 		if (_renderer)
 		{
 			_renderer->draw_frame();
+			_renderer->set_frame_time(
+				static_cast<float>(std::chrono::duration_cast<std::chrono::milliseconds>(
+					std::chrono::high_resolution_clock::now() - last_frame_time).count()));
 
 			last_frame_time = std::chrono::high_resolution_clock::now();
-
-			_renderer->set_frame_time(
-				static_cast<float>(std::chrono::duration_cast<std::chrono::nanoseconds>(
-									   std::chrono::high_resolution_clock::now() - last_frame_time)
-									   .count()) /
-				1000000.f);
 		}
 
 		glfwSwapBuffers(_glfw_window_ptr);

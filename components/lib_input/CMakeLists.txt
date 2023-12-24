@@ -14,4 +14,12 @@ lib_component(lib_input
         include
     DEPENDS
         LIB_INPUT
+        LIB_THREADING
+    LINK_LIBS
+        lib_core
+        lib_threading
 )
+
+if (LIB_INPUT STREQUAL glfw)
+    add_subdirectory(api/glfw)
+endif ()
