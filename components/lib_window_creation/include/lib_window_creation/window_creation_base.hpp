@@ -22,7 +22,7 @@ struct window_parameters_t
 	int y_position;
 	int width;
 	int height;
-	window_flags flags;
+	uint32_t flags;
 };
 
 class window_creation_base
