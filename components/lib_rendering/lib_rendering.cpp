@@ -83,28 +83,30 @@ texture_id renderer::add_image(const std::filesystem::path& image)
 font_id renderer::add_font(const uint8_t* font_data, float height)
 {
 	auto& font_properties= _font_properties.emplace_back();
-	const auto id = static_cast<font_id>(_font_properties.size() - 1);
 
-	const auto font = font_loader(font_data, height);
+	const auto id = static_cast<font_id>(_font_properties.size() - 1);
+	const auto font = font_loader(font_properties, font_data, height);
 
 	// for each printable character add to our texture atlas
 	for (uint8_t c = 32; c < 127; c++)
 	{
-		const auto& font_loader_data = font.get_font_data(c);
+		const auto& font_internal_property = font.get_font_internal_property(c);
+		auto& font_property = font_properties.at(c - 32);
 
-		if (font_loader_data.width == 0 || font_loader_data.height == 0)
+		if (font_internal_property.size._x == 0 || font_internal_property.size._y == 0)
 		{
 			// dont really know what to do here, rather than crash map a white square
-			font_properties.at(c - 32) = _opaque_texture_id;
+			font_property.id = _opaque_texture_id;
 			continue;
 		}
 
 		const auto texture_id = _atlas_generator.add_texture(
-			font_loader_data.data,
-			font_loader_data.width,
-			font_loader_data.height);
+			font_internal_property.data,
+			font_internal_property.size._x,
+			font_internal_property.size._y
+			);
 
-		font_properties.at(c - 32) = texture_id;
+		font_property.id = texture_id;
 	}
 
 	return id;
@@ -361,6 +363,114 @@ void renderer::draw_rect_gradient_filled(const lib::point2Di& pos,
 	index_iterator[3] = vertex_index;
 	index_iterator[4] = vertex_index + 2;
 	index_iterator[5] = vertex_index + 3;
+}
+
+void renderer::draw_font(const lib::point2Di& pos,
+						 const lib::color& color,
+						 font_id font_id,
+						 const std::string& text,
+						 font_flags flags)
+{
+	draw_font_outlined(pos, color, {0, 0, 0, 0}, font_id, text, flags);
+}
+
+void renderer::draw_font_outlined(const lib::point2Di& pos,
+								  const lib::color& color,
+								  const lib::color& outline_color,
+								  font_id font_id,
+								  const std::string& text,
+								  font_flags flags)
+{
+	auto current_pos = pos;
+	const auto& font_properties = _font_properties.at(font_id);
+
+	const auto get_text_height = [&]() -> int
+	{
+		return font_properties.at(' ' - 32).spacing._y;
+	};
+
+	const auto get_text_width = [&]() -> int
+	{
+		int w = 0;
+
+		for (const auto& c : text)
+		{
+			w += font_properties.at(c - 32).spacing._x;
+		}
+
+		return w;
+	};
+
+	if (flags & right_aligned)
+	{
+		current_pos._x -= get_text_width();
+	}
+	else if (flags & centered_x)
+	{
+		current_pos._x -= get_text_width() / 2;
+	}
+
+	if (flags & centered_y)
+	{
+		current_pos._y += get_text_height() / 2;
+	}
+
+	for (const auto& c : text)
+	{
+		const auto& font_property = font_properties.at(c - 32);
+
+		if (c != ' ')
+		{
+			// pretty much draw image but inlined :)
+			const auto vertex_index = _render_command.prepare_batch(_clipped_area);
+			const auto vertex_iterator = _render_command.insert_vertices(4);
+
+			const auto& texture_property = _atlas_generator.get_texture_properties(font_property.id);
+
+			const auto char_pos = current_pos + font_property.offset;
+			const auto size = texture_property.size_pixel;
+
+			vertex_iterator[0].position = {char_pos._x, char_pos._y};
+			vertex_iterator[1].position = {char_pos._x + size._x, char_pos._y};
+			vertex_iterator[2].position = {char_pos._x + size._x, char_pos._y + size._y};
+			vertex_iterator[3].position = {char_pos._x, char_pos._y + size._y};
+
+			vertex_iterator[0].texture_position = texture_property.start_normalised;
+			vertex_iterator[2].texture_position = texture_property.end_normalised;
+
+			vertex_iterator[1].texture_position = {
+				texture_property.end_normalised._x,
+				texture_property.start_normalised._y
+			};
+
+			vertex_iterator[3].texture_position = {
+				texture_property.start_normalised._x,
+				texture_property.end_normalised._y
+			};
+
+			vertex_iterator[0].color = color;
+			vertex_iterator[1].color = color;
+			vertex_iterator[2].color = color;
+			vertex_iterator[3].color = color;
+
+			vertex_iterator[0].alt_color = outline_color;
+			vertex_iterator[1].alt_color = outline_color;
+			vertex_iterator[2].alt_color = outline_color;
+			vertex_iterator[3].alt_color = outline_color;
+
+			const auto index_iterator = _render_command.insert_indices(6);
+
+			index_iterator[0] = vertex_index;
+			index_iterator[1] = vertex_index + 1;
+			index_iterator[2] = vertex_index + 2;
+
+			index_iterator[3] = vertex_index;
+			index_iterator[4] = vertex_index + 2;
+			index_iterator[5] = vertex_index + 3;
+		}
+
+		current_pos._x += font_property.spacing._x;
+	}
 }
 
 void renderer::update_clipped_area(const lib::point4Di& clipped_area)

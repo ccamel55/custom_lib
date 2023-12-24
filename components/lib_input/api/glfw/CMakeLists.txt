@@ -1,0 +1,10 @@
+lib_sub_component(
+    PARENT
+        lib_input
+    SOURCES
+        input_api.cpp
+    INCLUDES
+        include
+    LINK_LIBS
+        glfw
+)

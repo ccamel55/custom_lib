@@ -12,6 +12,16 @@
 
 namespace lib::rendering
 {
+enum font_flags: uint8_t
+{
+	none = 0,
+	left_aligned = 0 << 0,
+	right_aligned = 1 << 0,
+	centered_x = 1 << 1,
+	centered_y = 1 << 2,
+	centered_xy = centered_x | centered_y,
+};
+
 //! Renderer interface, this will be used to send commands to our render API implementation
 class renderer
 {
@@ -89,12 +99,25 @@ public:
                                    const lib::color& c3,
                                    const lib::color& c4);
 
+	void draw_font(const lib::point2Di& pos,
+				   const lib::color& color,
+				   font_id font_id,
+				   const std::string& text,
+				   font_flags flags = font_flags::none);
+
+	void draw_font_outlined(const lib::point2Di& pos,
+							const lib::color& color,
+							const lib::color& outline_color,
+							font_id font_id,
+							const std::string& text,
+							font_flags flags = font_flags::none);
+
 private:
 	//! atlas generator is used to generate a texture atlas
 	atlas_generator _atlas_generator = {};
 
 	//! font id wraps a texture id, this is very messy and dumb but it fast and works
-	std::vector<font_properties> _font_properties = {};
+	std::vector<font_properties_t> _font_properties = {};
 
 	//! used to draw color
 	texture_id _opaque_texture_id = 0;

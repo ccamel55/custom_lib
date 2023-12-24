@@ -1,3 +1,4 @@
-//
-// Created by Allan on 18/11/2023.
-//
+#include <lib_input/lib_input.hpp>
+
+using namespace lib::input;
+

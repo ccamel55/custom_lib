@@ -34,10 +34,13 @@ struct vertex_t
 
 	// 2 x float
 	lib::point2Df texture_position = {};
+
+	// 4 x unsigned byte
+	lib::color alt_color = {0, 0, 0, 0};
 };
 
 // ensure nothing funky happens on different architectures
-static_assert(sizeof(vertex_t) == 20);
+static_assert(sizeof(vertex_t) == 24);
 
 //! texture ID used to identify a texture and get it's properties
 using texture_id = uint8_t;
@@ -75,22 +78,29 @@ struct texture_properties_t
 	lib::point2Df end_normalised = {};
 };
 
-struct font_data_t
+struct font_property_t
+{
+	// id for respective texture
+	texture_id id = 0;
+
+	// number of pixels to offset in x and y to align with other characters
+	lib::point2Di offset = {};
+
+	// x advance and height
+	lib::point2Di spacing = {};
+};
+
+struct font_internal_property_t
 {
 	// holds texture data in ABGR
 	// todo: make this all smart pointers
 	uint8_t* data = nullptr;
 
 	// size of font data
-	int width = 0;
-	int height = 0;
-
-	// number of pixels to offset in x and y to align with other characters
-	int offset_x = 0;
-	int offset_y = 0;
+	lib::point2Di size = {};
 };
 
 using font_id = uint8_t;
-using font_properties = std::array<texture_id, 127 - 32>;
+using font_properties_t = std::array<font_property_t, 127 - 32>;
 
 }  // namespace lib::rendering

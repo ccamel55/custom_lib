@@ -13,14 +13,17 @@ constexpr char vertex_shader[] = R"(
         layout(location = 0) in vec2 position;
         layout(location = 1) in vec4 color;
         layout(location = 2) in vec2 uv;
+        layout(location = 3) in vec4 alt_color;
 
         out vec4 fragment_color;
 		out vec2 fragment_uv;
+		out vec4 fragment_alt_color;
 
         void main()
 		{
             fragment_color = color;
 			fragment_uv = uv;
+			fragment_alt_color = alt_color;
 
 			gl_Position = projection_matrix * vec4(position.xy, 0, 1);
         }
@@ -32,19 +35,37 @@ constexpr char fragment_shader[] = R"(
 		// best sharpness = 0.25 / (spread * scale)
 		const float smoothing = 1.0 / 16.0;
 
+		// Between 0 and 0.5, 0 = thick outline, 0.5 = no outline
+		const float outline_distance = 0.4;
+
 		uniform sampler2D texture_sample;
 
         in vec4 fragment_color;
 		in vec2 fragment_uv;
+		in vec4 fragment_alt_color;
 
 		layout (location = 0) out vec4 out_color;
 
         void main()
 		{
 			vec4 sampled_texture = texture(texture_sample, fragment_uv.st);
-			vec4 sdf_texture = vec4(sampled_texture.rgb, smoothstep(0.5 - smoothing, 0.5 + smoothing, sampled_texture.a));
 
-            out_color = sdf_texture * fragment_color;
+			float distance = sampled_texture.a;
+			float outline_factor = smoothstep(0.5 - smoothing, 0.5 + smoothing, distance);
+
+			if (fragment_alt_color.a > 0.0)
+			{
+				vec4 color = mix(fragment_alt_color, sampled_texture, outline_factor);
+				float alpha = smoothstep(outline_distance - smoothing, outline_distance + smoothing, distance);
+
+				vec4 sdf_texture = vec4(color.rgb, alpha);
+	            out_color = sdf_texture * fragment_color;
+			}
+			else
+			{
+				vec4 sdf_texture = vec4(sampled_texture.rgb, outline_factor);
+	            out_color = sdf_texture * fragment_color;
+			}
         }
     )";
 }  // namespace
@@ -83,6 +104,11 @@ render_api::render_api() :
 		glEnableVertexAttribArray(2);
 		glVertexAttribPointer(
 			2, 2, GL_FLOAT, GL_FALSE, sizeof(vertex_t), reinterpret_cast<void*>(offsetof(vertex_t, texture_position)));
+
+		// alt color
+		glEnableVertexAttribArray(3);
+		glVertexAttribPointer(
+				3, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(vertex_t), reinterpret_cast<void*>(offsetof(vertex_t, alt_color)));
 	}
 
 	_render_state.restore();

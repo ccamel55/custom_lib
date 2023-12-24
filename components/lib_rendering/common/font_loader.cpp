@@ -9,12 +9,12 @@ using namespace lib::rendering;
 namespace
 {
 constexpr int on_edge_value = 128;
-constexpr int padding = 2;
+constexpr int padding = 3;
 
 constexpr float pixel_dist_scale = 32.f;
 }  // namespace
 
-font_loader::font_loader(const uint8_t* font_data, float height)
+font_loader::font_loader(font_properties_t& font_properties, const uint8_t* font_data, float height)
 {
 	stbtt_fontinfo font_info = {};
 
@@ -31,7 +31,9 @@ font_loader::font_loader(const uint8_t* font_data, float height)
 	// ascii values 32 - 126 are all our drawable UTF8 characters
 	for (uint8_t character = 32; character < 127; character++)
 	{
-		auto& metric = _font_data.at(character - 32);
+		auto& internal_property = _font_internal_properties.at(character - 32);
+		auto& font_property = font_properties.at(character - 32);
+
 		const auto sdf_bitmap = stbtt_GetCodepointSDF(
 			&font_info,
 			scale,
@@ -39,25 +41,31 @@ font_loader::font_loader(const uint8_t* font_data, float height)
 			padding,
 			on_edge_value,
 			pixel_dist_scale,
-			&metric.width,
-			&metric.height,
-			&metric.offset_x,
-			&metric.offset_y);
+			&internal_property.size._x,
+			&internal_property.size._y,
+			&font_property.offset._x,
+			&font_property.offset._y);
 
-		if (metric.width >0 && metric.height > 0)
+		stbtt_GetCodepointHMetrics(&font_info, character, &font_property.spacing._x, nullptr);
+		stbtt_GetFontVMetrics(&font_info, &font_property.spacing._y, nullptr, nullptr);
+
+		font_property.spacing._x = static_cast<int>(std::roundf(static_cast<float>(font_property.spacing._x) * scale));
+		font_property.spacing._y = static_cast<int>(std::roundf(static_cast<float>(font_property.spacing._y) * scale));
+
+		if (internal_property.size._x > 0 && internal_property.size._y > 0)
 		{
 			// convert int uint32 now, womp womp
-			metric.data = new uint8_t[metric.width * metric.height * 4];
+			internal_property.data = new uint8_t[internal_property.size._x * internal_property.size._y * 4];
 
-			const auto data_as_uint32 = reinterpret_cast<uint32_t*>(metric.data);
-			std::fill_n(data_as_uint32, metric.width * metric.height, 0x00000000);
+			const auto data_as_uint32 = reinterpret_cast<uint32_t*>(internal_property.data);
+			std::fill_n(data_as_uint32, internal_property.size._x * internal_property.size._y, 0x00000000);
 
-			for (int y = 0; y < metric.height; y++)
+			for (int y = 0; y < internal_property.size._y; y++)
 			{
-				for (int x = 0; x < metric.width; x++)
+				for (int x = 0; x < internal_property.size._x; x++)
 				{
 					// colors written as ABGR
-					const auto bitmap_index = (metric.width * y) + x;
+					const auto bitmap_index = (internal_property.size._x * y) + x;
 
 					if (const auto val = sdf_bitmap[bitmap_index]; val > 0)
 					{
@@ -74,13 +82,13 @@ font_loader::font_loader(const uint8_t* font_data, float height)
 
 font_loader::~font_loader()
 {
-	for (const auto& font_data: _font_data)
+	for (const auto& font_data: _font_internal_properties)
 	{
 		delete[] font_data.data;
 	}
 }
 
-const font_data_t& font_loader::get_font_data(font_id id) const
+const font_internal_property_t& font_loader::get_font_internal_property(uint8_t c) const
 {
-	return _font_data.at(id - 32);
+	return _font_internal_properties.at(c - 32);
 }

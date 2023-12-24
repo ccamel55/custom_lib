@@ -22,7 +22,6 @@ lib_component(lib_rendering
         lib_core
 )
 
-# additional linking and includes for opengl
 if (LIB_RENDERING STREQUAL gl3)
     add_subdirectory(api/opengl3)
 endif ()
