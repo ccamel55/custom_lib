@@ -22,13 +22,13 @@ public:
 #ifndef DEF_LIB_RENDERING_off
 	//! Return a reference to the renderer, because this window owns the renderer, there should never be a case
 	//! where our window is destroyed and our renderer still exists
-	std::unique_ptr<rendering::renderer>& register_renderer();
+	std::weak_ptr<rendering::renderer> register_renderer();
 #endif
 
 #ifndef DEF_LIB_INPUT_off
 	//! Return a reference to the input handler, because this window owns the input handler, there should never be a
 	//! case where our window is destroyed and our input handler still exists
-	std::unique_ptr<input::input_handler>& register_input_handler();
+	std::weak_ptr<input::input_handler> register_input_handler();
 #endif
 
 	//! run the loop that handles inputs from the window, this function does not return until the window is closed
@@ -48,11 +48,11 @@ private:
 	std::unique_ptr<window_api_base> _window_creation_api = nullptr;
 
 #ifndef DEF_LIB_RENDERING_off
-	std::unique_ptr<rendering::renderer> _renderer = nullptr;
+	std::shared_ptr<rendering::renderer> _renderer = nullptr;
 #endif
 
 #ifndef DEF_LIB_INPUT_off
-	std::unique_ptr<input::input_handler> _input_handler = nullptr;
+	std::shared_ptr<input::input_handler> _input_handler = nullptr;
 #endif
 };
 }

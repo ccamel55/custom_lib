@@ -9,7 +9,7 @@ lib_option(
 
 lib_component(lib_input
     SOURCES
-        input_receiver.cpp
+        input_processor.cpp
         lib_input.cpp
     INCLUDES
         include

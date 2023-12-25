@@ -111,7 +111,7 @@ void window_api::focus_window() const
 }
 
 #ifndef DEF_LIB_RENDERING_off
-bool window_api::register_renderer(std::unique_ptr<rendering::renderer>& renderer)
+bool window_api::register_renderer(std::shared_ptr<rendering::renderer>& renderer)
 {
 	lib::point2Di window_size = {};
 	glfwGetWindowSize(_glfw_window_ptr, &window_size._x, &window_size._y);
@@ -252,10 +252,10 @@ lib::input::key_button glfw_to_mouse_key(int button)
 }
 }
 
-bool window_api::register_input_handler(std::unique_ptr<input::input_handler>& input_handler)
+bool window_api::register_input_handler(std::shared_ptr<input::input_handler>& input_handler)
 {
 	// register callback to glfw
-	_input_handler_ptr = input_handler.get();
+	_input_handler = input_handler;
 
 	glfwSetKeyCallback(_glfw_window_ptr, key_callback);
 	glfwSetScrollCallback(_glfw_window_ptr, scroll_callback);
@@ -280,7 +280,7 @@ void window_api::key_callback(GLFWwindow* window, int key, int scancode, int act
 		.state = action == GLFW_PRESS,
 	};
 
-	this_ptr->get_input_handler()->add_input(input);
+	this_ptr->add_input(input);
 }
 
 void window_api::scroll_callback(GLFWwindow* window, double offset_x, double offset_y)
@@ -292,7 +292,7 @@ void window_api::scroll_callback(GLFWwindow* window, double offset_x, double off
 		.state = lib::point2Df{ static_cast<float>(offset_x), static_cast<float>(offset_y)}
 	};
 
-	this_ptr->get_input_handler()->add_input(input);
+	this_ptr->add_input(input);
 }
 
 void window_api::cursor_position_callback(GLFWwindow* window, double pos_x, double pos_y)
@@ -304,7 +304,7 @@ void window_api::cursor_position_callback(GLFWwindow* window, double pos_x, doub
 		.state = lib::point2Df{ static_cast<float>(pos_x), static_cast<float>(pos_y)}
 	};
 
-	this_ptr->get_input_handler()->add_input(input);
+	this_ptr->add_input(input);
 }
 
 void window_api::mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
@@ -316,6 +316,6 @@ void window_api::mouse_button_callback(GLFWwindow* window, int button, int actio
 		.state = action == GLFW_PRESS,
 	};
 
-	this_ptr->get_input_handler()->add_input(input);
+	this_ptr->add_input(input);
 }
 #endif

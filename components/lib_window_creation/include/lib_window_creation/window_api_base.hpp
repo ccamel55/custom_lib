@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <string>
 #include <functional>
 
@@ -51,12 +52,12 @@ public:
 
 #ifndef DEF_LIB_RENDERING_off
 	//! takes an renderer instance and calls appropriate functions to register it to the window
-	virtual bool register_renderer(std::unique_ptr<rendering::renderer>& renderer) = 0;
+	virtual bool register_renderer(std::shared_ptr<rendering::renderer>& renderer) = 0;
 #endif
 
 #ifndef DEF_LIB_INPUT_off
 	//! takes an input handler instance and calls appropriate functions to register it to the window
-	virtual bool register_input_handler(std::unique_ptr<input::input_handler>& input_handler) = 0;
+	virtual bool register_input_handler(std::shared_ptr<input::input_handler>& input_handler) = 0;
 #endif
 
 	//! run the loop that handles inputs from the window, this function does not return until the window is closed
@@ -69,9 +70,12 @@ public:
 	virtual void focus_window() const = 0;
 
 #ifndef DEF_LIB_INPUT_off
-	[[nodiscard]] input::input_handler* get_input_handler() const
+	void add_input(const lib::input::input_t& input) const
 	{
-		return _input_handler_ptr;
+		const auto& input_handler = _input_handler.lock();
+		assert(input_handler != nullptr);
+
+		input_handler->add_input(input);
 	}
 #endif
 
@@ -79,8 +83,7 @@ protected:
 	std::function<void()> _window_loop_callback = nullptr;
 
 #ifndef DEF_LIB_INPUT_off
-	// this should really be a shared/weakptr pair but it should never cause issues so imma leave it as a raw ptr
-	input::input_handler* _input_handler_ptr = nullptr;
+	std::weak_ptr<input::input_handler> _input_handler = {};
 #endif
 
 };

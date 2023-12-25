@@ -14,11 +14,11 @@ public:
 	~window_api() override;
 
 #ifndef DEF_LIB_RENDERING_off
-	bool register_renderer(std::unique_ptr<rendering::renderer>& renderer) final;
+	bool register_renderer(std::shared_ptr<rendering::renderer>& renderer) final;
 #endif
 
 #ifndef DEF_LIB_INPUT_off
-	bool register_input_handler(std::unique_ptr<input::input_handler>& input_handler) final;
+	bool register_input_handler(std::shared_ptr<input::input_handler>& input_handler) final;
 #endif
 
 	void window_loop() const final;
