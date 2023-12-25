@@ -1,10 +1,9 @@
 #pragma once
 
-#include <condition_variable>
-#include <deque>
-#include <functional>
 #include <thread>
 #include <vector>
+
+#include <lib_threading/thread_pool/job_collection.hpp>
 
 namespace lib::threading
 {
@@ -12,29 +11,30 @@ namespace lib::threading
 class thread_pool
 {
 public:
+	explicit thread_pool(size_t max_threads);
 	~thread_pool();
 
-	//! Spawn worker threads. Will determine the number of threads automatically.
-	void spawn_threads(size_t max_threads);
+	//! Restart all worker threads
+	void restart_worker_threads();
 
 	//! Kill all worker threads.
-	void kill_threads();
+	void kill_worker_threads();
 
-	//! Queue a task onto the thread pool.
-	void queue_task(std::function<void()>&& function);
-
-	//! Wait until all thread pool tasks have been completed.
-	void wait_for_tasks();
+	//! Queue a collection of jobs onto the thread pool.
+	void queue_collection(std::weak_ptr<job_collection>&& collection);
 
 private:
-	std::atomic_bool _worker_threads_running = false;
-	std::atomic_bool _waiting_for_finish = false;
+	void start_worker_threads();
 
-	std::mutex _tasks_mutex = {};
-	std::condition_variable _received_tasks = {};
-	std::condition_variable _finished_tasks = {};
+private:
+	size_t _num_threads = 0;
+	std::atomic_bool _running_workers = false;
 
+	std::mutex _collection_queue_mutex = {};
+	std::deque<std::weak_ptr<job_collection>> _collection_queue = {};
+
+	std::condition_variable _recieved_collection = {};
 	std::vector<std::thread> _worker_threads = {};
-	std::deque<std::function<void()>> _thread_pool_tasks = {};
+
 };
 }  // namespace lib::threading

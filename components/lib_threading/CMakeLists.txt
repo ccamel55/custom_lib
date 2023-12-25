@@ -11,6 +11,7 @@ lib_component(lib_threading
     SOURCES
         lib_threading.cpp
         async_caller/async_caller.cpp
+        thread_pool/job_collection.cpp
         thread_pool/thread_pool.cpp
         timer/timer.cpp
     INCLUDES

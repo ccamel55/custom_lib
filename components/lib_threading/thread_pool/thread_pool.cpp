@@ -1,132 +1,135 @@
 #include <core_sdk/logger.hpp>
 #include <lib_threading/thread_pool/thread_pool.hpp>
 
+#include <cassert>
+
 using namespace lib::threading;
+
+thread_pool::thread_pool(size_t max_threads)
+{
+	// hardware_concurrency returns estimated number of threads a system has for concurrency
+	_num_threads = std::thread::hardware_concurrency();
+
+	if (_num_threads == 0)
+	{
+		lib_log_w("thread_pool: current system does not support concurrency, spawning 1 worker thread");
+		_num_threads = 1;
+	}
+
+	_num_threads = std::min(_num_threads, max_threads);
+	start_worker_threads();
+}
 
 thread_pool::~thread_pool()
 {
-	kill_threads();
+	kill_worker_threads();
 }
 
-void thread_pool::spawn_threads(size_t max_threads)
+void thread_pool::restart_worker_threads()
 {
-	if (_worker_threads_running)
-	{
-		lib_log_w("thread_pool: could not spawn worker threads, workers already exist");
-		return;
-	}
-
-	// hardware_concurrency returns estimated number of threads a system has for concurrency
-	size_t num_thread = std::thread::hardware_concurrency();
-
-	if (num_thread == 0)
-	{
-		lib_log_w("thread_pool: current system does not support concurrency, spawning 1 worker thread");
-		num_thread = 1;
-	}
-
-	// clamp number of max threads lol
-	num_thread = std::min(num_thread, max_threads);
-
-	// define worker thread task
-	const auto worker_thread_task = [&]() -> void {
-		while (_worker_threads_running)
-		{
-			std::unique_lock<std::mutex> mutex(_tasks_mutex);
-
-			if (_thread_pool_tasks.empty())
-			{
-				// wait until receive a conditional variable if we have no callbacks
-				_received_tasks.wait(mutex);
-			}
-
-			// if we have stopped in between loop check and receiving conditional variable exit
-			if (!_worker_threads_running)
-			{
-				break;
-			}
-
-			while (!_thread_pool_tasks.empty())
-			{
-				const auto task = std::move(_thread_pool_tasks.at(0));
-				_thread_pool_tasks.pop_front();
-
-				mutex.unlock();
-
-				task();
-
-				mutex.lock();
-			}
-
-			if (_waiting_for_finish)
-			{
-				_finished_tasks.notify_all();
-				_waiting_for_finish = false;
-			}
-
-			mutex.unlock();
-		}
-	};
-
-	_worker_threads_running = true;
-
-	for (size_t i = 0; i < num_thread; i++)
-	{
-		// create worker thread using thread_pool lambda
-		_worker_threads.emplace_back(worker_thread_task);
-	}
-
-	lib_log_d("thread_pool: created worker threads");
+	kill_worker_threads();
+	start_worker_threads();
 }
 
-void thread_pool::kill_threads()
+void thread_pool::kill_worker_threads()
 {
-	if (!_worker_threads_running)
+	if (!_running_workers)
 	{
 		return;
 	}
 
 	// stop processing data in thread
-	_worker_threads_running = false;
-	_received_tasks.notify_all();
+	_running_workers = false;
+	_recieved_collection.notify_all();
 
 	// wait until all threads terminates
 	for (auto& thread : _worker_threads)
 	{
 		thread.join();
 	}
+
+	_worker_threads.clear();
 }
 
-void thread_pool::queue_task(std::function<void()>&& function)
+void thread_pool::queue_collection(std::weak_ptr<job_collection>&& collection)
 {
-	if (!_worker_threads_running)
-	{
-		lib_log_e("thread_pool: could not queue task, no worker threads exist");
-		return;
-	}
+	assert(_running_workers == true);
 
-	std::unique_lock<std::mutex> mutex(_tasks_mutex);
-	_thread_pool_tasks.push_back(std::move(function));
+	std::unique_lock<std::mutex> mutex(_collection_queue_mutex);
+	_collection_queue.push_back(std::move(collection));
 
-	// tell one of the worker threads to pick up job
-	_received_tasks.notify_one();
+	mutex.unlock();
+
+	// tell all workers to check for collection items
+	_recieved_collection.notify_all();
 }
 
-void thread_pool::wait_for_tasks()
+void thread_pool::start_worker_threads()
 {
-	if (!_worker_threads_running)
+	const auto worker_thread_task = [&]() -> void
 	{
-		lib_log_w("thread_pool: did not wait for tasks, no worker threads exist");
-		return;
-	}
+		std::function<void()> task = nullptr;
 
-	std::unique_lock<std::mutex> mutex(_tasks_mutex);
+		while (_running_workers)
+		{
+			std::unique_lock<std::mutex> mutex(_collection_queue_mutex);
 
-	if (!_thread_pool_tasks.empty())
+			// pause the thread until we can aquire a collection
+			if (_collection_queue.empty())
+			{
+				_recieved_collection.wait(mutex);
+			}
+
+			if (!_running_workers)
+			{
+				break;
+			}
+
+			// while there are collections left, grab an item and run it
+			while (!_collection_queue.empty())
+            {
+				const auto& collection = _collection_queue.at(0).lock();
+
+				if (!collection)
+				{
+					lib_log_e("thread_pool: tried to run a collection that has been deleted");
+					assert(false);
+				}
+
+				auto& collection_job_queue = collection->get_job_queue();
+
+				// if this collection is empty, then pop it off the queue
+				if (collection_job_queue.empty())
+				{
+					collection->get_finished_tasks_cv().notify_all();
+					_collection_queue.pop_front();
+
+					continue;
+				}
+
+				task = std::move(collection_job_queue.at(0));
+
+				// allow other workers to run while we process the task
+				collection_job_queue.pop_front();
+				mutex.unlock();
+
+				task();
+
+				mutex.lock();
+            }
+
+			mutex.unlock();
+		}
+	};
+
+	assert(_running_workers == false);
+
+	lib_log_i("thread_pool: starting {} worker threads", _num_threads);
+
+	_running_workers = true;
+
+	for (size_t i = 0; i < _num_threads; i++)
 	{
-		_waiting_for_finish = true;
-
-		// wait until receive a conditional variable if we have no callbacks
-		_finished_tasks.wait(mutex);
+		_worker_threads.emplace_back(worker_thread_task);
 	}
 }
