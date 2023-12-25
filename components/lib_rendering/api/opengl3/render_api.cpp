@@ -35,6 +35,7 @@ constexpr char fragment_shader[] = R"(
         #version 410 core
 
 		// best sharpness = 0.25 / (spread * scale)
+		// = 0.25 / (4 * 1)
 		const float smoothing = 1.0 / 16.0;
 
 		// Between 0 and 0.5, 0 = thick outline, 0.5 = no outline
@@ -76,6 +77,7 @@ constexpr char fragment_shader[] = R"(
         #version 410 core
 
 		// best sharpness = 0.25 / (spread * scale)
+		// = 0.25 / (4 * 1)
 		const float smoothing = 1.0 / 16.0;
 
 		// Between 0 and 0.5, 0 = thick outline, 0.5 = no outline
