@@ -6,14 +6,6 @@
 
 using namespace lib::rendering;
 
-namespace
-{
-constexpr int on_edge_value = 128;
-constexpr int padding = 3;
-
-constexpr float pixel_dist_scale = 32.f;
-}  // namespace
-
 font_loader::font_loader(font_properties_t& font_properties, const uint8_t* font_data, float height)
 {
 	stbtt_fontinfo font_info = {};
@@ -35,6 +27,11 @@ font_loader::font_loader(font_properties_t& font_properties, const uint8_t* font
 		auto& font_property = font_properties.at(character - 32);
 
 #if DEF_LIB_RENDERING_EXPERIMENTAL_on
+		constexpr int on_edge_value = 128;
+		constexpr int padding = 3;
+
+		constexpr float pixel_dist_scale = 32.f;
+
 		const auto  stb_bitmap = stbtt_GetCodepointSDF(
 					&font_info,
 					scale,

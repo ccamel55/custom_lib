@@ -10,6 +10,7 @@ list(APPEND LIB_BUILD_OPTIONS
 )
 
 if (CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
+    message(STATUS "-------------------------------------------------")
     message(STATUS "Building with MSVC Clang options ${CMAKE_BUILD_TYPE}")
 
     # msvc front end compile options
@@ -36,6 +37,7 @@ if (CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
     endif()
 
 else()
+    message(STATUS "-------------------------------------------------")
     message(STATUS "Building with GNU Clang/gcc options ${CMAKE_BUILD_TYPE}")
 
     # options are valid for clang and gcc on GNU but if using msvc front ends we need to use msvc options

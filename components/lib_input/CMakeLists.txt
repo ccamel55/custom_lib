@@ -4,22 +4,17 @@ lib_option(
     DESCRIPTION
         "Build input library"
     VALID_ARGS
-        off glfw win32
+        off on
 )
 
 lib_component(lib_input
     SOURCES
+        input_receiver.cpp
         lib_input.cpp
     INCLUDES
         include
     DEPENDS
         LIB_INPUT
-        LIB_THREADING
     LINK_LIBS
         lib_core
-        lib_threading
 )
-
-if (LIB_INPUT STREQUAL glfw)
-    add_subdirectory(api/glfw)
-endif ()

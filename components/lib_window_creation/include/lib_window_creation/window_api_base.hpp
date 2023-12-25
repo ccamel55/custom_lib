@@ -68,6 +68,13 @@ public:
 	//! bring the os window to focus
 	virtual void focus_window() const = 0;
 
+#ifndef DEF_LIB_INPUT_off
+	[[nodiscard]] input::input_handler* get_input_handler() const
+	{
+		return _input_handler_ptr;
+	}
+#endif
+
 protected:
 	std::function<void()> _window_loop_callback = nullptr;
 
