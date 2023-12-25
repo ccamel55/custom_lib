@@ -104,7 +104,9 @@ bool window_api::register_input_handler(std::unique_ptr<input::input_handler>& i
 {
 	// register callback to glfw
 	_input_handler_ptr = input_handler.get();
+
 	glfwSetKeyCallback(_glfw_window_ptr, input_callback);
+	glfwSetCursorPosCallback(_glfw_window_ptr, cursor_position_callback);
 
 	return true;
 }
@@ -140,6 +142,11 @@ void window_api::focus_window() const
 }
 
 void window_api::input_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+
+}
+
+void window_api::cursor_position_callback(GLFWwindow* window, double pos_x, double pos_y)
 {
 
 }

@@ -29,6 +29,8 @@ constexpr char vertex_shader[] = R"(
         }
     )";
 
+#if DEF_LIB_RENDERING_EXPERIMENTAL_on
+// enable SDF rendering if using experimental rendering
 constexpr char fragment_shader[] = R"(
         #version 410 core
 
@@ -68,6 +70,32 @@ constexpr char fragment_shader[] = R"(
 			}
         }
     )";
+#else
+// use normal bitmap rendering
+constexpr char fragment_shader[] = R"(
+        #version 410 core
+
+		// best sharpness = 0.25 / (spread * scale)
+		const float smoothing = 1.0 / 16.0;
+
+		// Between 0 and 0.5, 0 = thick outline, 0.5 = no outline
+		const float outline_distance = 0.4;
+
+		uniform sampler2D texture_sample;
+
+        in vec4 fragment_color;
+		in vec2 fragment_uv;
+		in vec4 fragment_alt_color;
+
+		layout (location = 0) out vec4 out_color;
+
+        void main()
+		{
+			vec4 sampled_texture = texture(texture_sample, fragment_uv.st);
+			out_color = sampled_texture * fragment_color;
+        }
+    )";
+#endif
 }  // namespace
 
 render_api::render_api() :
@@ -140,10 +168,7 @@ void render_api::add_texture(int id, const uint8_t* data, int width, int height)
 	glGenTextures(1, &new_texture);
 	glBindTexture(GL_TEXTURE_2D, new_texture);
 
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);

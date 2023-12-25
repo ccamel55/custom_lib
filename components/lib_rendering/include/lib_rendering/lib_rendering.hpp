@@ -105,12 +105,14 @@ public:
 				   const std::string& text,
 				   font_flags flags = font_flags::none);
 
+#if DEF_LIB_RENDERING_EXPERIMENTAL_on
 	void draw_font_outlined(const lib::point2Di& pos,
 							const lib::color& color,
 							const lib::color& outline_color,
 							font_id font_id,
 							const std::string& text,
 							font_flags flags = font_flags::none);
+#endif
 
 private:
 	//! atlas generator is used to generate a texture atlas

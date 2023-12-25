@@ -20,17 +20,15 @@ public:
 	void register_render_callback(std::function<void()> render_callback);
 
 #ifndef DEF_LIB_RENDERING_off
-	//! Transfer ownership of the renderer to the window
-	//! return a reference to the renderer, because this window owns the renderer, there should never be a case
+	//! Return a reference to the renderer, because this window owns the renderer, there should never be a case
 	//! where our window is destroyed and our renderer still exists
-	std::unique_ptr<rendering::renderer>& register_renderer(std::unique_ptr<rendering::renderer> renderer);
+	std::unique_ptr<rendering::renderer>& register_renderer();
 #endif
 
 #ifndef DEF_LIB_INPUT_off
-	//! Transfer ownership of the input handler to the window
-	//! return a reference to the input handler, because this window owns the input handler, there should never be a
+	//! Return a reference to the input handler, because this window owns the input handler, there should never be a
 	//! case where our window is destroyed and our input handler still exists
-	std::unique_ptr<input::input_handler>& register_input_handler(std::unique_ptr<input::input_handler> input_handler);
+	std::unique_ptr<input::input_handler>& register_input_handler();
 #endif
 
 	//! run the loop that handles inputs from the window, this function does not return until the window is closed

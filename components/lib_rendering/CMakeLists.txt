@@ -7,6 +7,15 @@ lib_option(
         off gl3 dx9 dx10 dx12 vulkan
 )
 
+lib_option(
+    NAME
+        LIB_RENDERING_EXPERIMENTAL
+    DESCRIPTION
+        "Use WIP or experimental features in rendering library"
+    VALID_ARGS
+        off on
+)
+
 lib_component(lib_rendering
     SOURCES
         lib_rendering.cpp

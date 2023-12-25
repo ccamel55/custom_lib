@@ -374,6 +374,7 @@ void renderer::draw_rect_gradient_filled(const lib::point2Di& pos,
 	index_iterator[5] = vertex_index + 3;
 }
 
+#if DEF_LIB_RENDERING_EXPERIMENTAL_on
 void renderer::draw_font(const lib::point2Di& pos,
 						 const lib::color& color,
 						 font_id font_id,
@@ -389,6 +390,13 @@ void renderer::draw_font_outlined(const lib::point2Di& pos,
 								  font_id font_id,
 								  const std::string& text,
 								  font_flags flags)
+#else
+void renderer::draw_font(const lib::point2Di& pos,
+						 const lib::color& color,
+						 font_id font_id,
+						 const std::string& text,
+						 font_flags flags)
+#endif
 {
 	auto current_pos = pos;
 	const auto& font_properties = _font_properties.at(font_id);
@@ -462,10 +470,12 @@ void renderer::draw_font_outlined(const lib::point2Di& pos,
 			vertex_iterator[2].color = color;
 			vertex_iterator[3].color = color;
 
+#if DEF_LIB_RENDERING_EXPERIMENTAL_on
 			vertex_iterator[0].alt_color = outline_color;
 			vertex_iterator[1].alt_color = outline_color;
 			vertex_iterator[2].alt_color = outline_color;
 			vertex_iterator[3].alt_color = outline_color;
+#endif
 
 			const auto index_iterator = _render_command.insert_indices(6);
 

@@ -27,6 +27,7 @@ public:
 
 private:
 	static void input_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
+	static void cursor_position_callback(GLFWwindow* window, double pos_x, double pos_y);
 
 private:
 	GLFWwindow* _glfw_window_ptr = nullptr;

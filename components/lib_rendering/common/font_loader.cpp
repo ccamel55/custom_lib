@@ -34,17 +34,29 @@ font_loader::font_loader(font_properties_t& font_properties, const uint8_t* font
 		auto& internal_property = _font_internal_properties.at(character - 32);
 		auto& font_property = font_properties.at(character - 32);
 
-		const auto sdf_bitmap = stbtt_GetCodepointSDF(
-			&font_info,
-			scale,
-			character,
-			padding,
-			on_edge_value,
-			pixel_dist_scale,
-			&internal_property.size._x,
-			&internal_property.size._y,
-			&font_property.offset._x,
-			&font_property.offset._y);
+#if DEF_LIB_RENDERING_EXPERIMENTAL_on
+		const auto  stb_bitmap = stbtt_GetCodepointSDF(
+					&font_info,
+					scale,
+					character,
+					padding,
+					on_edge_value,
+					pixel_dist_scale,
+					&internal_property.size._x,
+					&internal_property.size._y,
+					&font_property.offset._x,
+					&font_property.offset._y);
+#else
+		const auto stb_bitmap = stbtt_GetCodepointBitmap(
+							&font_info,
+							0.f,
+							scale,
+							character,
+							&internal_property.size._x,
+							&internal_property.size._y,
+							&font_property.offset._x,
+							&font_property.offset._y);
+#endif
 
 		stbtt_GetCodepointHMetrics(&font_info, character, &font_property.spacing._x, nullptr);
 		stbtt_GetFontVMetrics(&font_info, &font_property.spacing._y, nullptr, nullptr);
@@ -67,7 +79,7 @@ font_loader::font_loader(font_properties_t& font_properties, const uint8_t* font
 					// colors written as ABGR
 					const auto bitmap_index = (internal_property.size._x * y) + x;
 
-					if (const auto val = sdf_bitmap[bitmap_index]; val > 0)
+					if (const auto val = stb_bitmap[bitmap_index]; val > 0)
 					{
 						data_as_uint32[bitmap_index] = 0x00FFFFFF;
 						data_as_uint32[bitmap_index] |= (val << 24);
@@ -76,7 +88,7 @@ font_loader::font_loader(font_properties_t& font_properties, const uint8_t* font
 			}
 		}
 
-		stbtt_FreeSDF(sdf_bitmap, nullptr);
+		stbtt_FreeSDF(stb_bitmap, nullptr);
 	}
 }
 

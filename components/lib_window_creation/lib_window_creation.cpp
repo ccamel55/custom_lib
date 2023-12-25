@@ -86,14 +86,13 @@ void window_creation::focus_window() const
 }
 
 #ifndef DEF_LIB_RENDERING_off
-std::unique_ptr<lib::rendering::renderer>& window_creation::register_renderer(
-	std::unique_ptr<rendering::renderer> renderer)
+std::unique_ptr<lib::rendering::renderer>& window_creation::register_renderer()
 {
 	assert(_init == true);
 
 	lib_log_d("window_creation: registered renderer");
 
-	_renderer = std::move(renderer);
+	_renderer = std::make_unique<rendering::renderer>();
 	_window_creation_api->register_renderer(_renderer);
 
 	return _renderer;
@@ -102,14 +101,13 @@ std::unique_ptr<lib::rendering::renderer>& window_creation::register_renderer(
 
 #ifndef DEF_LIB_INPUT_off
 
-std::unique_ptr<lib::input::input_handler>& window_creation::register_input_handler(
-	std::unique_ptr<input::input_handler> input_handler)
+std::unique_ptr<lib::input::input_handler>& window_creation::register_input_handler()
 {
 	assert(_init == true);
 
 	lib_log_d("window_creation: registered input_handler");
 
-	_input_handler = std::move(input_handler);
+	_input_handler = std::make_unique<input::input_handler>();
 	_window_creation_api->register_input_handler(_input_handler);
 
 	return _input_handler;
