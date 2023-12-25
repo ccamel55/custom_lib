@@ -6,7 +6,6 @@ endif()
 list(APPEND LIB_BUILD_OPTIONS
         -Wno-unused-function # disable unused functions check
         -march=native # tell compiler what architecture we are building for, allows for vectorisation
-        -flto # enable link time optimization
 )
 
 if (CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
@@ -28,6 +27,7 @@ if (CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
         )
     else()
         list(APPEND LIB_BUILD_OPTIONS
+                -flto # enable link time optimization
                 -Oi # allow intrinsics
                 -O2 # favour speed over size
                 -Oy # commit frame pointers
@@ -55,6 +55,7 @@ else()
         )
     else()
         list(APPEND LIB_BUILD_OPTIONS
+                -flto # enable link time optimization
                 -Ofast # Ofast is O3 with further flags
                 -fomit-frame-pointer # since we should never be debugging a release build, remove frame pointers
         )
