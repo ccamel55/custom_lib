@@ -124,7 +124,7 @@ void thread_pool::start_worker_threads()
 
 	assert(_running_workers == false);
 
-	lib_log_i("thread_pool: starting {} worker threads", _num_threads);
+	lib_log_d("thread_pool: starting {} worker threads", _num_threads);
 
 	_running_workers = true;
 

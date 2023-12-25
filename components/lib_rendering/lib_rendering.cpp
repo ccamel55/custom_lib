@@ -50,7 +50,7 @@ void renderer::bind_api(void* api_context)
 	glGetIntegerv(GL_MAJOR_VERSION, &major);
 	glGetIntegerv(GL_MINOR_VERSION, &minor);
 
-	lib_log_i("renderer:: opengl version {}.{}", major, minor);
+	lib_log_d("renderer:: opengl version {}.{}", major, minor);
 #endif
 
 	auto opaque_texture_data = std::array<uint8_t, opaque_texture_width * opaque_texture_height * 4>{};

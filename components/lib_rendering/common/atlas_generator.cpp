@@ -53,7 +53,7 @@ texture_id atlas_generator::add_texture(const uint8_t* data, int width, int heig
 		assert(false);
     }
 
-	lib_log_i("atlas_generator: added texture with size {}x{}", width, height);
+	lib_log_d("atlas_generator: added texture with size {}x{}", width, height);
 
 	_texture_properties.emplace_back();
 	const auto id = static_cast<texture_id>(_texture_properties.size() - 1);
@@ -95,7 +95,7 @@ bool atlas_generator::build_atlas()
 
 	while (!all_rects_fit)
 	{
-		lib_log_i("atlas_generator: trying to pack all textures into a {}x{} texture", _width, _height);
+		lib_log_d("atlas_generator: trying to pack all textures into a {}x{} texture", _width, _height);
 
 		stbrp_init_target(&rect_pack_context, _width, _height, packed_nodes.data(), static_cast<int>(packed_nodes.size()));
 		stbrp_pack_rects(&rect_pack_context, _texture_rects.data(), static_cast<int>(_texture_rects.size()));
