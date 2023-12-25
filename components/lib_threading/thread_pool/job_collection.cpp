@@ -15,7 +15,7 @@ void job_collection::wait_for_finish()
 	// once we leave scope mutex is automatically released, including if we return early
 	std::unique_lock<std::mutex> mutex(_job_queue_mutex);
 
-	if (_job_queue.empty())
+	if (_job_queue.empty()) [[unlikely]]
 	{
 		return;
 	}
