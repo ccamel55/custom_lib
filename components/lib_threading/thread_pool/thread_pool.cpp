@@ -1,5 +1,5 @@
 #include <core_sdk/logger.hpp>
-#include <lib_threading/thread_pool.hpp>
+#include <lib_threading/thread_pool/thread_pool.hpp>
 
 using namespace lib::threading;
 

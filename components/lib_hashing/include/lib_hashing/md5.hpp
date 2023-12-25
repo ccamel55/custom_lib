@@ -3,7 +3,7 @@
 #include <array>
 #include <cstdint>
 
-namespace lib::common
+namespace lib::hashing
 {
 // md5 is 128 bit :O
 using md5_t = std::array<uint8_t, 16>;

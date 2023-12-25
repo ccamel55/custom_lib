@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <cstring>
 
-namespace lib::common
+namespace lib::hashing
 {
 using fnv1a_t = uint32_t;
 

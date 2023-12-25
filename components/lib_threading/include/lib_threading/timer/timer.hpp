@@ -5,14 +5,14 @@
 #include <thread>
 #include <vector>
 
-#include <lib_threading/async_caller.hpp>
+#include <lib_threading/async_caller/async_caller.hpp>
 
 namespace lib::threading
 {
 enum class timer_mode_e
 {
-	ONE_SHOT,
-	RELOADING
+	one_shot,
+	reloading
 };
 
 //! Function timer, will delay the call of a function until timer expires. Does create a thread.
@@ -34,7 +34,7 @@ public:
 
 private:
 	async_caller& _async_caller;
-	timer_mode_e _timer_mode = timer_mode_e::ONE_SHOT;
+	timer_mode_e _timer_mode = timer_mode_e::one_shot;
 
 	std::atomic_bool _is_running = false;
 	std::thread _timeout_thread = {};
