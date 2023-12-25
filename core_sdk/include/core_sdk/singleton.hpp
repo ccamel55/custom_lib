@@ -17,7 +17,7 @@ public:
 	singleton(const singleton&) = delete;
 	void operator=(const singleton&) = delete;
 
-private:
+protected:
 	// Ensure constructor and destructor is only callable from the singleton.
 	singleton() = default;
 	~singleton() = default;
