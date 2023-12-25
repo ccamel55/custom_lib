@@ -28,9 +28,10 @@ font_loader::font_loader(font_properties_t& font_properties, const uint8_t* font
 
 #if DEF_LIB_RENDERING_EXPERIMENTAL_on
 		constexpr int on_edge_value = 128;
-		constexpr int padding = 3;
+		constexpr int padding = 4;
 
-		constexpr float pixel_dist_scale = 32.f;
+		constexpr float pixel_dist_scale =
+			static_cast<float>(on_edge_value) / static_cast<float>(padding);
 
 		const auto  stb_bitmap = stbtt_GetCodepointSDF(
 					&font_info,
