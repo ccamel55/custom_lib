@@ -2,8 +2,17 @@
 
 #include <functional>
 #include <string>
+#include <memory>
 
+#include <core_sdk/logger.hpp>
+
+#ifndef DEF_LIB_RENDERING_off
 #include <lib_rendering/lib_rendering.hpp>
+#endif
+
+#ifndef DEF_LIB_INPUT_off
+#include <lib_input/lib_input.hpp>
+#endif
 
 namespace lib::window_creation
 {
@@ -41,6 +50,7 @@ public:
 		_render_callback = std::move(render_callback);
 	}
 
+#ifndef DEF_LIB_RENDERING_off
 	//! Transfer ownership of the renderer to the window
 	//! return a reference to the renderer, because this window owns the renderer, there should never be a case
 	//! where our window is destroyed and our renderer still exists
@@ -51,6 +61,21 @@ public:
 
 		return _renderer;
 	}
+#endif
+
+#ifndef DEF_LIB_INPUT_off
+	//! Transfer ownership of the input handler to the window
+	//! return a reference to the input handler, because this window owns the input handler, there should never be a
+	//! case where our window is destroyed and our input handler still exists
+	virtual std::unique_ptr<input::input_handler>& register_input_handler(
+		std::unique_ptr<input::input_handler> input_handler)
+	{
+		lib_log_d("window_creation: registered input_handler");
+		_input_handler = std::move(input_handler);
+
+		return _input_handler;
+	}
+#endif
 
 	//! run the loop that handles inputs from the window, this function does not return until the window is closed
 	virtual void window_loop() = 0;
@@ -63,8 +88,14 @@ public:
 
 protected:
 	window_parameters_t _window_parameters;
-
 	std::function<void()> _render_callback;
+
+#ifndef DEF_LIB_RENDERING_off
 	std::unique_ptr<rendering::renderer> _renderer;
+#endif
+
+#ifndef DEF_LIB_INPUT_off
+	std::unique_ptr<input::input_handler> _input_handler;
+#endif
 };
 }  // namespace lib::window_creation

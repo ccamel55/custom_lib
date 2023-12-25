@@ -5,7 +5,7 @@
 namespace lib::input
 {
 //! input handler class
-class lib_input
+class input_handler
 {
 public:
 

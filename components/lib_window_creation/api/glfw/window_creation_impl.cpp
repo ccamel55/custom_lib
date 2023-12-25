@@ -15,6 +15,7 @@ window_creation_impl* this_ptr = nullptr;
 
 void window_creation_impl::input_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
+
 }
 
 window_creation_impl::window_creation_impl(const window_parameters_t& window_parameters) :
@@ -55,7 +56,12 @@ window_creation_impl::window_creation_impl(const window_parameters_t& window_par
 
 	// create a new window
 	_glfw_window_ptr = glfwCreateWindow(
-		_window_parameters.width, _window_parameters.height, _window_parameters.window_name.data(), nullptr, nullptr);
+		_window_parameters.width,
+		_window_parameters.height,
+		_window_parameters.window_name.data(),
+		nullptr,
+		nullptr
+		);
 
 	if (!_glfw_window_ptr)
 	{
@@ -107,6 +113,7 @@ void window_creation_impl::window_loop()
 			_render_callback();
 		}
 
+#ifndef DEF_LIB_RENDERING_off
 		if (_renderer)
 		{
 			_renderer->draw_frame();
@@ -116,6 +123,7 @@ void window_creation_impl::window_loop()
 
 			last_frame_time = std::chrono::high_resolution_clock::now();
 		}
+#endif
 
 		glfwSwapBuffers(_glfw_window_ptr);
 	}
@@ -124,6 +132,7 @@ void window_creation_impl::window_loop()
 	glfwTerminate();
 }
 
+#ifndef DEF_LIB_RENDERING_off
 std::unique_ptr<lib::rendering::renderer>& window_creation_impl::register_renderer(
 	std::unique_ptr<rendering::renderer> renderer)
 {
@@ -136,3 +145,20 @@ std::unique_ptr<lib::rendering::renderer>& window_creation_impl::register_render
 
 	return renderer_ref;
 }
+#endif
+
+#ifndef DEF_LIB_INPUT_off
+std::unique_ptr<lib::input::input_handler>& window_creation_impl::register_input_handler(
+	std::unique_ptr<lib::input::input_handler> input_handler)
+{
+	// pass renderer ownership to this window class
+	auto& input_ref = window_creation_base::register_input_handler(std::move(input_handler));
+
+	// register callback to glfw
+	glfwSetKeyCallback(_glfw_window_ptr, input_callback);
+
+	return input_ref;
+}
+#endif
+
+

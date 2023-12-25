@@ -42,8 +42,9 @@ function(lib_option)
         message(STATUS "${LIB_OPTIONS_NAME}=${${LIB_OPTIONS_NAME}}")
     endif()
 
-    # add to our interface for use later
+    # add to our interface for use later, we define both the value and a unique define
     target_compile_definitions(${LIB_OPTIONS_TARGET} INTERFACE
             DEF_${LIB_OPTIONS_NAME}=${${LIB_OPTIONS_NAME}}
+            DEF_${LIB_OPTIONS_NAME}_${${LIB_OPTIONS_NAME}}
     )
 endfunction()

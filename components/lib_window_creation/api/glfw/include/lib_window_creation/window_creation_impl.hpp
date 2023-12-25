@@ -17,7 +17,15 @@ public:
 	void focus_window() override;
 	void window_loop() override;
 
-	std::unique_ptr<rendering::renderer>& register_renderer(std::unique_ptr<rendering::renderer> renderer) override;
+#ifndef DEF_LIB_RENDERING_off
+	std::unique_ptr<rendering::renderer>& register_renderer(
+			std::unique_ptr<rendering::renderer> renderer) override;
+#endif
+
+#ifndef DEF_LIB_INPUT_off
+	std::unique_ptr<input::input_handler>& register_input_handler(
+			std::unique_ptr<input::input_handler> input_handler) override;
+#endif
 
 private:
 	static void input_callback(GLFWwindow* window, int key, int scancode, int action, int mods);

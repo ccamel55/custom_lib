@@ -37,7 +37,7 @@ void renderer::bind_api(void* api_context)
 		return;
 	}
 
-	// opengl should already be loaded, we just need to map it to our functions
+#ifdef DEF_LIB_RENDERING_gl3
 	if (gladLoadGL() == 0)
 	{
 		lib_log_e("renderer: could not load opengl");
@@ -51,12 +51,17 @@ void renderer::bind_api(void* api_context)
 	glGetIntegerv(GL_MINOR_VERSION, &minor);
 
 	lib_log_i("renderer:: opengl version {}.{}", major, minor);
+#endif
 
 	auto opaque_texture_data = std::array<uint8_t, opaque_texture_width * opaque_texture_height * 4>{};
 	std::fill(opaque_texture_data.begin(), opaque_texture_data.end(), 0xff);
 
 	_render_api = std::make_unique<render_api>();
-	_opaque_texture_id = _atlas_generator.add_texture(opaque_texture_data.data(), opaque_texture_width, opaque_texture_height);
+	_opaque_texture_id = _atlas_generator.add_texture(
+		opaque_texture_data.data(),
+		opaque_texture_width,
+		opaque_texture_height
+		);
 }
 
 void renderer::unbind_api()
@@ -75,7 +80,11 @@ void renderer::unbind_api()
 texture_id renderer::add_image(const std::filesystem::path& image)
 {
 	const auto loader = image_loader(image);
-	const auto id = _atlas_generator.add_texture(loader.get_byte_buffer(), loader.get_width(), loader.get_height());
+	const auto id = _atlas_generator.add_texture(
+		loader.get_byte_buffer(),
+		loader.get_width(), loader.
+		get_height()
+		);
 
 	return id;
 }
