@@ -1,5 +1,5 @@
 #include <core_sdk/logger.hpp>
-#include <lib_threading/timer.hpp>
+#include <lib_threading/timer/timer.hpp>
 
 using namespace lib::threading;
 
@@ -38,7 +38,7 @@ void timer::start_timer()
 			// place the function onto the async caller, async caller will invoke the callback
 			_async_caller.add_function([this]() { _callback(); });
 
-			if (_timer_mode == timer_mode_e::ONE_SHOT)
+			if (_timer_mode == timer_mode_e::one_shot)
 			{
 				break;
 			}

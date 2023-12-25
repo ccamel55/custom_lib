@@ -1,7 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <lib_hashing/fnv1a.hpp>
 
-namespace hash = lib::common;
+namespace hash = lib::hashing;
 
 TEST_CASE("FNV-1A", "[hashing]")
 {
