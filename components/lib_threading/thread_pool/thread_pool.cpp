@@ -10,7 +10,7 @@ thread_pool::thread_pool(size_t max_threads)
 	// hardware_concurrency returns estimated number of threads a system has for concurrency
 	_num_threads = std::thread::hardware_concurrency();
 
-	if (_num_threads == 0)
+	if (_num_threads == 0) [[unlikely]]
 	{
 		lib_log_w("thread_pool: current system does not support concurrency, spawning 1 worker thread");
 		_num_threads = 1;
@@ -33,7 +33,7 @@ void thread_pool::restart_worker_threads()
 
 void thread_pool::kill_worker_threads()
 {
-	if (!_running_workers)
+	if (!_running_workers) [[unlikely]]
 	{
 		return;
 	}
@@ -80,7 +80,7 @@ void thread_pool::start_worker_threads()
 				_recieved_collection.wait(mutex);
 			}
 
-			if (!_running_workers)
+			if (!_running_workers) [[unlikely]]
 			{
 				break;
 			}
