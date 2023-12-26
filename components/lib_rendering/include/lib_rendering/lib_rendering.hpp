@@ -8,7 +8,7 @@
 #include <array>
 #include <filesystem>
 #include <memory>
-#include <unordered_map>
+#include <functional>
 
 namespace lib::rendering
 {
@@ -46,6 +46,9 @@ public:
 
 	//! send render commands to render API and then get render API to draw them
 	void draw_frame();
+
+	//! register a callback to populate the render command.
+	void register_callback(std::function<void(renderer&)>&& callback);
 
 	//! update current clipped area for draws
 	void update_clipped_area(const lib::point4Di& clipped_area);
@@ -130,5 +133,8 @@ private:
 
 	//! pointer to our render api, this is what we will use to actually render our primitives
 	std::unique_ptr<render_api_base> _render_api = nullptr;
+
+	//! Callbacks that populate the render command
+	std::vector<std::function<void(renderer&)>> _render_callbacks = {};
 };
 }  // namespace lib::rendering

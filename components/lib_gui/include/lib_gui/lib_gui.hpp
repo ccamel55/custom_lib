@@ -23,9 +23,6 @@ public:
     //! destroy gui/delete from memory and unbind callbacks
     void destroy();
 
-    //! called in render loop, where ever the renderer accepts draw functions
-    void on_render();
-
 private:
     std::weak_ptr<lib::input::input_handler> _input_handler = {};
     std::weak_ptr<lib::json_config::config_manager> _json_config = {};

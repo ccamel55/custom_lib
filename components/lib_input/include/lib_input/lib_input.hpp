@@ -114,7 +114,7 @@ public:
     void add_input(const input_t& input);
 
     //! Register a callback to be called when an input is updated
-    void register_callback(input_type type, std::function<void(const input_handler&)>&& callback);
+    void register_callback(uint32_t type, std::function<void(const input_handler&)>&& callback);
 
     //! Get the current state of any key_button key.
     [[nodiscard]] input_state get_key_state(key_button key) const;

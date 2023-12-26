@@ -16,13 +16,13 @@ public:
 	//! destroy window creation, treat this as a destructor
 	void destroy();
 
-	//! register a callback function \param render_callback that is called every render frame
-	void register_render_callback(std::function<void()> render_callback);
-
 #ifndef DEF_LIB_RENDERING_off
 	//! Return a reference to the renderer, because this window owns the renderer, there should never be a case
 	//! where our window is destroyed and our renderer still exists
 	std::weak_ptr<rendering::renderer> register_renderer();
+#else
+	//! register a callback function \param render_callback that is called every render frame
+	void register_render_callback(std::function<void()> render_callback);
 #endif
 
 #ifndef DEF_LIB_INPUT_off

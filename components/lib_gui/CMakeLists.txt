@@ -10,6 +10,7 @@ lib_option(
 lib_component(lib_gui
     SOURCES
         lib_gui.cpp
+        interface/ui_base_element.cpp
     INCLUDES
         include
     DEPENDS
@@ -23,3 +24,7 @@ lib_component(lib_gui
         lib_json_config
         lib_rendering
 )
+
+add_subdirectory(ui/console)
+add_subdirectory(ui/settings)
+add_subdirectory(ui/text_ui)
