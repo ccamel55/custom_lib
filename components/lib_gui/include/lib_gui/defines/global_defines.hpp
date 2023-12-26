@@ -1,28 +1,33 @@
 #pragma once
 
+#include <lib_gui/utils.hpp>
+#include <core_sdk/types/bitflag.hpp>
+
 #include <lib_rendering/lib_rendering.hpp>
 #include <lib_input/lib_input.hpp>
 
 namespace lib::gui
 {
-enum ui_flag: uint32_t
+enum ui_flag: bitflag_t
 {
     flag_none = 0 << 0,
-    flag_pinned = 1 << 0,
-    flag_blocked = 1 << 1,
-    flag_input_only = 1 << 2,
-    flag_active = 1 << 3,
-    flag_drawgroup_active = 1 << 4
+    flag_visible = 1 << 0,
+    flag_active = 1 << 1,
 };
 
-enum ui_type: uint32_t
+enum ui_update: bitflag_t
 {
-    type_none = 0 << 0,
-    type_form = 1 << 0, // represents a window
-    type_group = 1 << 1, // represents something that has other elements
-    type_control = 1 << 2, // something that can be interacted with
-    type_static_item = 1 << 3, // something that is drawn only
+    update_none = 0 << 0,
+    update_visibility = 1 << 0,
+    update_active = 1 << 1,
+    update_position = 1 << 2,
+    update_size = 1 << 3,
 };
+
+namespace context
+{
+    inline lib::point2Di screen_size = {};
+}
 
 namespace font
 {
@@ -33,6 +38,7 @@ namespace font
 
 namespace key
 {
+    constexpr auto toggle_visibility = lib::input::key_button::insert;
     constexpr auto select = lib::input::key_button::delete_key;
 
     constexpr auto up = lib::input::key_button::uparrow;

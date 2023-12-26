@@ -5,6 +5,7 @@
 #include <functional>
 
 #include <core_sdk/logger.hpp>
+#include <core_sdk/types/bitflag.hpp>
 
 #ifndef DEF_LIB_RENDERING_off
 #include <lib_rendering/lib_rendering.hpp>
@@ -16,7 +17,7 @@
 
 namespace lib::window_creation
 {
-enum window_flags : uint32_t
+enum window_flags : bitflag_t
 {
     window_flag_none = 0 << 0,
     window_flag_no_border = 1 << 0,
@@ -31,7 +32,7 @@ struct window_parameters_t
     int y_position;
     int width;
     int height;
-    uint32_t flags;
+    bitflag flags;
 };
 
 class window_api_base

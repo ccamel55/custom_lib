@@ -304,7 +304,7 @@ void renderer::draw_triangle_filled(const lib::point2Di& p1,
 	index_iterator[2] = vertex_index + 2;
 }
 
-void renderer::draw_rectangle(const lib::point2Di& pos,
+void renderer::draw_rect(const lib::point2Di& pos,
                               const lib::point2Di& size,
                               const lib::color& color,
                               float thickness)
@@ -315,7 +315,7 @@ void renderer::draw_rectangle(const lib::point2Di& pos,
 	draw_line({pos._x, pos._y + size._y}, {pos._x, pos._y}, color, thickness);
 }
 
-void renderer::draw_rectangle_filled(const lib::point2Di& pos, const lib::point2Di& size, const lib::color& color)
+void renderer::draw_rect_filled(const lib::point2Di& pos, const lib::point2Di& size, const lib::color& color)
 {
 	draw_rect_gradient_filled(pos, size, color, color, color, color);
 }
@@ -381,7 +381,7 @@ void renderer::draw_font(const lib::point2Di& pos,
 						 const lib::color& color,
 						 font_id font_id,
 						 const std::string& text,
-						 uint16_t flags)
+						 bitflag flags)
 {
 	auto current_pos = pos;
 	const auto& font_properties = _font_properties.at(font_id);
@@ -403,23 +403,23 @@ void renderer::draw_font(const lib::point2Di& pos,
 		return w;
 	};
 
-	if (flags & right_aligned)
+	if (flags.has(right_aligned))
 	{
 		current_pos._x -= get_text_width();
 	}
-	else if (flags & centered_x)
+	else if (flags.has(centered_x))
 	{
 		current_pos._x -= get_text_width() / 2;
 	}
 
-	if (flags & centered_y)
+	if (flags.has(centered_y))
 	{
 		current_pos._y += get_text_height() / 2;
 	}
 
 	shader_type shader;
 
-	if (flags & outline)
+	if (flags.has(outline))
 	{
 		shader = shader_type::sdf_outline;
 	}

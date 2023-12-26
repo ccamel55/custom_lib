@@ -4,6 +4,7 @@
 #include <functional>
 #include <variant>
 
+#include <core_sdk/types/bitflag.hpp>
 #include <core_sdk/types/point/point2D.hpp>
 
 namespace lib::input
@@ -11,14 +12,14 @@ namespace lib::input
 // predeclaration is usually bad
 class input_handler;
 
-enum input_type: uint32_t
+enum input_type: bitflag_t
 {
     none = 0 << 0,
     keyboard = 1 << 0,
     mouse = 1 << 1,
 };
 
-enum input_state: uint32_t
+enum input_state: bitflag_t
 {
     up = 0 << 0,
     down = 1 << 0,
@@ -91,10 +92,10 @@ enum class key_button: uint8_t
 
 struct input_t
 {
-    input_type type = input_type::none;
+    bitflag type = input_type::none;
     key_button key = key_button::none;
 
-    std::variant<bool, lib::point2Df> state = {};
+    std::variant<bool, lib::point2Di> state = {};
 };
 
 struct input_callback_t
@@ -117,28 +118,28 @@ public:
     void register_callback(uint32_t type, std::function<void(const input_handler&)>&& callback);
 
     //! Get the current state of any key_button key.
-    [[nodiscard]] input_state get_key_state(key_button key) const;
+    [[nodiscard]] const bitflag& get_key_state(key_button key) const;
 
     //! Get the last key_button input that was received.
     [[nodiscard]] key_button get_last_key() const;
 
     //! Get the current position of our cursor
-    [[nodiscard]] const point2Df& get_cursor_position() const;
+    [[nodiscard]] const point2Di& get_cursor_position() const;
 
     //! Get the current cursor delta.
-    [[nodiscard]] const point2Df& get_cursor_delta() const;
+    [[nodiscard]] const point2Di& get_cursor_delta() const;
 
     //! Get the current scroll delta.
-    [[nodiscard]] const point2Df& get_scroll_delta() const;
+    [[nodiscard]] const point2Di& get_scroll_delta() const;
 
 private:
-    point2Df _cursor_position = {};
-    point2Df _cursor_delta = {};
-    point2Df _scroll_delta = {};
+    point2Di _cursor_position = {};
+    point2Di _cursor_delta = {};
+    point2Di _scroll_delta = {};
 
     // save input state for all keys
     key_button _last_key = key_button::none;
-    std::array<uint32_t, static_cast<size_t>(key_button::num_keys)> _key_state = {};
+    std::array<bitflag, static_cast<size_t>(key_button::num_keys)> _key_state = {};
 
     std::vector<input_callback_t> _input_callbacks = {};
 

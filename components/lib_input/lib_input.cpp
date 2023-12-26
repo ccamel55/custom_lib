@@ -4,7 +4,7 @@ using namespace lib::input;
 
 void input_handler::add_input(const input_t& input)
 {
-	if (input.key == key_button::none || input.type == input_type::none)
+	if (input.key == key_button::none)
 	{
 		return;
 	}
@@ -14,14 +14,14 @@ void input_handler::add_input(const input_t& input)
 	switch (input.key)
 	{
 	case key_button::mouse_move: {
-		const auto& cursor_position = std::get<lib::point2Df>(input.state);
+		const auto& cursor_position = std::get<lib::point2Di>(input.state);
 
 		_cursor_delta = cursor_position - _cursor_position;
 		_cursor_position = cursor_position;
 		break;
 	}
 	case key_button::mouse_scroll: {
-		_scroll_delta = std::get<lib::point2Df>(input.state);
+		_scroll_delta = std::get<lib::point2Di>(input.state);
 		break;
 	}
 	default: {
@@ -29,11 +29,13 @@ void input_handler::add_input(const input_t& input)
 
 		if ( std::get<bool>(input.state))
 		{
-			_key_state.at(key) = (down | pressed);
+			_key_state.at(key).add(down | pressed);
+			_key_state.at(key).remove(up);
 		}
 		else
 		{
-			_key_state.at(key) = (up | released);
+			_key_state.at(key).add(up | released);
+			_key_state.at(key).remove(down);
 		}
 		break;
 	}
@@ -43,7 +45,7 @@ void input_handler::add_input(const input_t& input)
 	{
 		const auto& [type, callback] = receiver;
 
-		if (input.type & type)
+		if (input.type.has(type))
 		{
 			callback(*this);
 		}
@@ -54,7 +56,7 @@ void input_handler::add_input(const input_t& input)
 	_cursor_delta = {};
 
 	// pressed and released should only ever be set once
-	_key_state.at(key) &= ~(pressed | released);
+	_key_state.at(key).remove(pressed | released);
 }
 
 void input_handler::register_callback(uint32_t type, std::function<void(const input_handler&)>&& callback)
@@ -67,22 +69,22 @@ key_button input_handler::get_last_key() const
 	return _last_key;
 }
 
-input_state input_handler::get_key_state(key_button key) const
+const lib::bitflag& input_handler::get_key_state(key_button key) const
 {
-	return static_cast<input_state>(_key_state.at(static_cast<uint8_t>(key)));
+	return _key_state.at(static_cast<uint8_t>(key));
 }
 
-const lib::point2Df& input_handler::get_cursor_position() const
+const lib::point2Di& input_handler::get_cursor_position() const
 {
 	return _cursor_position;
 }
 
-const lib::point2Df& input_handler::get_cursor_delta() const
+const lib::point2Di& input_handler::get_cursor_delta() const
 {
 	return _cursor_delta;
 }
 
-const lib::point2Df& input_handler::get_scroll_delta() const
+const lib::point2Di& input_handler::get_scroll_delta() const
 {
 	return _scroll_delta;
 }
