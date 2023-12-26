@@ -34,16 +34,20 @@ struct vertex_t
 
 	// 2 x float
 	lib::point2Df texture_position = {};
-
-	// 4 x unsigned byte
-	lib::color alt_color = {0, 0, 0, 0};
 };
 
 // ensure nothing funky happens on different architectures
-static_assert(sizeof(vertex_t) == 24);
+static_assert(sizeof(vertex_t) == 20);
 
 //! texture ID used to identify a texture and get it's properties
 using texture_id = uint8_t;
+
+enum class shader_type: uint8_t
+{
+	normal,
+	sdf,
+	sdf_outline,
+};
 
 struct batch_t
 {
@@ -61,6 +65,9 @@ struct batch_t
 
 	// where should we clip the drawing space to
 	lib::point4Di clipped_area = {};
+
+	// what shader we should be using
+	shader_type shader = shader_type::normal;
 };
 
 struct texture_properties_t

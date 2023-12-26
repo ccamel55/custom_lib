@@ -6,6 +6,15 @@
 
 using namespace lib::rendering;
 
+namespace
+{
+constexpr int on_edge_value = 128;
+constexpr int padding = 4;
+
+constexpr float pixel_dist_scale =
+	static_cast<float>(on_edge_value) / static_cast<float>(padding);
+}
+
 font_loader::font_loader(font_properties_t& font_properties, const uint8_t* font_data, float height)
 {
 	stbtt_fontinfo font_info = {};
@@ -26,13 +35,6 @@ font_loader::font_loader(font_properties_t& font_properties, const uint8_t* font
 		auto& internal_property = _font_internal_properties.at(character - 32);
 		auto& font_property = font_properties.at(character - 32);
 
-#if DEF_LIB_RENDERING_EXPERIMENTAL_on
-		constexpr int on_edge_value = 128;
-		constexpr int padding = 4;
-
-		constexpr float pixel_dist_scale =
-			static_cast<float>(on_edge_value) / static_cast<float>(padding);
-
 		const auto  stb_bitmap = stbtt_GetCodepointSDF(
 					&font_info,
 					scale,
@@ -44,17 +46,6 @@ font_loader::font_loader(font_properties_t& font_properties, const uint8_t* font
 					&internal_property.size._y,
 					&font_property.offset._x,
 					&font_property.offset._y);
-#else
-		const auto stb_bitmap = stbtt_GetCodepointBitmap(
-							&font_info,
-							0.f,
-							scale,
-							character,
-							&internal_property.size._x,
-							&internal_property.size._y,
-							&font_property.offset._x,
-							&font_property.offset._y);
-#endif
 
 		stbtt_GetCodepointHMetrics(&font_info, character, &font_property.spacing._x, nullptr);
 		stbtt_GetFontVMetrics(&font_info, &font_property.spacing._y, nullptr, nullptr);

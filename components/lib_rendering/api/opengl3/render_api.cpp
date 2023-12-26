@@ -13,25 +13,61 @@ constexpr char vertex_shader[] = R"(
         layout(location = 0) in vec2 position;
         layout(location = 1) in vec4 color;
         layout(location = 2) in vec2 uv;
-        layout(location = 3) in vec4 alt_color;
 
         out vec4 fragment_color;
 		out vec2 fragment_uv;
-		out vec4 fragment_alt_color;
 
         void main()
 		{
             fragment_color = color;
 			fragment_uv = uv;
-			fragment_alt_color = alt_color;
 
 			gl_Position = projection_matrix * vec4(position.xy, 0, 1);
         }
     )";
 
-#if DEF_LIB_RENDERING_EXPERIMENTAL_on
-// enable SDF rendering if using experimental rendering
-constexpr char fragment_shader[] = R"(
+constexpr char normal_fragment_shader[] = R"(
+        #version 410 core
+
+		uniform sampler2D texture_sample;
+
+        in vec4 fragment_color;
+		in vec2 fragment_uv;
+
+		layout (location = 0) out vec4 out_color;
+
+        void main()
+		{
+			vec4 sampled_texture = texture(texture_sample, fragment_uv.st);
+	        out_color = sampled_texture * fragment_color;
+        }
+    )";
+
+constexpr char sdf_fragment_shader[] = R"(
+        #version 410 core
+
+		// best sharpness = 0.25 / (spread * scale)
+		// = 0.25 / (4 * 1)
+		const float smoothing = 1.0 / 16.0;
+
+		uniform sampler2D texture_sample;
+
+        in vec4 fragment_color;
+		in vec2 fragment_uv;
+
+		layout (location = 0) out vec4 out_color;
+
+        void main()
+		{
+			vec4 sampled_texture = texture(texture_sample, fragment_uv.st);
+			float outline_factor = smoothstep(0.5 - smoothing, 0.5 + smoothing, sampled_texture.a);
+
+			vec4 sdf_texture = vec4(sampled_texture.rgb, outline_factor);
+	        out_color = sdf_texture * fragment_color;
+        }
+    )";
+
+constexpr char sdf_outline_fragment_shader[] = R"(
         #version 410 core
 
 		// best sharpness = 0.25 / (spread * scale)
@@ -41,11 +77,13 @@ constexpr char fragment_shader[] = R"(
 		// Between 0 and 0.5, 0 = thick outline, 0.5 = no outline
 		const float outline_distance = 0.4;
 
+		// outline will always be black for now, can change later
+		const vec4 outline_color = vec4(0.0, 0.0, 0.0, 1.0);
+
 		uniform sampler2D texture_sample;
 
         in vec4 fragment_color;
 		in vec2 fragment_uv;
-		in vec4 fragment_alt_color;
 
 		layout (location = 0) out vec4 out_color;
 
@@ -56,52 +94,18 @@ constexpr char fragment_shader[] = R"(
 			float distance = sampled_texture.a;
 			float outline_factor = smoothstep(0.5 - smoothing, 0.5 + smoothing, distance);
 
-			if (fragment_alt_color.a > 0.0)
-			{
-				vec4 color = mix(fragment_alt_color, sampled_texture, outline_factor);
-				float alpha = smoothstep(outline_distance - smoothing, outline_distance + smoothing, distance);
+			vec4 color = mix(outline_color, sampled_texture, outline_factor);
+			float alpha = smoothstep(outline_distance - smoothing, outline_distance + smoothing, distance);
 
-				vec4 sdf_texture = vec4(color.rgb, alpha);
-	            out_color = sdf_texture * fragment_color;
-			}
-			else
-			{
-				vec4 sdf_texture = vec4(sampled_texture.rgb, outline_factor);
-	            out_color = sdf_texture * fragment_color;
-			}
+			vec4 sdf_texture = vec4(color.rgb, alpha);
+	        out_color = sdf_texture * fragment_color;
         }
     )";
-#else
-// use normal bitmap rendering
-constexpr char fragment_shader[] = R"(
-        #version 410 core
-
-		// best sharpness = 0.25 / (spread * scale)
-		// = 0.25 / (4 * 1)
-		const float smoothing = 1.0 / 16.0;
-
-		// Between 0 and 0.5, 0 = thick outline, 0.5 = no outline
-		const float outline_distance = 0.4;
-
-		uniform sampler2D texture_sample;
-
-        in vec4 fragment_color;
-		in vec2 fragment_uv;
-		in vec4 fragment_alt_color;
-
-		layout (location = 0) out vec4 out_color;
-
-        void main()
-		{
-			vec4 sampled_texture = texture(texture_sample, fragment_uv.st);
-			out_color = sampled_texture * fragment_color;
-        }
-    )";
-#endif
 }  // namespace
 
-render_api::render_api() :
-	_shader(vertex_shader, fragment_shader), _vertex_array(0), _vertex_buffer(0), _index_buffer(0)
+render_api::render_api()
+	: _normal_shader(vertex_shader, normal_fragment_shader), _sdf_shader(vertex_shader, sdf_fragment_shader),
+	_sdf_outline_shader(vertex_shader, sdf_outline_fragment_shader), _vertex_array(0), _vertex_buffer(0), _index_buffer(0)
 {
 	_render_state.capture();
 
@@ -134,11 +138,6 @@ render_api::render_api() :
 		glEnableVertexAttribArray(2);
 		glVertexAttribPointer(
 			2, 2, GL_FLOAT, GL_FALSE, sizeof(vertex_t), reinterpret_cast<void*>(offsetof(vertex_t, texture_position)));
-
-		// alt color
-		glEnableVertexAttribArray(3);
-		glVertexAttribPointer(
-				3, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(vertex_t), reinterpret_cast<void*>(offsetof(vertex_t, alt_color)));
 	}
 
 	_render_state.restore();
@@ -200,13 +199,39 @@ void render_api::update_screen_size(const lib::point2Di& window_size)
 	GLuint last_program = 0;
 	glGetIntegerv(GL_CURRENT_PROGRAM, reinterpret_cast<GLint*>(&last_program));
 
-	_shader.bind();
+	// update all three shaders
+	{
+		_normal_shader.bind();
 
-	// bind sampler to use texture slot 0
-	glUniform1i(_shader.get_attribute_location("texture_sample"), 0);
+		glUniform1i(_normal_shader.get_attribute_location("texture_sample"), 0);
+		glUniformMatrix4fv(
+			_normal_shader.get_attribute_location("projection_matrix"),
+			1,
+			GL_FALSE,
+			&projection_matrix[0][0]);
+	}
 
-	// bind projection matrix
-	glUniformMatrix4fv(_shader.get_attribute_location("projection_matrix"), 1, GL_FALSE, &projection_matrix[0][0]);
+	{
+		_sdf_shader.bind();
+
+		glUniform1i(_sdf_shader.get_attribute_location("texture_sample"), 0);
+		glUniformMatrix4fv(
+			_sdf_shader.get_attribute_location("projection_matrix"),
+			1,
+			GL_FALSE,
+			&projection_matrix[0][0]);
+	}
+
+	{
+		_sdf_outline_shader.bind();
+
+		glUniform1i(_sdf_outline_shader.get_attribute_location("texture_sample"), 0);
+		glUniformMatrix4fv(
+			_sdf_outline_shader.get_attribute_location("projection_matrix"),
+			1,
+			GL_FALSE,
+			&projection_matrix[0][0]);
+	}
 
 	glUseProgram(last_program);
 }
@@ -217,7 +242,6 @@ void render_api::draw_render_command(const render_command& render_command, int t
 
 	// backup render state
 	_render_state.capture();
-	_shader.bind();
 
 	// set up our own render state
 	glEnable(GL_BLEND);
@@ -257,6 +281,19 @@ void render_api::draw_render_command(const render_command& render_command, int t
 	for (uint32_t i = 0; i < render_command.batch_count; i++)
 	{
 		const auto& batch = render_command.batches.at(i);
+
+		switch (batch.shader)
+		{
+		case shader_type::normal:
+			_normal_shader.bind();
+			break;
+		case shader_type::sdf:
+			_sdf_shader.bind();
+			break;
+		case shader_type::sdf_outline:
+			_sdf_outline_shader.bind();
+			break;
+		}
 
 		glBindTexture(GL_TEXTURE_2D, _textures.at(texture_id));
 
