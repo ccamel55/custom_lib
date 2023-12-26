@@ -105,7 +105,8 @@ constexpr char sdf_outline_fragment_shader[] = R"(
 
 render_api::render_api()
 	: _normal_shader(vertex_shader, normal_fragment_shader), _sdf_shader(vertex_shader, sdf_fragment_shader),
-	_sdf_outline_shader(vertex_shader, sdf_outline_fragment_shader), _vertex_array(0), _vertex_buffer(0), _index_buffer(0)
+	_sdf_outline_shader(vertex_shader, sdf_outline_fragment_shader), _vertex_array(0), _vertex_buffer(0),
+	_index_buffer(0), _texture_atlas(0)
 {
 	_render_state.capture();
 
@@ -140,34 +141,46 @@ render_api::render_api()
 			2, 2, GL_FLOAT, GL_FALSE, sizeof(vertex_t), reinterpret_cast<void*>(offsetof(vertex_t, texture_position)));
 	}
 
+	// bind texture sampler
+	{
+		_normal_shader.bind();
+		glUniform1i(_normal_shader.get_attribute_location("texture_sample"), 0);
+	}
+
+	{
+		_sdf_shader.bind();
+		glUniform1i(_sdf_shader.get_attribute_location("texture_sample"), 0);
+	}
+
+	{
+		_sdf_outline_shader.bind();
+		glUniform1i(_sdf_outline_shader.get_attribute_location("texture_sample"), 0);
+	}
+
 	_render_state.restore();
 }
 
 render_api::~render_api()
 {
-	for (auto texture : _textures)
-	{
-		glDeleteTextures(1, &texture);
-	}
+	glDeleteTextures(1, &_texture_atlas);
 
 	glDeleteBuffers(1, &_vertex_buffer);
 	glDeleteBuffers(1, &_index_buffer);
+
 	glDeleteVertexArrays(1, &_vertex_array);
 }
 
-void render_api::add_texture(int id, const uint8_t* data, int width, int height)
+void render_api::bind_atlas(const uint8_t* data, int width, int height)
 {
-	// setup how our texture will act
-	auto& new_texture = _textures.emplace_back();
+	// only use 1 atlas ever
+	assert(_texture_atlas == 0);
 
-	// make sure IDs match
-	assert(id == _textures.size() - 1);
-
+	// create texture setup how our texture will be sampled
 	GLuint last_texture = 0;
 	glGetIntegerv(GL_TEXTURE_BINDING_2D, reinterpret_cast<GLint*>(&last_texture));
 
-	glGenTextures(1, &new_texture);
-	glBindTexture(GL_TEXTURE_2D, new_texture);
+	glGenTextures(1, &_texture_atlas);
+	glBindTexture(GL_TEXTURE_2D, _texture_atlas);
 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -202,8 +215,6 @@ void render_api::update_screen_size(const lib::point2Di& window_size)
 	// update all three shaders
 	{
 		_normal_shader.bind();
-
-		glUniform1i(_normal_shader.get_attribute_location("texture_sample"), 0);
 		glUniformMatrix4fv(
 			_normal_shader.get_attribute_location("projection_matrix"),
 			1,
@@ -213,8 +224,6 @@ void render_api::update_screen_size(const lib::point2Di& window_size)
 
 	{
 		_sdf_shader.bind();
-
-		glUniform1i(_sdf_shader.get_attribute_location("texture_sample"), 0);
 		glUniformMatrix4fv(
 			_sdf_shader.get_attribute_location("projection_matrix"),
 			1,
@@ -224,8 +233,6 @@ void render_api::update_screen_size(const lib::point2Di& window_size)
 
 	{
 		_sdf_outline_shader.bind();
-
-		glUniform1i(_sdf_outline_shader.get_attribute_location("texture_sample"), 0);
 		glUniformMatrix4fv(
 			_sdf_outline_shader.get_attribute_location("projection_matrix"),
 			1,
@@ -236,7 +243,7 @@ void render_api::update_screen_size(const lib::point2Di& window_size)
 	glUseProgram(last_program);
 }
 
-void render_api::draw_render_command(const render_command& render_command, int texture_id)
+void render_api::draw_render_command(const render_command& render_command)
 {
 	glClear(GL_COLOR_BUFFER_BIT);
 
@@ -278,6 +285,9 @@ void render_api::draw_render_command(const render_command& render_command, int t
 		static_cast<GLsizeiptr>(render_command.index_count * sizeof(uint32_t)),
 		render_command.indices.data());
 
+	// bind our atlas, every texture should live on the atlas
+	glBindTexture(GL_TEXTURE_2D, _texture_atlas);
+
 	for (uint32_t i = 0; i < render_command.batch_count; i++)
 	{
 		const auto& batch = render_command.batches.at(i);
@@ -294,8 +304,6 @@ void render_api::draw_render_command(const render_command& render_command, int t
 			_sdf_outline_shader.bind();
 			break;
 		}
-
-		glBindTexture(GL_TEXTURE_2D, _textures.at(texture_id));
 
 		glScissor(
 			batch.clipped_area._x,

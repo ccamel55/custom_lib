@@ -14,9 +14,9 @@ public:
 	render_api();
 	~render_api() override;
 
-	void add_texture(int id, const uint8_t* data, int width, int height) override;
+	void bind_atlas(const uint8_t* data, int width, int height) override;
 	void update_screen_size(const lib::point2Di& window_size) override;
-	void draw_render_command(const render_command& render_command, int texture_id) override;
+	void draw_render_command(const render_command& render_command) override;
 
 private:
 	lib::point2Di _window_size;
@@ -31,6 +31,6 @@ private:
 	GLuint _index_buffer;
 
 	// indexes by texture_id
-	std::vector<GLuint> _textures = {};
+	GLuint _texture_atlas;
 };
 }  // namespace lib::rendering
