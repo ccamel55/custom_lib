@@ -176,7 +176,7 @@ void renderer::draw_image(const lib::point2Di& pos,
                           const lib::color& color,
                           texture_id texture_id)
 {
-	const auto vertex_index = _render_command.prepare_batch(_clipped_area);
+	const auto vertex_index = _render_command.prepare_batch(_clipped_area, shader_type::normal);
 	const auto vertex_iterator = _render_command.insert_vertices(4);
 
 	vertex_iterator[0].position = {pos._x, pos._y};
@@ -224,7 +224,7 @@ void renderer::draw_line(const lib::point2Di& p1, const lib::point2Di& p2, const
 
 	dir *= (thickness * 0.5f);
 
-	const auto vertex_index = _render_command.prepare_batch(_clipped_area);
+	const auto vertex_index = _render_command.prepare_batch(_clipped_area, shader_type::normal);
 	const auto vertex_iterator = _render_command.insert_vertices(4);
 
 	vertex_iterator[0].position = {static_cast<float>(p1._x) + dir._y, static_cast<float>(p1._y) - dir._x};
@@ -274,7 +274,7 @@ void renderer::draw_triangle_filled(const lib::point2Di& p1,
                                     const lib::point2Di& p3,
                                     const lib::color& color)
 {
-	const auto vertex_index = _render_command.prepare_batch(_clipped_area);
+	const auto vertex_index = _render_command.prepare_batch(_clipped_area, shader_type::normal);
 	const auto vertex_iterator = _render_command.insert_vertices(3);
 
 	vertex_iterator[0].position = {static_cast<float>(p1._x), static_cast<float>(p1._y)};
@@ -340,7 +340,7 @@ void renderer::draw_rect_gradient_filled(const lib::point2Di& pos,
                                          const lib::color& c3,
                                          const lib::color& c4)
 {
-	const auto vertex_index = _render_command.prepare_batch(_clipped_area);
+	const auto vertex_index = _render_command.prepare_batch(_clipped_area, shader_type::normal);
 	const auto vertex_iterator = _render_command.insert_vertices(4);
 
 	vertex_iterator[0].position = {pos._x, pos._y};
@@ -374,29 +374,11 @@ void renderer::draw_rect_gradient_filled(const lib::point2Di& pos,
 	index_iterator[5] = vertex_index + 3;
 }
 
-#if DEF_LIB_RENDERING_EXPERIMENTAL_on
 void renderer::draw_font(const lib::point2Di& pos,
 						 const lib::color& color,
 						 font_id font_id,
 						 const std::string& text,
-						 font_flags flags)
-{
-	draw_font_outlined(pos, color, {0, 0, 0, 0}, font_id, text, flags);
-}
-
-void renderer::draw_font_outlined(const lib::point2Di& pos,
-								  const lib::color& color,
-								  const lib::color& outline_color,
-								  font_id font_id,
-								  const std::string& text,
-								  font_flags flags)
-#else
-void renderer::draw_font(const lib::point2Di& pos,
-						 const lib::color& color,
-						 font_id font_id,
-						 const std::string& text,
-						 font_flags flags)
-#endif
+						 uint16_t flags)
 {
 	auto current_pos = pos;
 	const auto& font_properties = _font_properties.at(font_id);
@@ -432,6 +414,17 @@ void renderer::draw_font(const lib::point2Di& pos,
 		current_pos._y += get_text_height() / 2;
 	}
 
+	shader_type shader;
+
+	if (flags & outline)
+	{
+		shader = shader_type::sdf_outline;
+	}
+	else
+	{
+		shader = shader_type::sdf;
+	}
+
 	for (const auto& c : text)
 	{
 		const auto& font_property = font_properties.at(c - 32);
@@ -439,7 +432,7 @@ void renderer::draw_font(const lib::point2Di& pos,
 		if (c != ' ')
 		{
 			// pretty much draw image but inlined :)
-			const auto vertex_index = _render_command.prepare_batch(_clipped_area);
+			const auto vertex_index = _render_command.prepare_batch(_clipped_area, shader);
 			const auto vertex_iterator = _render_command.insert_vertices(4);
 
 			const auto& texture_property = _atlas_generator.get_texture_properties(font_property.id);
@@ -469,13 +462,6 @@ void renderer::draw_font(const lib::point2Di& pos,
 			vertex_iterator[1].color = color;
 			vertex_iterator[2].color = color;
 			vertex_iterator[3].color = color;
-
-#if DEF_LIB_RENDERING_EXPERIMENTAL_on
-			vertex_iterator[0].alt_color = outline_color;
-			vertex_iterator[1].alt_color = outline_color;
-			vertex_iterator[2].alt_color = outline_color;
-			vertex_iterator[3].alt_color = outline_color;
-#endif
 
 			const auto index_iterator = _render_command.insert_indices(6);
 

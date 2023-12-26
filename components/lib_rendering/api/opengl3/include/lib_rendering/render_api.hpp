@@ -20,9 +20,11 @@ public:
 
 private:
 	lib::point2Di _window_size;
-
 	gl3::render_state _render_state;
-	gl3::shaders _shader;
+
+	gl3::shaders _normal_shader;
+	gl3::shaders _sdf_shader;
+	gl3::shaders _sdf_outline_shader;
 
 	GLuint _vertex_array;
 	GLuint _vertex_buffer;

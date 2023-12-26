@@ -10,10 +10,10 @@ void render_command::reset()
 	batch_count = 0;
 }
 
-uint32_t render_command::prepare_batch(const lib::point4Di& clipped_area)
+uint32_t render_command::prepare_batch(const lib::point4Di& clipped_area, shader_type shader_type)
 {
 	// only update batch when batch count is empty or if we update clipped area
-	if (batch_count != 0 && current_batch->clipped_area == clipped_area)
+	if (batch_count != 0 && current_batch->clipped_area == clipped_area && shader_type == current_batch->shader)
 	{
 		return vertex_count;
 	}
@@ -26,6 +26,7 @@ uint32_t render_command::prepare_batch(const lib::point4Di& clipped_area)
 	current_batch->offset = index_count;
 	current_batch->count = 0;
 	current_batch->clipped_area = clipped_area;
+	current_batch->shader = shader_type;
 
 	return vertex_count;
 }
