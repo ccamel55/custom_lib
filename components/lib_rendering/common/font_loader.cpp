@@ -35,7 +35,7 @@ font_loader::font_loader(font_properties_t& font_properties, const uint8_t* font
 		auto& internal_property = _font_internal_properties.at(character - 32);
 		auto& font_property = font_properties.at(character - 32);
 
-		const auto  stb_bitmap = stbtt_GetCodepointSDF(
+		const auto stb_bitmap = stbtt_GetCodepointSDF(
 					&font_info,
 					scale,
 					character,

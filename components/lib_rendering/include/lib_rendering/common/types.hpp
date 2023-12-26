@@ -40,7 +40,7 @@ struct vertex_t
 static_assert(sizeof(vertex_t) == 20);
 
 //! texture ID used to identify a texture and get it's properties
-using texture_id = uint8_t;
+using texture_id = uint32_t;
 
 enum class shader_type: uint8_t
 {

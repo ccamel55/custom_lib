@@ -66,7 +66,6 @@ texture_id atlas_generator::add_texture(const uint8_t* data, int width, int heig
 
 	auto& texture_rect = _texture_rects.emplace_back();
 
-	texture_rect.id = id;
 	texture_rect.w = width;
 	texture_rect.h = height;
 
@@ -152,7 +151,7 @@ bool atlas_generator::build_atlas()
 		delete[] texture_data;
 
 		// calculate texture properties, texture_rect.id should equal i
-		auto& texture_properties = _texture_properties.at(texture_rect.id);
+		auto& texture_properties = _texture_properties.at(i);
 
 		texture_properties.start_pixel._x = texture_rect.x;
 		texture_properties.start_pixel._y = texture_rect.y;

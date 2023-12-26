@@ -90,8 +90,8 @@ texture_id renderer::add_image(const std::filesystem::path& image)
 font_id renderer::add_font(const uint8_t* font_data, float height)
 {
 	auto& font_properties= _font_properties.emplace_back();
-
 	const auto id = static_cast<font_id>(_font_properties.size() - 1);
+
 	const auto font = font_loader(font_properties, font_data, height);
 
 	// for each printable character add to our texture atlas

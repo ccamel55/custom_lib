@@ -2,12 +2,13 @@
 
 #include <fstream>
 #include <vector>
+#include <string>
 
 #include <core_sdk/logger.hpp>
 
 namespace lib::scripts
 {
-inline void file_to_hex(const std::string& file_path, const std::string& destination_path)
+inline void file_to_hex(std::string array_name,  const std::string& file_path, const std::string& destination_path)
 {
 	try
 	{
@@ -34,7 +35,9 @@ inline void file_to_hex(const std::string& file_path, const std::string& destina
 		}
 
 		// write as an array
-		out_file << "constexpr std::array<uint8_t, " << file_as_bytes.size() << "> file_as_byte = " << std::endl;
+		out_file << "#include <array>" << "\n";
+		out_file << "\n";
+		out_file << "constexpr std::array<uint8_t, " << file_as_bytes.size() << "> " << array_name << " = " << "\n";
 		out_file << "{";
 
 		out_file << "\t";
@@ -43,20 +46,20 @@ inline void file_to_hex(const std::string& file_path, const std::string& destina
 			// every 20 bytes we make a new line
 			if (i % 20 == 0)
 			{
-				out_file << std::endl;
+				out_file << "\n";
 				out_file << "\t";
 			}
 
 			out_file << std::showbase << std::hex << static_cast<int16_t>(file_as_bytes.at(i)) << ", ";
 		}
-		out_file << std::endl;
+		out_file << "\n";
 
 		out_file << "};";
 		out_file.close();
 	}
 	catch (const std::exception& e)
 	{
-		lib_log_e("file_to_hex: something retarded happened: {}", e.what());
+		lib_log_e("file_to_hex: could not open file happened: {}", e.what());
 		return;
 	}
 }
