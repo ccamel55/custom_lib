@@ -13,8 +13,6 @@ namespace
 // sometimes if this is too small we might end up with some weird artifacts
 constexpr uint8_t opaque_texture_width = 2;
 constexpr uint8_t opaque_texture_height = 2;
-
-constexpr int render_api_texture_id = 0;
 }  // namespace
 
 
@@ -131,8 +129,7 @@ void renderer::build_texture()
 
 	// add to render API as one giant texture,
 	// note: render_api_texture_id != texture_id
-	_render_api->add_texture(
-		render_api_texture_id,
+	_render_api->bind_atlas(
 		_atlas_generator.get_byte_buffer(),
 		_atlas_generator.get_width(),
 		_atlas_generator.get_height());
@@ -141,11 +138,11 @@ void renderer::build_texture()
 void renderer::draw_frame()
 {
 	// get our render api to draw our vertices
-	_render_api->draw_render_command(_render_command, render_api_texture_id);
+	_render_api->draw_render_command(_render_command);
 
 	// flush command, reset states back to default
-	_render_command.reset();
 	_clipped_area = {0, 0, _window_size._x, _window_size._y};
+	_render_command.reset();
 }
 
 void renderer::set_frame_time(float frame_time)
