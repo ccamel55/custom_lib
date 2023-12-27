@@ -1,5 +1,7 @@
 #pragma once
 
+#include <core_sdk/types/bitflag.hpp>
+
 #include <lib_rendering/common/font_loader.hpp>
 #include <lib_rendering/common/image_loader.hpp>
 #include <lib_rendering/common/atlas_generator.hpp>
@@ -8,11 +10,11 @@
 #include <array>
 #include <filesystem>
 #include <memory>
-#include <unordered_map>
+#include <functional>
 
 namespace lib::rendering
 {
-enum font_flags: uint16_t
+enum font_flags: bitflag_t
 {
 	none = 0,
 	left_aligned = 0 << 0,
@@ -47,6 +49,9 @@ public:
 	//! send render commands to render API and then get render API to draw them
 	void draw_frame();
 
+	//! register a callback to populate the render command.
+	void register_callback(std::function<void(renderer&)>&& callback);
+
 	//! update current clipped area for draws
 	void update_clipped_area(const lib::point4Di& clipped_area);
 
@@ -76,12 +81,8 @@ public:
                               const lib::point2Di& p3,
                               const lib::color& color);
 
-	void draw_rectangle(const lib::point2Di& pos,
-                        const lib::point2Di& size,
-                        const lib::color& color,
-                        float thickness = 1);
-
-	void draw_rectangle_filled(const lib::point2Di& pos, const lib::point2Di& size, const lib::color& color);
+	void draw_rect(const lib::point2Di& pos, const lib::point2Di& size, const lib::color& color, float thickness = 1);
+	void draw_rect_filled(const lib::point2Di& pos, const lib::point2Di& size, const lib::color& color);
 
 	void draw_rect_gradient_h_filled(const lib::point2Di& pos,
                                      const lib::point2Di& size,
@@ -104,7 +105,7 @@ public:
 				   const lib::color& color,
 				   font_id font_id,
 				   const std::string& text,
-				   uint16_t flags = font_flags::none);
+				   bitflag flags = font_flags::none);
 
 private:
 	//! atlas generator is used to generate a texture atlas
@@ -130,5 +131,8 @@ private:
 
 	//! pointer to our render api, this is what we will use to actually render our primitives
 	std::unique_ptr<render_api_base> _render_api = nullptr;
+
+	//! Callbacks that populate the render command
+	std::vector<std::function<void(renderer&)>> _render_callbacks = {};
 };
 }  // namespace lib::rendering

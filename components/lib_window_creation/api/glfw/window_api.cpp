@@ -20,7 +20,7 @@ window_api::window_api(const window_parameters_t& window_parameters, std::functi
 		assert(false);
 	}
 
-	if (window_parameters.flags & window_flags::window_flag_opengl3)
+	if (window_parameters.flags.has(window_flags::window_flag_opengl3))
 	{
 		// Opengl version 3.3
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -41,10 +41,10 @@ window_api::window_api(const window_parameters_t& window_parameters, std::functi
 	glfwWindowHint(GLFW_SAMPLES, 0);
 
 	// remove border and title bar
-	glfwWindowHint(GLFW_DECORATED, !(window_parameters.flags & window_flags::window_flag_no_border));
+	glfwWindowHint(GLFW_DECORATED, !(window_parameters.flags.has(window_flags::window_flag_no_border)));
 
 	// allow resizing
-	glfwWindowHint(GLFW_RESIZABLE, !!(window_parameters.flags & window_flags::window_flag_resizeable));
+	glfwWindowHint(GLFW_RESIZABLE, !!(window_parameters.flags.has(window_flags::window_flag_resizeable)));
 
 	// create a new window
 	_glfw_window_ptr = glfwCreateWindow(
@@ -289,7 +289,7 @@ void window_api::scroll_callback(GLFWwindow* window, double offset_x, double off
 	const lib::input::input_t input = {
 		.type = input::mouse,
 		.key = lib::input::key_button::mouse_scroll,
-		.state = lib::point2Df{ static_cast<float>(offset_x), static_cast<float>(offset_y)}
+		.state = lib::point2Di{ static_cast<int>(offset_x), static_cast<int>(offset_y)}
 	};
 
 	this_ptr->add_input(input);
@@ -301,7 +301,7 @@ void window_api::cursor_position_callback(GLFWwindow* window, double pos_x, doub
 	const lib::input::input_t input = {
 		.type = input::mouse,
 		.key = lib::input::key_button::mouse_move,
-		.state = lib::point2Df{ static_cast<float>(pos_x), static_cast<float>(pos_y)}
+		.state = lib::point2Di{ static_cast<int>(pos_x), static_cast<int>(pos_y)}
 	};
 
 	this_ptr->add_input(input);

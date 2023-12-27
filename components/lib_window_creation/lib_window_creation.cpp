@@ -16,17 +16,17 @@ void window_creation::init(const window_parameters_t& window_parameters)
 #ifndef DEF_LIB_RENDERING_off
 		if (_renderer)
 		{
-			if (_render_callback)
-			{
-				_render_callback();
-			}
-
 			_renderer->draw_frame();
 			_renderer->set_frame_time(
 				static_cast<float>(std::chrono::duration_cast<std::chrono::milliseconds>(
 					std::chrono::high_resolution_clock::now() - last_frame_time).count()));
 
 			last_frame_time = std::chrono::high_resolution_clock::now();
+		}
+#else
+		if (_render_callback)
+		{
+			_render_callback();
 		}
 #endif
 	};
@@ -52,14 +52,6 @@ void window_creation::destroy()
 #ifndef DEF_LIB_INPUT_off
 	_input_handler = nullptr;
 #endif
-}
-
-void window_creation::register_render_callback(std::function<void()> render_callback)
-{
-	assert(_init == true);
-	assert(_renderer != nullptr);
-
-	_render_callback = std::move(render_callback);
 }
 
 void window_creation::run_window_loop()
@@ -96,6 +88,14 @@ std::weak_ptr<lib::rendering::renderer> window_creation::register_renderer()
 	assert(_window_creation_api->register_renderer(_renderer) == true);
 
 	return _renderer;
+}
+#else
+void window_creation::register_render_callback(std::function<void()> render_callback)
+{
+	assert(_init == true);
+	assert(_renderer == nullptr);
+
+	_render_callback = std::move(render_callback);
 }
 #endif
 
