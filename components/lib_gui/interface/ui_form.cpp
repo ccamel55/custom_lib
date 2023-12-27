@@ -25,7 +25,11 @@ void ui_form::draw(lib::rendering::renderer& render)
 
 	// draw main form
 	render.draw_rect_filled(pos, size, form::color_fill);
-	render.draw_rect_gradient_v_filled(pos, size, form::color_fill_gradient, form::color_fill);
+	render.draw_rect_gradient_v_filled(
+		pos,
+		{size._x, form::title_size_y},
+		form::color_fill_gradient,
+		form::color_fill);
 
 	// draw control render regin
 	render.draw_rect_filled(

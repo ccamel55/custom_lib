@@ -12,7 +12,7 @@ namespace drag_bar
     constexpr auto pin_size = lib::point2Di(6, 6);
 
     constexpr auto color_fill = lib::color(64, 64, 64);
-    constexpr auto color_fill_gradient = lib::color(70, 70, 70);
+    constexpr auto color_fill_gradient = lib::color(90, 90, 90);
 }
 
 class ui_drag_bar: public ui_base_window

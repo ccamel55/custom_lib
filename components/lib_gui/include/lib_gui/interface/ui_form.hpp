@@ -16,7 +16,7 @@ constexpr auto contents_start_offset = lib::point2Di(border_size, title_size_y);
 constexpr auto contents_end_offset = lib::point2Di(border_size * 2, title_size_y + border_size);
 
 constexpr auto color_fill = lib::color(64, 64, 64);
-constexpr auto color_fill_gradient = lib::color(70, 70, 70);
+constexpr auto color_fill_gradient = lib::color(90, 90, 90);
 
 constexpr auto color_contents = lib::color(190, 190, 190);
 constexpr auto color_contents_alt = lib::color(70, 70, 70, 120);
