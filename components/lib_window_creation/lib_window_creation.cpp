@@ -59,8 +59,12 @@ void window_creation::run_window_loop()
 	assert(_init == true);
 	assert(_window_running == false);
 
+	lib_log_d("window_creation: starting window loop");
+
 	_window_running = true;
 	_window_creation_api->window_loop();
+
+	lib_log_d("window_creation: destroying window");
 }
 
 void window_creation::close_window() const

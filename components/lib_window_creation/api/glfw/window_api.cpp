@@ -83,8 +83,6 @@ window_api::~window_api()
 
 void window_api::window_loop() const
 {
-	lib_log_d("window_creation: starting window loop");
-
 	// run main render thread from current thread
 	while (glfwGetKey(_glfw_window_ptr, GLFW_KEY_ESCAPE) != GLFW_PRESS && glfwWindowShouldClose(_glfw_window_ptr) == 0)
 	{
@@ -96,7 +94,6 @@ void window_api::window_loop() const
 		glfwSwapBuffers(_glfw_window_ptr);
 	}
 
-	lib_log_d("window_creation: destroying window");
 	glfwTerminate();
 }
 
