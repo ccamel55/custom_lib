@@ -2,6 +2,10 @@
 
 #include <cassert>
 
+#ifdef DEF_LIB_RENDERING_gl3
+#include <glad/glad.hpp>
+#endif
+
 using namespace lib::window_creation;
 
 namespace
@@ -23,8 +27,8 @@ window_api::window_api(const window_parameters_t& window_parameters, std::functi
 	if (window_parameters.flags.has(window_flags::window_flag_opengl3))
 	{
 		// Opengl version 3.3
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
 		glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
 
