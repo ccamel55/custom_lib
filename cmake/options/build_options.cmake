@@ -21,7 +21,7 @@ if (CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
             -D_HAS_EXCEPTIONS=0 # tell msvs there are no exceptions
     )
 
-    if (CMAKE_BUILD_TYPE EQUAL "Debug")
+    if (CMAKE_BUILD_TYPE STREQUAL "Debug")
         list(APPEND LIB_BUILD_OPTIONS
                 -Od # disable optimisations, should make debugging easier
         )
@@ -49,7 +49,7 @@ else()
             -ftree-vectorize # enabled by -O3 but in case we dont compile in release, enable vectorisation
     )
 
-    if (CMAKE_BUILD_TYPE EQUAL "Debug")
+    if (CMAKE_BUILD_TYPE STREQUAL "Debug")
         list(APPEND LIB_BUILD_OPTIONS
                 -Og # compile with debugging optimizations
         )

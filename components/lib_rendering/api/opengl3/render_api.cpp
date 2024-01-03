@@ -245,8 +245,6 @@ void render_api::update_screen_size(const lib::point2Di& window_size)
 
 void render_api::draw_render_command(const render_command& render_command)
 {
-	glClear(GL_COLOR_BUFFER_BIT);
-
 	// backup render state
 	_render_state.capture();
 

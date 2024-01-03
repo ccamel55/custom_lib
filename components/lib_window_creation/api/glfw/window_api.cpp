@@ -88,6 +88,9 @@ void window_api::window_loop() const
 	{
 		glfwPollEvents();
 
+#ifdef DEF_LIB_RENDERING_gl3
+    glClear(GL_COLOR_BUFFER_BIT);
+#endif
 		// callback the parent which will do more stuff
 		_window_loop_callback();
 
