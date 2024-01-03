@@ -37,6 +37,8 @@ public:
     //! hide all windows
     void hide_windows();
 
+    [[nodiscard]] bool is_visible() const;
+
     //! move ownership of a window to the GUI, after calling this, we should only access the window using the weakptr
     //! as the shared pointer used to create the window is not longer guarneteed to be valid
     template<typename t>

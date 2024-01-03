@@ -124,6 +124,11 @@ void gui::hide_windows()
 	toggle_visibility();
 }
 
+bool gui::is_visible() const
+{
+	return _show_windows;
+}
+
 void gui::set_active(const std::shared_ptr<ui_base_window>& active_window)
 {
 	_active_window = active_window;
