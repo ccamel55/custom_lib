@@ -7,144 +7,144 @@ template <class t> class _point3D
 public:
 	constexpr _point3D() = default;
 
-	constexpr _point3D(auto x, auto y, auto z) : _x(static_cast<t>(x)), _y(static_cast<t>(y)), _z(static_cast<t>(z))
+	constexpr _point3D(auto x, auto y, auto z) : x(static_cast<t>(x)), y(static_cast<t>(y)), z(static_cast<t>(z))
 	{
 	}
 
 	_point3D operator+(const _point3D& in) const
 	{
-		return {_x + in._x, _y + in._y, _z + in._z};
+		return {x + in.x, y + in.y, z + in.z};
 	}
 
 	constexpr _point3D& operator+=(const _point3D& in)
 	{
-		this->_x += in._x;
-		this->_y += in._y;
-		this->_z += in._z;
+		this->x += in.x;
+		this->y += in.y;
+		this->z += in.z;
 
 		return *this;
 	}
 
 	_point3D operator+(float in) const
 	{
-		return {_x + in, _y + in, _z + in};
+		return {x + in, y + in, z + in};
 	}
 
 	constexpr _point3D& operator+=(float in)
 	{
-		this->_x += in;
-		this->_y += in;
-		this->_z += in;
+		this->x += in;
+		this->y += in;
+		this->z += in;
 
 		return *this;
 	}
 
 	_point3D operator-(const _point3D& in) const
 	{
-		return {_x - in._x, _y - in._y, _z - in._z};
+		return {x - in.x, y - in.y, z - in.z};
 	}
 
 	constexpr _point3D& operator-=(const _point3D& in)
 	{
-		this->_x -= in._x;
-		this->_y -= in._y;
-		this->_z -= in._z;
+		this->x -= in.x;
+		this->y -= in.y;
+		this->z -= in.z;
 
 		return *this;
 	}
 
 	_point3D operator-(float in) const
 	{
-		return {_x - in, _y - in, _z - in};
+		return {x - in, y - in, z - in};
 	}
 
 	constexpr _point3D& operator-=(float in)
 	{
-		this->_x -= in;
-		this->_y -= in;
-		this->_z -= in;
+		this->x -= in;
+		this->y -= in;
+		this->z -= in;
 
 		return *this;
 	}
 
 	_point3D operator*(const _point3D& in) const
 	{
-		return {_x * in._x, _y * in._y, _z * in._z};
+		return {x * in.x, y * in.y, z * in.z};
 	}
 
 	constexpr _point3D& operator*=(const _point3D& in)
 	{
-		this->_x *= in._x;
-		this->_y *= in._y;
-		this->_z *= in._z;
+		this->x *= in.x;
+		this->y *= in.y;
+		this->z *= in.z;
 
 		return *this;
 	}
 
 	_point3D operator*(float in) const
 	{
-		return {_x * in, _y * in, _z * in};
+		return {x * in, y * in, z * in};
 	}
 
 	constexpr _point3D& operator*=(float in)
 	{
-		this->_x *= in;
-		this->_y *= in;
-		this->_z *= in;
+		this->x *= in;
+		this->y *= in;
+		this->z *= in;
 
 		return *this;
 	}
 
 	_point3D operator/(const _point3D& in) const
 	{
-		return {_x / in._x, _y / in._y, _z / in._z};
+		return {x / in.x, y / in.y, z / in.z};
 	}
 
 	constexpr _point3D& operator/=(const _point3D& in)
 	{
-		this->_x /= in._x;
-		this->_y /= in._y;
-		this->_z /= in._z;
+		this->x /= in.x;
+		this->y /= in.y;
+		this->z /= in.z;
 
 		return *this;
 	}
 
 	_point3D operator/(float in) const
 	{
-		return {_x / in, _y / in, _z / in};
+		return {x / in, y / in, z / in};
 	}
 
 	constexpr _point3D& operator/=(float in)
 	{
-		this->_x /= in;
-		this->_y /= in;
-		this->_z /= in;
+		this->x /= in;
+		this->y /= in;
+		this->z /= in;
 
 		return *this;
 	}
 
     bool operator==(const _point3D& in) const
     {
-        return _x == in._x && _y == in._y && _z == in._z;
+        return x == in.x && y == in.y && z == in.z;
     }
 
     bool operator!=(const _point3D& in) const
     {
-        return _x != in._x || _y != in._y || _z != in._z;
+        return x != in.x || y != in.y || z != in.z;
     }
 
 	constexpr _point3D& operator=(const _point3D& vec_base)
 	{
-		this->_x = vec_base._x;
-		this->_y = vec_base._y;
-		this->_z = vec_base._z;
+		this->x = vec_base.x;
+		this->y = vec_base.y;
+		this->z = vec_base.z;
 		return *this;
 	}
 
 public:
-	t _x = static_cast<t>(0);
-	t _y = static_cast<t>(0);
-	t _z = static_cast<t>(0);
+	t x = static_cast<t>(0);
+	t y = static_cast<t>(0);
+	t z = static_cast<t>(0);
 };
 
 using point3Df = _point3D<float>;

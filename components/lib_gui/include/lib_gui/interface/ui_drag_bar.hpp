@@ -8,7 +8,7 @@ namespace drag_bar
 {
     constexpr auto size = lib::point2Di{150, 20};
 
-    constexpr auto pin_offset = lib::point2Di(10, size._y / 2);
+    constexpr auto pin_offset = lib::point2Di(10, size.y / 2);
     constexpr auto pin_size = lib::point2Di(6, 6);
 
     constexpr auto color_fill = lib::color(64, 64, 64);

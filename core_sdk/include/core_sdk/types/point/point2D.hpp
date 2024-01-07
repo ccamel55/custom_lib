@@ -8,127 +8,127 @@ public:
 	constexpr _point2D() = default;
 	constexpr _point2D& operator=(const _point2D& in) = default;
 
-	constexpr _point2D(auto x, auto y) : _x(static_cast<t>(x)), _y(static_cast<t>(y))
+	constexpr _point2D(auto x, auto y) : x(static_cast<t>(x)), y(static_cast<t>(y))
 	{
 	}
 
 	_point2D operator+(const _point2D& in) const
 	{
-		return {_x + in._x, _y + in._y};
+		return {x + in.x, y + in.y};
 	}
 
 	constexpr _point2D& operator+=(const _point2D& in)
 	{
-		this->_x += in._x;
-		this->_y += in._y;
+		this->x += in.x;
+		this->y += in.y;
 
 		return *this;
 	}
 
 	_point2D operator+(float in) const
 	{
-		return {_x + in, _y + in};
+		return {x + in, y + in};
 	}
 
 	constexpr _point2D& operator+=(float in)
 	{
-		this->_x += in;
-		this->_y += in;
+		this->x += in;
+		this->y += in;
 
 		return *this;
 	}
 
 	_point2D operator-(const _point2D& in) const
 	{
-		return {_x - in._x, _y - in._y};
+		return {x - in.x, y - in.y};
 	}
 
 	constexpr _point2D& operator-=(const _point2D& in)
 	{
-		this->_x -= in._x;
-		this->_y -= in._y;
+		this->x -= in.x;
+		this->y -= in.y;
 
 		return *this;
 	}
 
 	_point2D operator-(float in) const
 	{
-		return {_x - in, _y - in};
+		return {x - in, y - in};
 	}
 
 	constexpr _point2D& operator-=(float in)
 	{
-		this->_x -= in;
-		this->_y -= in;
+		this->x -= in;
+		this->y -= in;
 
 		return *this;
 	}
 
 	_point2D operator*(const _point2D& in) const
 	{
-		return {_x * in._x, _y * in._y};
+		return {x * in.x, y * in.y};
 	}
 
 	constexpr _point2D& operator*=(const _point2D& in)
 	{
-		this->_x *= in._x;
-		this->_y *= in._y;
+		this->x *= in.x;
+		this->y *= in.y;
 
 		return *this;
 	}
 
 	_point2D operator*(float in) const
 	{
-		return {_x * in, _y * in};
+		return {x * in, y * in};
 	}
 
 	constexpr _point2D& operator*=(float in)
 	{
-		this->_x *= in;
-		this->_y *= in;
+		this->x *= in;
+		this->y *= in;
 
 		return *this;
 	}
 
 	_point2D operator/(const _point2D& in) const
 	{
-		return {_x / in._x, _y / in._y};
+		return {x / in.x, y / in.y};
 	}
 
 	constexpr _point2D& operator/=(const _point2D& in)
 	{
-		this->_x /= in._x;
-		this->_y /= in._y;
+		this->x /= in.x;
+		this->y /= in.y;
 
 		return *this;
 	}
 
 	_point2D operator/(float in) const
 	{
-		return {_x / in, _y / in};
+		return {x / in, y / in};
 	}
 
 	constexpr _point2D& operator/=(float in)
 	{
-		this->_x /= in;
-		this->_y /= in;
+		this->x /= in;
+		this->y /= in;
 
 		return *this;
 	}
 
     bool operator==(const _point2D& in) const
     {
-        return _x == in._x && _y == in._y;
+        return x == in.x && y == in.y;
     }
 
     bool operator!=(const _point2D& in) const
     {
-        return _x != in._x || _y != in._y;
+        return x != in.x || y != in.y;
     }
 
 public:
-	t _x = static_cast<t>(0);
-	t _y = static_cast<t>(0);
+	t x = static_cast<t>(0);
+	t y = static_cast<t>(0);
 };
 
 using point2Df = _point2D<float>;

@@ -32,55 +32,55 @@ TEST_CASE("Points", "[math]")
 		// will also likely work.
 
 		// point 2d
-		REQUIRE(point_2d_i_1._x == 1);
-		REQUIRE(point_2d_i_1._y == 2);
+		REQUIRE(point_2d_i_1.x == 1);
+		REQUIRE(point_2d_i_1.y == 2);
 
-		REQUIRE(point_2d_i_2._x == 3);
-		REQUIRE(point_2d_i_2._y == 4);
+		REQUIRE(point_2d_i_2.x == 3);
+		REQUIRE(point_2d_i_2.y == 4);
 
-		REQUIRE(point_2d_f_1._x == 1.f);
-		REQUIRE(point_2d_f_1._y == 2.f);
+		REQUIRE(point_2d_f_1.x == 1.f);
+		REQUIRE(point_2d_f_1.y == 2.f);
 
-		REQUIRE(point_2d_f_2._x == 3.f);
-		REQUIRE(point_2d_f_2._y == 4.f);
+		REQUIRE(point_2d_f_2.x == 3.f);
+		REQUIRE(point_2d_f_2.y == 4.f);
 
 		// point 3d
-		REQUIRE(point_3d_i_1._x == 1);
-		REQUIRE(point_3d_i_1._y == 2);
-		REQUIRE(point_3d_i_1._z == 3);
+		REQUIRE(point_3d_i_1.x == 1);
+		REQUIRE(point_3d_i_1.y == 2);
+		REQUIRE(point_3d_i_1.z == 3);
 
-		REQUIRE(point_3d_i_2._x == 1);
-		REQUIRE(point_3d_i_2._y == 2);
-		REQUIRE(point_3d_i_2._z == 3);
+		REQUIRE(point_3d_i_2.x == 1);
+		REQUIRE(point_3d_i_2.y == 2);
+		REQUIRE(point_3d_i_2.z == 3);
 
-		REQUIRE(point_3d_f_1._x == 1.f);
-		REQUIRE(point_3d_f_1._y == 2.f);
-		REQUIRE(point_3d_f_1._z == 3.f);
+		REQUIRE(point_3d_f_1.x == 1.f);
+		REQUIRE(point_3d_f_1.y == 2.f);
+		REQUIRE(point_3d_f_1.z == 3.f);
 
-		REQUIRE(point_3d_f_2._x == 1.f);
-		REQUIRE(point_3d_f_2._y == 2.f);
-		REQUIRE(point_3d_f_2._z == 3.f);
+		REQUIRE(point_3d_f_2.x == 1.f);
+		REQUIRE(point_3d_f_2.y == 2.f);
+		REQUIRE(point_3d_f_2.z == 3.f);
 
 		// point 4d
-		REQUIRE(point_4d_i_1._x == 1);
-		REQUIRE(point_4d_i_1._y == 2);
-		REQUIRE(point_4d_i_1._z == 3);
-		REQUIRE(point_4d_i_1._w == 4);
+		REQUIRE(point_4d_i_1.x == 1);
+		REQUIRE(point_4d_i_1.y == 2);
+		REQUIRE(point_4d_i_1.z == 3);
+		REQUIRE(point_4d_i_1.w == 4);
 
-		REQUIRE(point_4d_i_2._x == 1);
-		REQUIRE(point_4d_i_2._y == 2);
-		REQUIRE(point_4d_i_2._z == 3);
-		REQUIRE(point_4d_i_2._w == 4);
+		REQUIRE(point_4d_i_2.x == 1);
+		REQUIRE(point_4d_i_2.y == 2);
+		REQUIRE(point_4d_i_2.z == 3);
+		REQUIRE(point_4d_i_2.w == 4);
 
-		REQUIRE(point_4d_f_1._x == 1.f);
-		REQUIRE(point_4d_f_1._y == 2.f);
-		REQUIRE(point_4d_f_1._z == 3.f);
-		REQUIRE(point_4d_f_1._w == 4.f);
+		REQUIRE(point_4d_f_1.x == 1.f);
+		REQUIRE(point_4d_f_1.y == 2.f);
+		REQUIRE(point_4d_f_1.z == 3.f);
+		REQUIRE(point_4d_f_1.w == 4.f);
 
-		REQUIRE(point_4d_f_2._x == 1.f);
-		REQUIRE(point_4d_f_2._y == 2.f);
-		REQUIRE(point_4d_f_2._z == 3.f);
-		REQUIRE(point_4d_f_2._w == 4.f);
+		REQUIRE(point_4d_f_2.x == 1.f);
+		REQUIRE(point_4d_f_2.y == 2.f);
+		REQUIRE(point_4d_f_2.z == 3.f);
+		REQUIRE(point_4d_f_2.w == 4.f);
 	};
 
 	SECTION("logical operators")

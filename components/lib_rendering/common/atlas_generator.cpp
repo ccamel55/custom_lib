@@ -153,19 +153,19 @@ bool atlas_generator::build_atlas()
 		// calculate texture properties, texture_rect.id should equal i
 		auto& texture_properties = _texture_properties.at(i);
 
-		texture_properties.start_pixel._x = texture_rect.x;
-		texture_properties.start_pixel._y = texture_rect.y;
+		texture_properties.start_pixel.x = texture_rect.x;
+		texture_properties.start_pixel.y = texture_rect.y;
 
-		texture_properties.size_pixel._x = texture_rect.w;
-		texture_properties.size_pixel._y = texture_rect.h;
+		texture_properties.size_pixel.x = texture_rect.w;
+		texture_properties.size_pixel.y = texture_rect.h;
 
-		texture_properties.start_normalised._x = static_cast<float>(texture_rect.x) / static_cast<float>(_width);
-		texture_properties.start_normalised._y = static_cast<float>(texture_rect.y) / static_cast<float>(_height);
+		texture_properties.start_normalised.x = static_cast<float>(texture_rect.x) / static_cast<float>(_width);
+		texture_properties.start_normalised.y = static_cast<float>(texture_rect.y) / static_cast<float>(_height);
 
-		texture_properties.end_normalised._x =
+		texture_properties.end_normalised.x =
 			static_cast<float>(texture_rect.x + texture_rect.w) / static_cast<float>(_width);
 
-		texture_properties.end_normalised._y =
+		texture_properties.end_normalised.y =
 			static_cast<float>(texture_rect.y + texture_rect.h) / static_cast<float>(_height);
 	}
 

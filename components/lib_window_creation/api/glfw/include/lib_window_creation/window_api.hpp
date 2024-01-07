@@ -26,12 +26,17 @@ public:
 	void focus_window() const final;
 
 private:
+#ifndef DEF_LIB_RENDERING_off
+	static void window_size_callback(GLFWwindow* window, int width, int height);
+#endif
+
+#ifndef DEF_LIB_INPUT_off
 	static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
 	static void scroll_callback(GLFWwindow* window, double offset_x, double offset_y);
 	static void cursor_position_callback(GLFWwindow* window, double pos_x, double pos_y);
 	static void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
+#endif
 
-private:
 	GLFWwindow* _glfw_window_ptr = nullptr;
 
 };

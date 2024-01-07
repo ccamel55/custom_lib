@@ -197,8 +197,8 @@ void render_api::update_screen_size(const lib::point2Di& window_size)
 	_window_size = window_size;
 
 	// update our projection matrix :P im lazy so we using IMGUi's matrix
-	const auto w = static_cast<float>(window_size._x);
-	const auto h = static_cast<float>(window_size._y);
+	const auto w = static_cast<float>(window_size.x);
+	const auto h = static_cast<float>(window_size.y);
 
 	// orthographic projection matrix, very swag i know
 	const float projection_matrix[4][4] = {
@@ -263,7 +263,7 @@ void render_api::draw_render_command(const render_command& render_command)
 	glActiveTexture(GL_TEXTURE0);
 
 	// use whole screen as viewport, but we scissor regions in each batch
-	glViewport(0, 0, _window_size._x, _window_size._y);
+	glViewport(0, 0, _window_size.x, _window_size.y);
 
 	// bind relevant buffers and start drawing
 	glBindVertexArray(_vertex_array);
@@ -303,11 +303,13 @@ void render_api::draw_render_command(const render_command& render_command)
 			break;
 		}
 
+		// x and y represent the bottom left corner, we give x and y as the top right corner
 		glScissor(
-			batch.clipped_area._x,
-			batch.clipped_area._y,
-			batch.clipped_area._z - batch.clipped_area._x,
-			batch.clipped_area._w - batch.clipped_area._y);
+			batch.clipped_area.x,
+			// flip the y axis so that start point = bottom left corner
+			_window_size.y - batch.clipped_area.w - batch.clipped_area.y,
+			batch.clipped_area.z,
+			batch.clipped_area.w);
 
 		glDrawElements(
 			GL_TRIANGLES,

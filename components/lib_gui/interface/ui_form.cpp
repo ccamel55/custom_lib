@@ -27,7 +27,7 @@ void ui_form::draw(lib::rendering::renderer& render)
 	render.draw_rect_filled(pos, size, form::color_fill);
 	render.draw_rect_gradient_v_filled(
 		pos,
-		{size._x, form::title_size_y},
+		{size.x, form::title_size_y},
 		form::color_fill_gradient,
 		form::color_fill);
 
@@ -45,7 +45,7 @@ void ui_form::draw(lib::rendering::renderer& render)
 
 	// form name pinned box
 	render.draw_font(
-		pos + lib::point2Di(form::pin_offset._x + form::pin_size._x + 5, form::title_size_y / 2 - 1),
+		pos + lib::point2Di(form::pin_offset.x + form::pin_size.x + 5, form::title_size_y / 2 - 1),
 		color::white, font::title, get_name(), rendering::centered_y);
 }
 
@@ -57,7 +57,7 @@ void ui_form::input(const lib::input::input_handler& input)
 	}
 
 	const auto& pos = get_position();
-	const auto& size = lib::point2Di(get_size()._x, form::title_size_y);
+	const auto& size = lib::point2Di(get_size().x, form::title_size_y);
 
 	const auto& left_mouse = input.get_key_state(input::key_button::mouseleft);
 
@@ -83,8 +83,8 @@ void ui_form::input(const lib::input::input_handler& input)
 			const auto& mouseDelta = input.get_cursor_delta();
 			const lib::point2Di bound_pos =
 			{
-				std::clamp<int>(pos._x + mouseDelta._x, 0, context::screen_size._x - get_size()._x),
-				std::clamp<int>(pos._y + mouseDelta._y, 0, context::screen_size._y - get_size()._y)
+				std::clamp<int>(pos.x + mouseDelta.x, 0, context::screen_size.x - get_size().x),
+				std::clamp<int>(pos.y + mouseDelta.y, 0, context::screen_size.y - get_size().y)
 			};
 
 			set_position(bound_pos);

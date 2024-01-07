@@ -22,7 +22,6 @@ enum window_flags : bitflag_t
     window_flag_none = 0 << 0,
     window_flag_no_border = 1 << 0,
     window_flag_resizeable = 1 << 1,
-    window_flag_opengl3 = 1 << 2,
 };
 
 struct window_parameters_t
@@ -70,22 +69,18 @@ public:
 	//! bring the os window to focus
 	virtual void focus_window() const = 0;
 
-#ifndef DEF_LIB_INPUT_off
-	void add_input(const lib::input::input_t& input) const
-	{
-		const auto& input_handler = _input_handler.lock();
-		assert(input_handler != nullptr);
+	// we should never need to worry about .lock() returning nullptr since the renderer and input handler should always
+	// be owned by the same parent as the implementation class
+#ifndef DEF_LIB_RENDERING_off
+	std::weak_ptr<rendering::renderer> renderer = {};
+#endif
 
-		input_handler->add_input(input);
-	}
+#ifndef DEF_LIB_INPUT_off
+	std::weak_ptr<input::input_handler> input_handler = {};
 #endif
 
 protected:
 	std::function<void()> _window_loop_callback = nullptr;
-
-#ifndef DEF_LIB_INPUT_off
-	std::weak_ptr<input::input_handler> _input_handler = {};
-#endif
 
 };
 }
