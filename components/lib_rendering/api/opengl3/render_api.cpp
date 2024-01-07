@@ -303,9 +303,11 @@ void render_api::draw_render_command(const render_command& render_command)
 			break;
 		}
 
+		// x and y represent the bottom left corner, we give x and y as the top right corner
 		glScissor(
 			batch.clipped_area._x,
-			batch.clipped_area._y,
+			// flip the y axis so that start point = bottom left corner
+			_window_size._y - batch.clipped_area._w - batch.clipped_area._y,
 			batch.clipped_area._z,
 			batch.clipped_area._w);
 
