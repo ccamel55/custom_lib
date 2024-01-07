@@ -13,3 +13,6 @@
 [submodule "unit_test/dependencies/Catch2"]
 	path = dependencies/Catch2
 	url = git@github.com:catchorg/Catch2.git
+[submodule "dependencies/glad"]
+	path = dependencies/glad
+	url = git@github.com:ccamel55/glad.git
