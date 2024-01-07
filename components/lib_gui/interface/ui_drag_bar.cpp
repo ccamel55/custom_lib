@@ -34,7 +34,7 @@ void ui_drag_bar::draw(lib::rendering::renderer& render)
 
 	// form name pinned box
 	render.draw_font(
-		pos + lib::point2Di(drag_bar::pin_offset._x + drag_bar::pin_size._x + 5, size._y / 2 - 1),
+		pos + lib::point2Di(drag_bar::pin_offset.x + drag_bar::pin_size.x + 5, size.y / 2 - 1),
 		color::white, font::title, get_name(), rendering::centered_y);
 }
 
@@ -72,8 +72,8 @@ void ui_drag_bar::input(const lib::input::input_handler& input)
 			const auto& mouseDelta = input.get_cursor_delta();
 			const lib::point2Di bound_pos =
 			{
-				std::clamp<int>(pos._x + mouseDelta._x, 0, context::screen_size._x - size._x),
-				std::clamp<int>(pos._y + mouseDelta._y, 0, context::screen_size._y - size._y)
+				std::clamp<int>(pos.x + mouseDelta.x, 0, context::screen_size.x - size.x),
+				std::clamp<int>(pos.y + mouseDelta.y, 0, context::screen_size.y - size.y)
 			};
 
 			set_position(bound_pos);

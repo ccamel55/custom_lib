@@ -30,19 +30,19 @@ class color
 public:
 	constexpr color() = default;
 
-	constexpr color(uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255) : _r(r), _g(g), _b(b), _a(a)
+	constexpr color(uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255) : r(r), g(g), b(b), a(a)
 	{
 	}
 
 	[[nodiscard]] constexpr color_f to_color_f() const
 	{
-		return {_r, _g, _b, _a};
+		return {r, g, b, a};
 	}
 
 public:
-	uint8_t _r = 0;
-	uint8_t _g = 0;
-	uint8_t _b = 0;
-	uint8_t _a = 255;
+	uint8_t r = 0;
+	uint8_t g = 0;
+	uint8_t b = 0;
+	uint8_t a = 255;
 };
 }  // namespace lib

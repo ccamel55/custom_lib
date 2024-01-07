@@ -10,9 +10,9 @@ namespace lib::gui
         const lib::point2Di& size)
     {
         return
-            (point._x >= position._x) &&
-            (point._y >= position._y) &&
-            (point._x <= position._x + size._x) &&
-            (point._y <= position._y + size._y);
+            (point.x >= position.x) &&
+            (point.y >= position.y) &&
+            (point.x <= position.x + size.x) &&
+            (point.y <= position.y + size.y);
     }
 }

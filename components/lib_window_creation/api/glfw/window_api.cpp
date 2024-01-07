@@ -116,7 +116,7 @@ bool window_api::register_renderer(std::shared_ptr<rendering::renderer>& rendere
 	this->renderer = renderer;
 
 	lib::point2Di window_size = {};
-	glfwGetWindowSize(_glfw_window_ptr, &window_size._x, &window_size._y);
+	glfwGetWindowSize(_glfw_window_ptr, &window_size.x, &window_size.y);
 
 	// initialize renderer using glfw stuff
 	renderer->bind_api(nullptr);

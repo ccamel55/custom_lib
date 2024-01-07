@@ -42,31 +42,31 @@ font_loader::font_loader(font_properties_t& font_properties, const uint8_t* font
 					padding,
 					on_edge_value,
 					pixel_dist_scale,
-					&internal_property.size._x,
-					&internal_property.size._y,
-					&font_property.offset._x,
-					&font_property.offset._y);
+					&internal_property.size.x,
+					&internal_property.size.y,
+					&font_property.offset.x,
+					&font_property.offset.y);
 
-		stbtt_GetCodepointHMetrics(&font_info, character, &font_property.spacing._x, nullptr);
-		stbtt_GetFontVMetrics(&font_info, &font_property.spacing._y, nullptr, nullptr);
+		stbtt_GetCodepointHMetrics(&font_info, character, &font_property.spacing.x, nullptr);
+		stbtt_GetFontVMetrics(&font_info, &font_property.spacing.y, nullptr, nullptr);
 
-		font_property.spacing._x = static_cast<int>(std::roundf(static_cast<float>(font_property.spacing._x) * scale));
-		font_property.spacing._y = static_cast<int>(std::roundf(static_cast<float>(font_property.spacing._y) * scale));
+		font_property.spacing.x = static_cast<int>(std::roundf(static_cast<float>(font_property.spacing.x) * scale));
+		font_property.spacing.y = static_cast<int>(std::roundf(static_cast<float>(font_property.spacing.y) * scale));
 
-		if (internal_property.size._x > 0 && internal_property.size._y > 0)
+		if (internal_property.size.x > 0 && internal_property.size.y > 0)
 		{
 			// convert int uint32 now, womp womp
-			internal_property.data = new uint8_t[internal_property.size._x * internal_property.size._y * 4];
+			internal_property.data = new uint8_t[internal_property.size.x * internal_property.size.y * 4];
 
 			const auto data_as_uint32 = reinterpret_cast<uint32_t*>(internal_property.data);
-			std::fill_n(data_as_uint32, internal_property.size._x * internal_property.size._y, 0x00000000);
+			std::fill_n(data_as_uint32, internal_property.size.x * internal_property.size.y, 0x00000000);
 
-			for (int y = 0; y < internal_property.size._y; y++)
+			for (int y = 0; y < internal_property.size.y; y++)
 			{
-				for (int x = 0; x < internal_property.size._x; x++)
+				for (int x = 0; x < internal_property.size.x; x++)
 				{
 					// colors written as ABGR
-					const auto bitmap_index = (internal_property.size._x * y) + x;
+					const auto bitmap_index = (internal_property.size.x * y) + x;
 
 					if (const auto val = stb_bitmap[bitmap_index]; val > 0)
 					{
