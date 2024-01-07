@@ -306,8 +306,8 @@ void render_api::draw_render_command(const render_command& render_command)
 		glScissor(
 			batch.clipped_area._x,
 			batch.clipped_area._y,
-			batch.clipped_area._z - batch.clipped_area._x,
-			batch.clipped_area._w - batch.clipped_area._y);
+			batch.clipped_area._z,
+			batch.clipped_area._w);
 
 		glDrawElements(
 			GL_TRIANGLES,

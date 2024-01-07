@@ -24,22 +24,19 @@ window_api::window_api(const window_parameters_t& window_parameters, std::functi
 		assert(false);
 	}
 
-	if (window_parameters.flags.has(window_flags::window_flag_opengl3))
-	{
-		// Opengl version 3.3
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
-		glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
-		glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
+#ifdef DEF_LIB_RENDERING_gl3
+	// Opengl version 3.3
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
+	glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
 
-		// OpenGl core profile
-		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-	}
-	else
-	{
-		// Vulkan and other backends will not use OpenGL
-		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	}
+	// OpenGl core profile
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+#else
+	// Vulkan and other backends will not use OpenGL
+	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+#endif
 
 	// disable msaa
 	glfwWindowHint(GLFW_SAMPLES, 0);
@@ -84,7 +81,6 @@ window_api::~window_api()
 	this_ptr = nullptr;
 }
 
-
 void window_api::window_loop() const
 {
 	// run main render thread from current thread
@@ -117,6 +113,8 @@ void window_api::focus_window() const
 #ifndef DEF_LIB_RENDERING_off
 bool window_api::register_renderer(std::shared_ptr<rendering::renderer>& renderer)
 {
+	this->renderer = renderer;
+
 	lib::point2Di window_size = {};
 	glfwGetWindowSize(_glfw_window_ptr, &window_size._x, &window_size._y);
 
@@ -124,7 +122,15 @@ bool window_api::register_renderer(std::shared_ptr<rendering::renderer>& rendere
 	renderer->bind_api(nullptr);
 	renderer->set_window_size(window_size);
 
+	glfwSetWindowSizeCallback(_glfw_window_ptr, window_size_callback);
+
 	return true;
+}
+
+void window_api::window_size_callback(GLFWwindow* window, int width, int height)
+{
+	// _renderer should never ever ever be able to be nullptr
+	this_ptr->renderer.lock()->set_window_size({width, height});
 }
 #endif
 
@@ -259,7 +265,7 @@ lib::input::key_button glfw_to_mouse_key(int button)
 bool window_api::register_input_handler(std::shared_ptr<input::input_handler>& input_handler)
 {
 	// register callback to glfw
-	_input_handler = input_handler;
+	this->input_handler = input_handler;
 
 	glfwSetKeyCallback(_glfw_window_ptr, key_callback);
 	glfwSetScrollCallback(_glfw_window_ptr, scroll_callback);
@@ -284,7 +290,7 @@ void window_api::key_callback(GLFWwindow* window, int key, int scancode, int act
 		.state = action == GLFW_PRESS,
 	};
 
-	this_ptr->add_input(input);
+	this_ptr->input_handler.lock()->add_input(input);
 }
 
 void window_api::scroll_callback(GLFWwindow* window, double offset_x, double offset_y)
@@ -296,7 +302,7 @@ void window_api::scroll_callback(GLFWwindow* window, double offset_x, double off
 		.state = lib::point2Di{ static_cast<int>(offset_x), static_cast<int>(offset_y)}
 	};
 
-	this_ptr->add_input(input);
+	this_ptr->input_handler.lock()->add_input(input);
 }
 
 void window_api::cursor_position_callback(GLFWwindow* window, double pos_x, double pos_y)
@@ -308,7 +314,7 @@ void window_api::cursor_position_callback(GLFWwindow* window, double pos_x, doub
 		.state = lib::point2Di{ static_cast<int>(pos_x), static_cast<int>(pos_y)}
 	};
 
-	this_ptr->add_input(input);
+	this_ptr->input_handler.lock()->add_input(input);
 }
 
 void window_api::mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
@@ -320,6 +326,6 @@ void window_api::mouse_button_callback(GLFWwindow* window, int button, int actio
 		.state = action == GLFW_PRESS,
 	};
 
-	this_ptr->add_input(input);
+	this_ptr->input_handler.lock()->add_input(input);
 }
 #endif
