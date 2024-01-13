@@ -8,8 +8,6 @@ namespace lib::utils
 class fps_helper
 {
 public:
-	explicit fps_helper(std::chrono::milliseconds reset_interval = std::chrono::milliseconds(0));
-
     //! Reset all values
     void reset();
 
@@ -36,9 +34,6 @@ private:
     float _max_frametime = 0.f;
     float _average_frametime = 0.f;
 
-	std::chrono::milliseconds _reset_interval = std::chrono::milliseconds(0);
-
-	std::chrono::high_resolution_clock::time_point _last_reset = std::chrono::high_resolution_clock::now();
-	std::chrono::high_resolution_clock::time_point _last_frame_time = std::chrono::high_resolution_clock::now();
+	std::chrono::system_clock::time_point _last_frame_time = std::chrono::system_clock::now();
 };
 }

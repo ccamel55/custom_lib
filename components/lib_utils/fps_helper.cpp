@@ -5,12 +5,6 @@
 
 using namespace lib::utils;
 
-fps_helper::fps_helper(std::chrono::milliseconds reset_interval)
-	: _reset_interval(reset_interval)
-{
-	reset();
-}
-
 void fps_helper::reset()
 {
 	_max_fps = 0;
@@ -21,29 +15,22 @@ void fps_helper::reset()
 	_max_frametime = 0.f;
 	_average_frametime = 0.f;
 
-	_last_reset = std::chrono::high_resolution_clock::now();
-	_last_frame_time = std::chrono::high_resolution_clock::now();
+	_last_frame_time = std::chrono::system_clock::now();
 }
 
 void fps_helper::update()
 {
-	const auto frametime = std::chrono::high_resolution_clock::now() - _last_frame_time;
-	_last_frame_time = std::chrono::high_resolution_clock::now();
+	const auto frame_start_time = std::chrono::system_clock::now();
+	const auto frametime = static_cast<float>(std::chrono::duration_cast<std::chrono::microseconds>(
+		frame_start_time - _last_frame_time).count()) / 1000.f;
 
-	update(static_cast<float>(std::chrono::duration_cast<std::chrono::milliseconds>(frametime).count()));
+	_last_frame_time = frame_start_time;
+
+	update(frametime);
 }
 
 void fps_helper::update(float frametime)
 {
-	if (_reset_interval > std::chrono::milliseconds(0))
-	{
-		if (const auto time_since_reset = std::chrono::high_resolution_clock::now() - _last_reset;
-			time_since_reset > _reset_interval)
-		{
-			reset();
-		}
-	}
-
 	const auto current_fps = static_cast<uint16_t>(1000.f / frametime);
 
 	_max_fps = std::max(_max_fps, current_fps);
