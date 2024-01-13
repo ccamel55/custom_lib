@@ -20,6 +20,9 @@ function(lib_option)
 
     cmake_parse_arguments(LIB_OPTIONS "" "${LIB_SINGLE_VALUE_ARGS}" "${LIB_MULTI_VALUE_ARGS}" ${ARGN})
 
+    message(STATUS "-------------------------------------------------")
+    option(${LIB_OPTIONS_NAME} ${LIB_OPTIONS_DESCRIPTION})
+
     if (NOT LIB_OPTIONS_NAME)
         message( FATAL_ERROR "'NAME' argument required.")
     endif ()
@@ -32,12 +35,16 @@ function(lib_option)
         message( FATAL_ERROR "'VALID_ARGS' argument required.")
     endif ()
 
-    message(STATUS "-------------------------------------------------")
-    option(${LIB_OPTIONS_NAME} ${LIB_OPTIONS_DESCRIPTION})
+    # remove duplicate args
+    list(REMOVE_DUPLICATES LIB_OPTIONS_VALID_ARGS)
 
     # check if the option is valid
     if (NOT ${LIB_OPTIONS_NAME} IN_LIST LIB_OPTIONS_VALID_ARGS)
-        message(SEND_ERROR "${LIB_OPTIONS_NAME} invalid option, valid options: ${LIB_OPTIONS_VALID_ARGS}")
+        # default to first value in argument list if not defined
+        list(GET LIB_OPTIONS_VALID_ARGS 0 VALID_ARG_FIRST_ELEMENT)
+
+        message(WARNING "${LIB_OPTIONS_NAME} is invalid, defaulting to: ${VALID_ARG_FIRST_ELEMENT} (valid options: ${LIB_OPTIONS_VALID_ARGS})")
+        set(${LIB_OPTIONS_NAME} ${VALID_ARG_FIRST_ELEMENT})
     else ()
         message(STATUS "${LIB_OPTIONS_NAME}=${${LIB_OPTIONS_NAME}}")
     endif()
