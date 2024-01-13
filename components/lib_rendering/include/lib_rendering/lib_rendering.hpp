@@ -11,6 +11,7 @@
 #include <filesystem>
 #include <memory>
 #include <functional>
+#include <chrono>
 
 namespace lib::rendering
 {
@@ -55,8 +56,7 @@ public:
 	//! update current clipped area for draws
 	void update_clipped_area(const lib::point4Di& clipped_area);
 
-	void set_frame_time(float frame_time);
-	[[nodiscard]] float get_frame_time() const;
+	[[nodiscard]] float get_frame_time_ms() const;
 
 	void set_window_size(const lib::point2Di& window_size);
 	[[nodiscard]] const lib::point2Di& get_window_size() const;
@@ -118,7 +118,9 @@ private:
 	texture_id _opaque_texture_id = 0;
 
 	//! frame time given in milliseconds
-	float _frame_time = 0.1f;
+	float _frame_time = 0.f;
+
+	std::chrono::system_clock::time_point _last_frame_time = std::chrono::system_clock::now();
 
 	//! size of our window given in pixels, width x height
 	point2Di _window_size = {};

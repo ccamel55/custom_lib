@@ -137,6 +137,13 @@ void renderer::build_texture()
 
 void renderer::draw_frame()
 {
+	const auto frame_start_time = std::chrono::system_clock::now();
+
+	_frame_time = static_cast<float>(std::chrono::duration_cast<std::chrono::microseconds>(
+		frame_start_time - _last_frame_time).count()) / 1000.f;
+
+	_last_frame_time = frame_start_time;
+
 	// popluate the draw command
 	for (const auto& callback : _render_callbacks)
 	{
@@ -151,12 +158,7 @@ void renderer::draw_frame()
 	_render_command.reset();
 }
 
-void renderer::set_frame_time(float frame_time)
-{
-	_frame_time = frame_time;
-}
-
-float renderer::get_frame_time() const
+float renderer::get_frame_time_ms() const
 {
 	return _frame_time;
 }
