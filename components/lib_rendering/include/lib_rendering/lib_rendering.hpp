@@ -61,6 +61,9 @@ public:
 	void set_window_size(const lib::point2Di& window_size);
 	[[nodiscard]] const lib::point2Di& get_window_size() const;
 
+	void set_fps_limit(uint16_t fps);
+	[[nodiscard]] uint16_t get_fps_limit() const;
+
 public:
 	void draw_image(const lib::point2Di& pos,
                     const lib::point2Di& size,
@@ -108,6 +111,12 @@ public:
 				   bitflag flags = font_flags::none);
 
 private:
+	//! Desired max fps
+	uint16_t _fps_limit = 0;
+
+	//! Desired frame interval in ms, calculated from fps limit
+	float _desired_frame_interval = 0.f;
+
 	//! atlas generator is used to generate a texture atlas
 	atlas_generator _atlas_generator = {};
 

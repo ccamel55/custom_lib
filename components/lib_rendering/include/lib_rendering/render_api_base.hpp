@@ -18,7 +18,10 @@ public:
 	//! Update screen size, this should be called from the renderer.
 	virtual void update_screen_size(const lib::point2Di& window_size) = 0;
 
-	//! render our render_command_t instance
-	virtual void draw_render_command(const render_command& render_command) = 0;
+	//! draw our render command to the frame buffer
+	virtual void update_frame_buffer(const render_command& render_command) = 0;
+
+	//! draw the frame buffer to the screen
+	virtual void draw_frame_buffer() = 0;
 };
 }  // namespace lib::rendering
