@@ -18,6 +18,7 @@ private:
 	GLuint _last_array_buffer = 0;
 	GLuint _last_index_buffer = 0;
 	GLuint _last_vertex_array_object = 0;
+	GLuint _last_frame_buffer = 0;
 	GLint _last_viewport[4] = {};
 	GLint _last_scissor_box[4] = {};
 	GLenum _last_blend_src_rgb = 0;

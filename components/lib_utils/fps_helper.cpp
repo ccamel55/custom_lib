@@ -31,12 +31,12 @@ void fps_helper::update()
 
 void fps_helper::update(float frametime)
 {
-	const auto current_fps = static_cast<uint16_t>(1000.f / frametime);
+	_current_fps = static_cast<uint16_t>(1000.f / frametime);
 
-	_max_fps = std::max(_max_fps, current_fps);
-	_min_fps = std::min(_min_fps, current_fps);
+	_max_fps = std::max(_max_fps, _current_fps);
+	_min_fps = std::min(_min_fps, _current_fps);
 
-	_average_fps = (_average_fps + current_fps) / 2;
+	_average_fps = (_average_fps + _current_fps) / 2;
 
 	_max_frametime = std::max(_max_frametime, frametime);
 	_min_frametime = std::min(_min_frametime, frametime);
@@ -57,6 +57,11 @@ uint16_t fps_helper::get_min_fps() const
 uint16_t fps_helper::get_average_fps() const
 {
 	return _average_fps;
+}
+
+uint16_t fps_helper::get_current_fps() const
+{
+	return _current_fps;
 }
 
 float fps_helper::get_max_frametime_ms() const

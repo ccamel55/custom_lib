@@ -15,7 +15,10 @@ public:
 
 	// Prevent copying the singleton.
 	singleton(const singleton&) = delete;
+	singleton(const singleton&&) = delete;
+
 	void operator=(const singleton&) = delete;
+	void operator=(const singleton&&) = delete;
 
 protected:
 	// Ensure constructor and destructor is only callable from the singleton.
