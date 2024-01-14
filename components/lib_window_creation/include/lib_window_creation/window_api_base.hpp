@@ -22,6 +22,7 @@ enum window_flags : bitflag_t
     window_flag_none = 0 << 0,
     window_flag_no_border = 1 << 0,
     window_flag_resizeable = 1 << 1,
+	window_flag_vsync = 1 << 2,
 };
 
 struct window_parameters_t

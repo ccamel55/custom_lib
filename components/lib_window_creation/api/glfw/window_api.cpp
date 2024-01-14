@@ -68,7 +68,14 @@ window_api::window_api(const window_parameters_t& window_parameters, std::functi
 
 	glfwMakeContextCurrent(_glfw_window_ptr);
 
-	glfwSwapInterval(1);
+	if (window_parameters.flags.has(window_flags::window_flag_vsync))
+	{
+		glfwSwapInterval(1);
+	}
+	else
+	{
+		glfwSwapInterval(0);
+	}
 
 	glfwSetInputMode(_glfw_window_ptr, GLFW_STICKY_KEYS, GLFW_TRUE);
 
@@ -84,7 +91,7 @@ window_api::~window_api()
 void window_api::window_loop() const
 {
 	// run main render thread from current thread
-	while (glfwGetKey(_glfw_window_ptr, GLFW_KEY_ESCAPE) != GLFW_PRESS && glfwWindowShouldClose(_glfw_window_ptr) == 0)
+	while (glfwWindowShouldClose(_glfw_window_ptr) == 0)
 	{
 		glfwPollEvents();
 
