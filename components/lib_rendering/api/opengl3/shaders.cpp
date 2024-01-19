@@ -7,7 +7,7 @@ using namespace lib::rendering::gl3;
 
 namespace
 {
-GLuint compile_shader(const char* shader_src, GLuint shader_type)
+const auto compile_shader = [](const char* shader_src, GLuint shader_type) -> GLuint
 {
 	const auto shader_id = glCreateShader(shader_type);
 
@@ -34,11 +34,17 @@ GLuint compile_shader(const char* shader_src, GLuint shader_type)
 	}
 
 	return shader_id;
-}
+};
 }  // namespace
 
-shaders::shaders(const char* vertex_shader, const char* fragment_shader) : _shader_program_id(0)
+void shaders::create(const char* vertex_shader, const char* fragment_shader)
 {
+	if (_shader_program_id != 0)
+	{
+		lib_log_w("shaders: shader already created");
+		return;
+	}
+
 	const auto vertex_shader_id = compile_shader(vertex_shader, GL_VERTEX_SHADER);
 	const auto fragment_shader_id = compile_shader(fragment_shader, GL_FRAGMENT_SHADER);
 

@@ -30,10 +30,9 @@ enum font_flags: bitflag_t
 class renderer
 {
 public:
-	~renderer();
-
 	//! bind our render API to an existing render context
-	void bind_api(void* api_context);
+	//! \a flush_buffers to true if we want to clear currently draw buffer when rendering frame.
+	void bind_api(const void* api_context, bool flush_buffers);
 
 	//! remove our render API from an existing context and reset the renderer
 	void unbind_api();

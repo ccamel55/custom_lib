@@ -8,7 +8,7 @@ namespace lib::window_creation
 class window_creation
 {
 public:
-	window_creation(const window_parameters_t& window_parameters);
+	explicit window_creation(const window_parameters_t& window_parameters);
 
 #ifndef DEF_LIB_RENDERING_off
 	//! Return a reference to the renderer, because this window owns the renderer, there should never be a case

@@ -5,6 +5,7 @@
 #include <core_sdk/types/point/point4D.hpp>
 
 #include <array>
+#include <vector>
 
 namespace lib::rendering
 {
@@ -17,9 +18,8 @@ constexpr uint32_t MAX_INDICES = MAX_VERTICES * 3;
 //! layout of each point, we only draw using triangles
 struct vertex_t
 {
-	vertex_t() = default;
-
-	vertex_t(const lib::point2Df& position,
+	constexpr vertex_t() = default;
+	constexpr vertex_t(const lib::point2Df& position,
 			 const lib::color& color,
 			 const lib::point2Df& texture_position)
 		: position(position), color(color), texture_position(texture_position)
@@ -51,9 +51,8 @@ enum class shader_type: uint8_t
 
 struct batch_t
 {
-	batch_t() = default;
-
-	explicit batch_t(const lib::point4Di& clipped_area) : clipped_area(clipped_area)
+	constexpr batch_t() = default;
+	constexpr explicit batch_t(const lib::point4Di& clipped_area) : clipped_area(clipped_area)
 	{
 	}
 
@@ -99,9 +98,9 @@ struct font_property_t
 
 struct font_internal_property_t
 {
-	// holds texture data in ABGR
-	// todo: make this all smart pointers
-	uint8_t* data = nullptr;
+	// holds texture data in ABGR, std::vector does not store data in stack
+	// unless we explicitly define an allocator that does so
+	std::vector<uint8_t> data = {};
 
 	// size of font data
 	lib::point2Di size = {};

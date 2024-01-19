@@ -9,17 +9,16 @@ class image_loader
 {
 public:
 	explicit image_loader(const std::filesystem::path& image);
-	~image_loader();
 	
 	[[nodiscard]] int get_width() const;
 	[[nodiscard]] int get_height() const;
-	[[nodiscard]] uint8_t* get_byte_buffer() const;
+	[[nodiscard]] const std::vector<uint8_t>& get_byte_buffer() const;
 
 private:
-	std::filesystem::path _filepath;
-	uint8_t* _data;
+	std::filesystem::path _filepath = {};
+	std::vector<uint8_t> _data = {};
 
-	int _width;
-	int _height;
+	int _width = 0;
+	int _height = 0;
 };
 }  // namespace lib::rendering
