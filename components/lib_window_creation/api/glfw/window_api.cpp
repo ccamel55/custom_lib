@@ -2,10 +2,6 @@
 
 #include <cassert>
 
-#ifdef DEF_LIB_RENDERING_gl3
-#include <glad/glad.hpp>
-#endif
-
 using namespace lib::window_creation;
 
 window_api::window_api(const window_parameters_t& window_parameters, std::function<void()> window_loop_callback)
@@ -87,9 +83,6 @@ void window_api::window_loop() const
 	{
 		glfwPollEvents();
 
-#ifdef DEF_LIB_RENDERING_gl3
-    glClear(GL_COLOR_BUFFER_BIT);
-#endif
 		// callback the parent which will do more stuff
 		_window_loop_callback();
 
@@ -118,7 +111,7 @@ bool window_api::register_renderer(std::shared_ptr<rendering::renderer>& rendere
 	glfwGetWindowSize(_glfw_window_ptr, &window_size.x, &window_size.y);
 
 	// initialize renderer using glfw stuff
-	renderer->bind_api(nullptr);
+	renderer->bind_api(nullptr, true);
 	renderer->set_window_size(window_size);
 
 	glfwSetWindowSizeCallback(_glfw_window_ptr, window_size_callback);

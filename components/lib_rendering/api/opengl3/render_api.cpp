@@ -131,27 +131,34 @@ constexpr char sdf_outline_fragment_shader[] = R"(
 	        out_color = sdf_texture * fragment_color;
         }
     )";
-
-	constexpr auto default_window_size = lib::point2Di{1280, 720};
-
-	const auto frame_buffer_vertices = std::array<vertex_t, 6>
-	{
-		vertex_t{{-1, 1}, {255, 255, 255, 255}, {0, 1}},
-		vertex_t{{1, 1}, {255, 255, 255, 255}, {1, 1}},
-		vertex_t{{1, -1}, {255, 255, 255, 255}, {1, 0}},
-
-		vertex_t{{1, -1}, {255, 255, 255, 255}, {1, 0}},
-		vertex_t{{-1, -1}, {255, 255, 255, 255}, {0, 0}},
-		vertex_t{{-1, 1}, {255, 255, 255, 255}, {0, 1}},
-	};
 }  // namespace
 
-render_api::render_api()
-	: _normal_shader(vertex_shader, normal_fragment_shader), _sdf_shader(vertex_shader, sdf_fragment_shader),
-	_sdf_outline_shader(vertex_shader, sdf_outline_fragment_shader), _vertex_array(0), _vertex_buffer(0),
-	_index_buffer(0),_texture_atlas(0), _frame_buffer(0), _frame_buffer_vertex_array(0), _frame_buffer_vertex_buffer(0),
-	_frame_buffer_texture(0), _frame_buffer_shader(frame_buffer_vertex_shader, frame_buffer_fragment_shader)
+render_api::render_api(const void* api_context, bool flush_buffers)
+	: render_api_base(api_context, flush_buffers)
 {
+	(void)api_context;
+
+	// load opengl
+	if (gladLoadGL() == 0)
+	{
+		lib_log_e("renderer: could not load opengl");
+		assert(false);
+	}
+
+	GLint major = 0;
+	GLint minor = 0;
+
+	glGetIntegerv(GL_MAJOR_VERSION, &major);
+	glGetIntegerv(GL_MINOR_VERSION, &minor);
+
+	lib_log_d("renderer:: opengl version {}.{}", major, minor);
+
+	// setup shaders
+	_normal_shader.create(vertex_shader, normal_fragment_shader);
+	_sdf_shader.create(vertex_shader, sdf_fragment_shader);
+	_sdf_outline_shader.create(vertex_shader, sdf_outline_fragment_shader);
+	_frame_buffer_shader.create(frame_buffer_vertex_shader, frame_buffer_fragment_shader);
+
 	_render_state.capture();
 
 	// generate buffers
@@ -207,7 +214,7 @@ render_api::render_api()
 		glBindBuffer(GL_ARRAY_BUFFER, _frame_buffer_vertex_buffer);
 		glBufferData(GL_ARRAY_BUFFER,
 			sizeof(frame_buffer_vertices),
-			frame_buffer_vertices.data(),
+			frame_buffer_vertices,
 			GL_STATIC_DRAW);
 
 		glEnableVertexAttribArray(0);
@@ -408,6 +415,11 @@ void render_api::update_frame_buffer(const render_command& render_command)
 
 void render_api::draw_frame_buffer()
 {
+	if (_flush_buffers)
+	{
+		glClear(GL_COLOR_BUFFER_BIT);
+	}
+
 	// backup render state
 	_render_state.capture();
 
@@ -438,7 +450,7 @@ void render_api::draw_frame_buffer()
 	glBindVertexArray(_frame_buffer_vertex_array);
 	glBindBuffer(GL_ARRAY_BUFFER, _frame_buffer_vertex_buffer);
 
-	glDrawArrays(GL_TRIANGLES, 0, 6);
+	glDrawArrays(GL_TRIANGLES, 0, frame_buffer_vertex_count);
 
 	// this will restore the old frame buffer if it was set
 	_render_state.restore();

@@ -7,7 +7,7 @@
 
 namespace lib::window_creation
 {
-class window_api : public window_api_base
+class window_api final : public window_api_base
 {
 public:
 	window_api(const window_parameters_t& window_parameters, std::function<void()> window_loop_callback);

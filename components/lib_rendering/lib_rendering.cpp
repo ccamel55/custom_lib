@@ -8,55 +8,17 @@
 
 using namespace lib::rendering;
 
-namespace
+void renderer::bind_api(const void* api_context, bool flush_buffers)
 {
-// sometimes if this is too small we might end up with some weird artifacts
-constexpr uint8_t opaque_texture_width = 2;
-constexpr uint8_t opaque_texture_height = 2;
-}  // namespace
-
-
-renderer::~renderer()
-{
-	if (_render_api)
-	{
-		// we don't need to explicitly do this but for sake of readability
-		_render_api.reset();
-	}
-}
-
-void renderer::bind_api(void* api_context)
-{
-	(void)api_context;
-
 	if (_render_api)
 	{
 		lib_log_w("renderer: tried to register new api context with existing context");
 		return;
 	}
 
-#ifdef DEF_LIB_RENDERING_gl3
-	if (gladLoadGL() == 0)
-	{
-		lib_log_e("renderer: could not load opengl");
-		assert(false);
-	}
-
-	GLint major = 0;
-	GLint minor = 0;
-
-	glGetIntegerv(GL_MAJOR_VERSION, &major);
-	glGetIntegerv(GL_MINOR_VERSION, &minor);
-
-	lib_log_d("renderer:: opengl version {}.{}", major, minor);
-#endif
-
-	auto opaque_texture_data = std::array<uint8_t, opaque_texture_width * opaque_texture_height * 4>{};
-	std::fill(opaque_texture_data.begin(), opaque_texture_data.end(), 0xff);
-
-	_render_api = std::make_unique<render_api>();
+	_render_api = std::make_unique<render_api>(api_context, flush_buffers);
 	_opaque_texture_id = _atlas_generator.add_texture(
-		opaque_texture_data.data(),
+		opaque_texture_data,
 		opaque_texture_width,
 		opaque_texture_height
 		);
@@ -130,7 +92,7 @@ void renderer::build_texture()
 	// add to render API as one giant texture,
 	// note: render_api_texture_id != texture_id
 	_render_api->bind_atlas(
-		_atlas_generator.get_byte_buffer(),
+		_atlas_generator.get_byte_buffer().data(),
 		_atlas_generator.get_width(),
 		_atlas_generator.get_height());
 }
@@ -138,10 +100,9 @@ void renderer::build_texture()
 void renderer::draw_frame()
 {
 	const auto frame_start_time = std::chrono::system_clock::now();
-	const auto skip_frame = (static_cast<float>(std::chrono::duration_cast<std::chrono::microseconds>(
-		frame_start_time - _last_frame_time).count()) / 1000.f) < _desired_frame_interval;
 
-	if (skip_frame)
+	if ((static_cast<float>(std::chrono::duration_cast<std::chrono::microseconds>(
+		frame_start_time - _last_frame_time).count()) / 1000.f) < _desired_frame_interval)
 	{
 		// since we draw to a frame buffer object, we can restore the last draw state rather than re-render everything,
 		// this allows us to limit the fps without having to pause the render thread which might be responsible for

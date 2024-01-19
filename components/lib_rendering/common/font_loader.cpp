@@ -1,4 +1,6 @@
 #include <lib_rendering/common/font_loader.hpp>
+#include <lib_rendering/render_api_base.hpp>
+
 #include <core_sdk/logger.hpp>
 
 #define STB_TRUETYPE_IMPLEMENTATION
@@ -56,9 +58,9 @@ font_loader::font_loader(font_properties_t& font_properties, const uint8_t* font
 		if (internal_property.size.x > 0 && internal_property.size.y > 0)
 		{
 			// convert int uint32 now, womp womp
-			internal_property.data = new uint8_t[internal_property.size.x * internal_property.size.y * 4];
+			internal_property.data.resize(internal_property.size.x * internal_property.size.y * texture_pixel_size);
 
-			const auto data_as_uint32 = reinterpret_cast<uint32_t*>(internal_property.data);
+			const auto data_as_uint32 = reinterpret_cast<uint32_t*>(internal_property.data.data());
 			std::fill_n(data_as_uint32, internal_property.size.x * internal_property.size.y, 0x00000000);
 
 			for (int y = 0; y < internal_property.size.y; y++)
@@ -78,14 +80,6 @@ font_loader::font_loader(font_properties_t& font_properties, const uint8_t* font
 		}
 
 		stbtt_FreeSDF(stb_bitmap, nullptr);
-	}
-}
-
-font_loader::~font_loader()
-{
-	for (const auto& font_data: _font_internal_properties)
-	{
-		delete[] font_data.data;
 	}
 }
 

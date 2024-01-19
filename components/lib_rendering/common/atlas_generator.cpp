@@ -1,4 +1,5 @@
 #include <lib_rendering/common/atlas_generator.hpp>
+#include <lib_rendering/render_api_base.hpp>
 
 #define STB_RECT_PACK_IMPLEMENTATION
 #include <core_sdk/logger.hpp>
@@ -13,7 +14,7 @@ namespace
 }
 
 atlas_generator::atlas_generator()
-	: _data(nullptr), _width(default_width), _height(default_height)
+	: _width(default_width), _height(default_height)
 {
 	_texture_data.reserve(128);
 	_texture_rects.reserve(128);
@@ -22,26 +23,23 @@ atlas_generator::atlas_generator()
 
 atlas_generator::~atlas_generator()
 {
+	// because we predelcare some rect pact stuff in the header we need to explictly define the
+	// desctructor else we get linking issues :(
 	reset();
 }
 
 void atlas_generator::reset()
 {
-	delete[] _data;
-
-	for (const auto& texture_data : _texture_data)
-    {
-        delete[] texture_data;
-    }
-
+	_data.clear();
 	_texture_data.clear();
 	_texture_rects.clear();
+	_texture_properties.clear();
 
 	_width = default_width;
 	_height = default_height;
 }
 
-texture_id atlas_generator::add_texture(const uint8_t* data, int width, int height)
+texture_id atlas_generator::add_texture(const std::vector<uint8_t>& data, int width, int height)
 {
 	// ensure each array is same sized else wise our ID screws up
 	assert(_texture_rects.size() == _texture_data.size());
@@ -55,15 +53,11 @@ texture_id atlas_generator::add_texture(const uint8_t* data, int width, int heig
 
 	lib_log_d("atlas_generator: added texture with size {}x{}", width, height);
 
-	_texture_properties.emplace_back();
-	const auto id = static_cast<texture_id>(_texture_properties.size() - 1);
-
 	// make a local copy for us to use later
-	const auto texture_size = width * height * 4;
-	const auto texture_data = _texture_data.emplace_back(new uint8_t[texture_size]);
+	_texture_properties.emplace_back();
+	_texture_data.emplace_back(data);
 
-	std::copy(&data[0], &data[texture_size], texture_data);
-
+	const auto id = static_cast<texture_id>(_texture_properties.size() - 1);
 	auto& texture_rect = _texture_rects.emplace_back();
 
 	texture_rect.w = width;
@@ -118,9 +112,9 @@ bool atlas_generator::build_atlas()
 	}
 
 	// generate atlas
-	_data = new uint8_t[_width * _height * 4];
+	_data.resize(_width * _height * texture_pixel_size);
 
-	const auto data_as_uint32 = reinterpret_cast<uint32_t*>(_data);
+	const auto data_as_uint32 = reinterpret_cast<uint32_t*>(_data.data());
 	std::fill_n(data_as_uint32, _width * _height, 0x00000000);
 
 	for (size_t i = 0; i < _texture_rects.size(); i++)
@@ -135,7 +129,7 @@ bool atlas_generator::build_atlas()
 		}
 
 		// write to texture atlas
-		const auto texture_data = reinterpret_cast<uint32_t*>(_texture_data.at(i));
+		const auto texture_data = reinterpret_cast<uint32_t*>(_texture_data.at(i).data());
 
 		for (int y = 0; y < texture_rect.h; y++)
 		{
@@ -147,8 +141,6 @@ bool atlas_generator::build_atlas()
 				data_as_uint32[data_index] = texture_data[bitmap_index];
 			}
 		}
-
-		delete[] texture_data;
 
 		// calculate texture properties, texture_rect.id should equal i
 		auto& texture_properties = _texture_properties.at(i);
@@ -185,7 +177,7 @@ int atlas_generator::get_height() const
 	return _height;
 }
 
-const uint8_t* atlas_generator::get_byte_buffer() const
+const std::vector<uint8_t>& atlas_generator::get_byte_buffer() const
 {
 	return _data;
 }
