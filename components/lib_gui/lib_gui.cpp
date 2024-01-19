@@ -8,9 +8,7 @@
 
 using namespace lib::gui;
 
-void gui::init(
-	std::weak_ptr<lib::input::input_handler>&& input_handler,
-	std::weak_ptr<lib::rendering::renderer>&& renderer)
+gui::gui(std::weak_ptr<lib::input::input_handler>&& input_handler, std::weak_ptr<lib::rendering::renderer>&& renderer)
 {
 	_input_handler = std::move(input_handler);
 	_renderer = std::move(renderer);
@@ -86,12 +84,6 @@ void gui::init(
 			window->draw(render);
 		}
 	});
-}
-
-void gui::destroy()
-{
-	_input_handler = {};
-	_renderer = {};
 }
 
 void gui::toggle_visibility()

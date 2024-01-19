@@ -8,12 +8,6 @@
 
 using namespace lib::window_creation;
 
-namespace
-{
-// this is very annoying, there is nothing we can really do to get around this besides using an exposed variable.
-window_api_base* this_ptr = nullptr;
-}  // namespace
-
 window_api::window_api(const window_parameters_t& window_parameters, std::function<void()> window_loop_callback)
 	: window_api_base(std::move(window_loop_callback))
 {
@@ -26,8 +20,8 @@ window_api::window_api(const window_parameters_t& window_parameters, std::functi
 
 #ifdef DEF_LIB_RENDERING_gl3
 	// Opengl version 3.3
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
 
@@ -78,14 +72,12 @@ window_api::window_api(const window_parameters_t& window_parameters, std::functi
 	}
 
 	glfwSetInputMode(_glfw_window_ptr, GLFW_STICKY_KEYS, GLFW_TRUE);
-
-	this_ptr = this;
+	glfwSetWindowUserPointer(_glfw_window_ptr, this);
 }
 
 window_api::~window_api()
 {
 	glfwTerminate();
-	this_ptr = nullptr;
 }
 
 void window_api::window_loop() const
@@ -136,7 +128,7 @@ bool window_api::register_renderer(std::shared_ptr<rendering::renderer>& rendere
 
 void window_api::window_size_callback(GLFWwindow* window, int width, int height)
 {
-	// _renderer should never ever ever be able to be nullptr
+	const auto this_ptr = static_cast<window_api*>(glfwGetWindowUserPointer(window));
 	this_ptr->renderer.lock()->set_window_size({width, height});
 }
 #endif
@@ -297,6 +289,7 @@ void window_api::key_callback(GLFWwindow* window, int key, int scancode, int act
 		.state = action == GLFW_PRESS,
 	};
 
+	const auto this_ptr = static_cast<window_api*>(glfwGetWindowUserPointer(window));
 	this_ptr->input_handler.lock()->add_input(input);
 }
 
@@ -309,6 +302,7 @@ void window_api::scroll_callback(GLFWwindow* window, double offset_x, double off
 		.state = lib::point2Di{ static_cast<int>(offset_x), static_cast<int>(offset_y)}
 	};
 
+	const auto this_ptr = static_cast<window_api*>(glfwGetWindowUserPointer(window));
 	this_ptr->input_handler.lock()->add_input(input);
 }
 
@@ -321,6 +315,7 @@ void window_api::cursor_position_callback(GLFWwindow* window, double pos_x, doub
 		.state = lib::point2Di{ static_cast<int>(pos_x), static_cast<int>(pos_y)}
 	};
 
+	const auto this_ptr = static_cast<window_api*>(glfwGetWindowUserPointer(window));
 	this_ptr->input_handler.lock()->add_input(input);
 }
 
@@ -333,6 +328,7 @@ void window_api::mouse_button_callback(GLFWwindow* window, int button, int actio
 		.state = action == GLFW_PRESS,
 	};
 
+	const auto this_ptr = static_cast<window_api*>(glfwGetWindowUserPointer(window));
 	this_ptr->input_handler.lock()->add_input(input);
 }
 #endif

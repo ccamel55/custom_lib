@@ -1,20 +1,14 @@
 #pragma once
 
 #include <thread>
-
-#include <core_sdk/singleton.hpp>
 #include <lib_window_creation/window_api_base.hpp>
 
 namespace lib::window_creation
 {
-class window_creation: public singleton<window_creation>
+class window_creation
 {
 public:
-	//! initalize window creation, treat this as a constructor
-	void init(const window_parameters_t& window_parameters);
-
-	//! destroy window creation, treat this as a destructor
-	void destroy();
+	window_creation(const window_parameters_t& window_parameters);
 
 #ifndef DEF_LIB_RENDERING_off
 	//! Return a reference to the renderer, because this window owns the renderer, there should never be a case

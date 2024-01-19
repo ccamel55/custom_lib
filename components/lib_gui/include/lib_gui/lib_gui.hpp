@@ -17,16 +17,10 @@
 
 namespace lib::gui
 {
-class gui: public singleton<gui>
+class gui
 {
 public:
-    //! init gui
-    void init(
-        std::weak_ptr<lib::input::input_handler>&& input_handler,
-        std::weak_ptr<lib::rendering::renderer>&& renderer);
-
-    //! destroy gui/delete from memory and unbind callbacks
-    void destroy();
+    gui(std::weak_ptr<lib::input::input_handler>&& input_handler, std::weak_ptr<lib::rendering::renderer>&& renderer);
 
     //! toggle visibility
     void toggle_visibility();

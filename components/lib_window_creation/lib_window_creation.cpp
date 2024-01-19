@@ -5,7 +5,7 @@
 
 using namespace lib::window_creation;
 
-void window_creation::init(const window_parameters_t& window_parameters)
+window_creation::window_creation(const window_parameters_t& window_parameters)
 {
 	assert(_init == false);
 
@@ -26,25 +26,6 @@ void window_creation::init(const window_parameters_t& window_parameters)
 
 	_init = true;
 	_window_creation_api = std::make_unique<window_api>(window_parameters, window_callback);
-}
-
-void window_creation::destroy()
-{
-	assert(_init == true);
-
-	_init = false;
-	_window_running = false;
-
-	_render_callback = nullptr;
-	_window_creation_api = nullptr;
-
-#ifndef DEF_LIB_RENDERING_off
-	_renderer = nullptr;
-#endif
-
-#ifndef DEF_LIB_INPUT_off
-	_input_handler = nullptr;
-#endif
 }
 
 void window_creation::run_window_loop()
