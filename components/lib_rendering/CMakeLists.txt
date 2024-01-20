@@ -4,7 +4,7 @@ lib_option(
     DESCRIPTION
         "Build rendering library"
     VALID_ARGS
-        off gl3 dx9 dx10 dx12 vulkan
+        off gl3 vulkan
 )
 
 lib_component(lib_rendering
@@ -24,4 +24,6 @@ lib_component(lib_rendering
 
 if (LIB_RENDERING STREQUAL gl3)
     add_subdirectory(api/opengl3)
+else (LIB_RENDERING STREQUAL vulkan)
+    add_subdirectory(api/vulkan)
 endif ()

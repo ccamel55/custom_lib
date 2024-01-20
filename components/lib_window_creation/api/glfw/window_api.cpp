@@ -1,5 +1,10 @@
 #include <lib_window_creation/window_api.hpp>
 
+#if WIN32
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include <GLFW/glfw3native.h>
+#endif
+
 #include <cassert>
 
 using namespace lib::window_creation;
@@ -110,8 +115,14 @@ bool window_api::register_renderer(std::shared_ptr<rendering::renderer>& rendere
 	lib::point2Di window_size = {};
 	glfwGetWindowSize(_glfw_window_ptr, &window_size.x, &window_size.y);
 
+	void* api_context;
+
+#ifdef WIN32
+	api_context = glfwGetWin32Window(_glfw_window_ptr);
+#endif
+
 	// initialize renderer using glfw stuff
-	renderer->bind_api(nullptr, true);
+	renderer->bind_api(api_context, true);
 	renderer->set_window_size(window_size);
 
 	glfwSetWindowSizeCallback(_glfw_window_ptr, window_size_callback);

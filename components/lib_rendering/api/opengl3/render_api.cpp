@@ -228,11 +228,12 @@ render_api::render_api(const void* api_context, bool flush_buffers)
 
 		_frame_buffer_shader.bind();
 		glUniform1i(_frame_buffer_shader.get_attribute_location("texture_sample"), 0);
-
-		create_frame_buffer_texture(default_window_size);
 	}
 
 	_render_state.restore();
+
+	// call once on init with default parameters, this way we guarentee we have something setup
+	update_screen_size(default_window_size);
 }
 
 render_api::~render_api()

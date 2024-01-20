@@ -11,7 +11,7 @@
 
 using namespace lib::rendering;
 
-void renderer::bind_api(const void* api_context, bool flush_buffers)
+void renderer::bind_api(void* api_context, bool flush_buffers)
 {
 	if (_render_api)
 	{

@@ -19,8 +19,6 @@ public:
 
 private:
 	void create_frame_buffer_texture(const lib::point2Di& window_size);
-
-	lib::point2Di _window_size = {};
 	gl3::render_state _render_state = {};
 
 	gl3::shaders _normal_shader = {};

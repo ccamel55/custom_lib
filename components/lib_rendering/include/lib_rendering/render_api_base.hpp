@@ -44,7 +44,7 @@ inline std::vector<uint8_t> opaque_texture_data =
 class render_api_base
 {
 public:
-	render_api_base(const void* api_context, bool flush_buffers)
+	render_api_base(void* api_context, bool flush_buffers)
 		: _api_context(api_context), _flush_buffers(flush_buffers)
 	{
 	}
@@ -64,8 +64,9 @@ public:
 	virtual void draw_frame_buffer() = 0;
 
 protected:
-	const void* _api_context;
+	void* _api_context;
 	bool _flush_buffers;
 
+	lib::point2Di _window_size = {};
 };
 }  // namespace lib::rendering
