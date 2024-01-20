@@ -1,6 +1,9 @@
 #include <lib_rendering/lib_rendering.hpp>
 #include <lib_rendering/render_api.hpp>
 
+#include <lib_rendering/common/font_loader.hpp>
+#include <lib_rendering/common/image_loader.hpp>
+
 #include <core_sdk/logger.hpp>
 #include <core_sdk/types/vector/vector2D.hpp>
 
@@ -483,7 +486,7 @@ void renderer::update_clipped_area(const lib::point4Di& clipped_area)
 	_clipped_area = clipped_area;
 }
 
-void renderer::register_callback(std::function<void(renderer&)>&& callback)
+void renderer::register_callback(std::function<void(render_callback_handler&)>&& callback)
 {
 	_render_callbacks.emplace_back(std::move(callback));
 }

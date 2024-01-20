@@ -2,10 +2,9 @@
 
 #include <core_sdk/types/bitflag.hpp>
 
-#include <lib_rendering/common/font_loader.hpp>
-#include <lib_rendering/common/image_loader.hpp>
-#include <lib_rendering/common/atlas_generator.hpp>
 #include <lib_rendering/render_api_base.hpp>
+#include <lib_rendering/render_callback_handler.hpp>
+#include <lib_rendering/common/atlas_generator.hpp>
 
 #include <array>
 #include <filesystem>
@@ -15,19 +14,8 @@
 
 namespace lib::rendering
 {
-enum font_flags: bitflag_t
-{
-	none = 0,
-	left_aligned = 0 << 0,
-	right_aligned = 1 << 0,
-	centered_x = 1 << 1,
-	centered_y = 1 << 2,
-	centered_xy = centered_x | centered_y,
-	outline = 1 << 3,
-};
-
 //! Renderer interface, this will be used to send commands to our render API implementation
-class renderer
+class renderer final : render_callback_handler
 {
 public:
 	//! bind our render API to an existing render context
@@ -50,12 +38,7 @@ public:
 	void draw_frame();
 
 	//! register a callback to populate the render command.
-	void register_callback(std::function<void(renderer&)>&& callback);
-
-	//! update current clipped area for draws
-	void update_clipped_area(const lib::point4Di& clipped_area);
-
-	[[nodiscard]] float get_frame_time_ms() const;
+	void register_callback(std::function<void(render_callback_handler&)>&& callback);
 
 	//! set the size of the rendering window, this will also update the renderer
 	void set_window_size(const lib::point2Di& window_size);
@@ -66,51 +49,74 @@ public:
 	void set_fps_limit(uint16_t fps);
 	[[nodiscard]] uint16_t get_fps_limit() const;
 
-public:
-	void draw_image(const lib::point2Di& pos,
-                    const lib::point2Di& size,
-                    const lib::color& color,
-                    texture_id texture_id);
+	//! Get the time between renderer frame updates.
+	[[nodiscard]] float get_frame_time_ms() const override;
 
-	void draw_line(const lib::point2Di& p1, const lib::point2Di& p2, const lib::color& color, float thickness = 1);
+protected:
+	void update_clipped_area(const lib::point4Di& clipped_area) override;
+
+	void draw_image(
+		const lib::point2Di& pos,
+		const lib::point2Di& size,
+        const lib::color& color,
+        texture_id texture_id) override;
+
+	void draw_line(
+		const lib::point2Di& p1,
+		const lib::point2Di& p2,
+		const lib::color& color,
+		float thickness) override;
 
 	void draw_triangle(
 		const lib::point2Di& p1,
 		const lib::point2Di& p2,
 		const lib::point2Di& p3,
 		const lib::color& color,
-		float thickness = 1);
+		float thickness) override;
 
-	void draw_triangle_filled(const lib::point2Di& p1,
-                              const lib::point2Di& p2,
-                              const lib::point2Di& p3,
-                              const lib::color& color);
+	void draw_triangle_filled(
+		const lib::point2Di& p1,
+        const lib::point2Di& p2,
+        const lib::point2Di& p3,
+        const lib::color& color) override;
 
-	void draw_rect(const lib::point2Di& pos, const lib::point2Di& size, const lib::color& color, float thickness = 1);
-	void draw_rect_filled(const lib::point2Di& pos, const lib::point2Di& size, const lib::color& color);
+	void draw_rect(
+		const lib::point2Di& pos,
+		const lib::point2Di& size,
+		const lib::color& color,
+		float thickness) override;
 
-	void draw_rect_gradient_h_filled(const lib::point2Di& pos,
-                                     const lib::point2Di& size,
-                                     const lib::color& c1,
-                                     const lib::color& c2);
+	void draw_rect_filled(
+		const lib::point2Di& pos,
+		const lib::point2Di& size,
+		const lib::color& color) override;
 
-	void draw_rect_gradient_v_filled(const lib::point2Di& pos,
-                                     const lib::point2Di& size,
-                                     const lib::color& c1,
-                                     const lib::color& c2);
+	void draw_rect_gradient_h_filled(
+		const lib::point2Di& pos,
+		const lib::point2Di& size,
+		const lib::color& c1,
+		const lib::color& c2) override;
 
-	void draw_rect_gradient_filled(const lib::point2Di& pos,
-                                   const lib::point2Di& size,
-                                   const lib::color& c1,
-                                   const lib::color& c2,
-                                   const lib::color& c3,
-                                   const lib::color& c4);
+	void draw_rect_gradient_v_filled(
+		const lib::point2Di& pos,
+		const lib::point2Di& size,
+		const lib::color& c1,
+		const lib::color& c2) override;
 
-	void draw_font(const lib::point2Di& pos,
-				   const lib::color& color,
-				   font_id font_id,
-				   const std::string& text,
-				   bitflag flags = font_flags::none);
+	void draw_rect_gradient_filled(
+		const lib::point2Di& pos,
+        const lib::point2Di& size,
+        const lib::color& c1,
+        const lib::color& c2,
+        const lib::color& c3,
+        const lib::color& c4) override;
+
+	void draw_font(
+		const lib::point2Di& pos,
+		const lib::color& color,
+		font_id font_id,
+		const std::string& text,
+		bitflag flags) override;
 
 private:
 	//! Desired max fps
@@ -146,6 +152,6 @@ private:
 	std::unique_ptr<render_api_base> _render_api = nullptr;
 
 	//! Callbacks that populate the render command
-	std::vector<std::function<void(renderer&)>> _render_callbacks = {};
+	std::vector<std::function<void(render_callback_handler&)>> _render_callbacks = {};
 };
 }  // namespace lib::rendering
