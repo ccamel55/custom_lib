@@ -21,8 +21,8 @@ public:
     explicit ui_drag_bar(const std::string& name);
     ~ui_drag_bar() override;
 
-    void draw(lib::rendering::renderer& render) override;
-    void input(const lib::input::input_handler& input) override;
+    void draw(lib::rendering::render_callback_handler& render) override;
+    void input(const lib::input::input_callback_handler& input) override;
 
 private:
 

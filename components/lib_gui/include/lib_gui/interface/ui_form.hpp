@@ -28,8 +28,8 @@ public:
     ui_form(const std::string& name, const lib::point2Di& size);
     ~ui_form() override;
 
-    void draw(lib::rendering::renderer& render) override;
-    void input(const lib::input::input_handler& input) override;
+    void draw(lib::rendering::render_callback_handler& render) override;
+    void input(const lib::input::input_callback_handler& input) override;
 
 private:
 
