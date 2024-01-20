@@ -59,7 +59,7 @@ void input_handler::add_input(const input_t& input)
 	_key_state.at(key).remove(pressed | released);
 }
 
-void input_handler::register_callback(uint32_t type, std::function<void(const input_handler&)>&& callback)
+void input_handler::register_callback(uint32_t type, std::function<void(const input_callback_handler&)>&& callback)
 {
 	_input_callbacks.emplace_back(input_callback_t{ static_cast<input_type>(type), std::move(callback) });
 }
