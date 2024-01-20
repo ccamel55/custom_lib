@@ -6,7 +6,7 @@
 namespace lib
 {
 //! Truncates a string in place to \a max_length.
-inline void TRUNCATE_STRING(std::string& string, size_t max_length, bool show_ellipsis = false)
+inline void truncate_string(std::string& string, size_t max_length, bool show_ellipsis = false)
 {
 	if (string.length() > max_length)
 	{
@@ -20,14 +20,14 @@ inline void TRUNCATE_STRING(std::string& string, size_t max_length, bool show_el
 }
 
 //! Trims white space left of \a string in place.
-inline void L_TRIM_STRING(std::string& string)
+inline void left_trim_string(std::string& string)
 {
 	string.erase(
 		string.begin(), std::find_if(string.begin(), string.end(), [](unsigned char ch) { return !std::isspace(ch); }));
 }
 
 //! Trims white space right of \a string in place.
-inline void R_TRIM_STRING(std::string& string)
+inline void right_trim_string(std::string& string)
 {
 	string.erase(
 		std::find_if(string.rbegin(), string.rend(), [](unsigned char ch) { return !std::isspace(ch); }).base(),
@@ -35,14 +35,14 @@ inline void R_TRIM_STRING(std::string& string)
 }
 
 //! Trims white space of \a string in place.
-inline void TRIM_STRING(std::string& string)
+inline void trim_string(std::string& string)
 {
-	L_TRIM_STRING(string);
-	R_TRIM_STRING(string);
+	left_trim_string(string);
+	right_trim_string(string);
 }
 
 //! Splits \a string using the character \a split. Returns a vector of split strings.
-inline std::vector<std::string> SPLIT_STRING(const std::string& string, const char split = ' ')
+inline std::vector<std::string> split_string(const std::string& string, const char split = ' ')
 {
 	std::vector<std::string> split_strings = {};
 

@@ -5,7 +5,6 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include <nlohmann/json.hpp>
 #include <lib_json_config/json_config.hpp>
 
 namespace lib::json_config

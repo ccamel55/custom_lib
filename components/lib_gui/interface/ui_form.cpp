@@ -13,7 +13,7 @@ ui_form::~ui_form()
 
 }
 
-void ui_form::draw(lib::rendering::renderer& render)
+void ui_form::draw(lib::rendering::render_callback_handler& render)
 {
 	if (!flags().has(ui_flag::flag_visible))
 	{
@@ -49,7 +49,7 @@ void ui_form::draw(lib::rendering::renderer& render)
 		color::white, font::title, get_name(), rendering::centered_y);
 }
 
-void ui_form::input(const lib::input::input_handler& input)
+void ui_form::input(const lib::input::input_callback_handler& input)
 {
 	if (!flags().has(ui_flag::flag_visible) || !flags().has(ui_flag::flag_active))
 	{

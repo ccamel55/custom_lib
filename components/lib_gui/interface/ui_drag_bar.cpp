@@ -13,7 +13,7 @@ ui_drag_bar::~ui_drag_bar()
 
 }
 
-void ui_drag_bar::draw(lib::rendering::renderer& render)
+void ui_drag_bar::draw(lib::rendering::render_callback_handler& render)
 {
 	if (!flags().has(ui_flag::flag_visible))
 	{
@@ -38,7 +38,7 @@ void ui_drag_bar::draw(lib::rendering::renderer& render)
 		color::white, font::title, get_name(), rendering::centered_y);
 }
 
-void ui_drag_bar::input(const lib::input::input_handler& input)
+void ui_drag_bar::input(const lib::input::input_callback_handler& input)
 {
 	if (!flags().has(ui_flag::flag_visible) || !flags().has(ui_flag::flag_active))
 	{

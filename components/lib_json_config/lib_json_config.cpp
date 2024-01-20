@@ -1,7 +1,11 @@
 #include "fmt/ostream.h"
 
 #include <core_sdk/logger.hpp>
+#include <core_sdk/macros/string_macros.hpp>
+
 #include <lib_json_config/lib_json_config.hpp>
+
+#include <nlohmann/json.hpp>
 
 using namespace lib::json_config;
 
@@ -21,6 +25,15 @@ bool is_config_name_valid(const std::string& name)
 config_manager::config_manager(const std::filesystem::path& config_directory, const std::string& file_extension)
 	: _file_extension(file_extension), _config_directory(config_directory)
 {
+	// remove . if it starts with a dot
+	lib::trim_string(_file_extension);
+
+	if (_file_extension[0] == '.')
+	{
+		// remove first character
+		_file_extension = _file_extension.substr(1, _file_extension.size() - 1);
+	}
+
 	if (!std::filesystem::exists(config_directory))
 	{
 		lib_log_d("config_manager: directory does not exist, creating it ({})", config_directory.string());

@@ -12,10 +12,10 @@ public:
     virtual ~ui_base_element() = default;
 
     //! Draw items in the element.
-    virtual void draw(lib::rendering::renderer& render) = 0;
+    virtual void draw(lib::rendering::render_callback_handler& render) = 0;
 
     //! Handle input for the element, will also refresh if needed.
-    virtual void input(const lib::input::input_handler& input) = 0;
+    virtual void input(const lib::input::input_callback_handler& input) = 0;
 
     //! Force refresh of the element. Data can be used to pass information to the element.
     virtual void refresh(bitflag update, const void* data) = 0;

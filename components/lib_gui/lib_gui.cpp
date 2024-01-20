@@ -19,7 +19,7 @@ gui::gui(std::weak_ptr<lib::input::input_handler>&& input_handler, std::weak_ptr
 
 	input_handler_ptr->register_callback(
 		lib::input::mouse | lib::input::keyboard,
-		[&](const lib::input::input_handler& processor)
+		[&](const lib::input::input_callback_handler& processor)
 	{
 		if (_windows.empty()) [[unlikely]]
 		{
@@ -71,7 +71,7 @@ gui::gui(std::weak_ptr<lib::input::input_handler>&& input_handler, std::weak_ptr
 	lib::gui::font::heading = renderer_ptr->add_font(tahoma_bold_font.data(), 14);
 	lib::gui::font::text = renderer_ptr->add_font(tahoma_font.data(), 14);
 
-	renderer_ptr->register_callback([&](lib::rendering::renderer& render)
+	renderer_ptr->register_callback([&](lib::rendering::render_callback_handler& render)
 	{
 		if (_windows.empty()) [[unlikely]]
 		{
