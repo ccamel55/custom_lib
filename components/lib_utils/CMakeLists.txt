@@ -13,6 +13,8 @@ lib_component(lib_utils
         fps_helper.cpp
     INCLUDES
         include
+    DEPENDS
+        LIB_UTILS
     LINK_LIBS
         lib_core
 )

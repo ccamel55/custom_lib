@@ -21,7 +21,6 @@ function(lib_option)
     cmake_parse_arguments(LIB_OPTIONS "" "${LIB_SINGLE_VALUE_ARGS}" "${LIB_MULTI_VALUE_ARGS}" ${ARGN})
 
     message(STATUS "-------------------------------------------------")
-    option(${LIB_OPTIONS_NAME} ${LIB_OPTIONS_DESCRIPTION})
 
     if (NOT LIB_OPTIONS_NAME)
         message( FATAL_ERROR "'NAME' argument required.")
@@ -38,16 +37,12 @@ function(lib_option)
     # remove duplicate args
     list(REMOVE_DUPLICATES LIB_OPTIONS_VALID_ARGS)
 
-    # check if the option is valid
-    if (NOT ${LIB_OPTIONS_NAME} IN_LIST LIB_OPTIONS_VALID_ARGS)
-        # default to first value in argument list if not defined
-        list(GET LIB_OPTIONS_VALID_ARGS 0 VALID_ARG_FIRST_ELEMENT)
+    # default to first value in argument list if not defined
+    list(GET LIB_OPTIONS_VALID_ARGS 0 VALID_ARG_FIRST_ELEMENT)
+    option(${LIB_OPTIONS_NAME} ${LIB_OPTIONS_DESCRIPTION} ${VALID_ARG_FIRST_ELEMENT})
 
-        message(WARNING "${LIB_OPTIONS_NAME} is invalid, defaulting to: ${VALID_ARG_FIRST_ELEMENT} (valid options: ${LIB_OPTIONS_VALID_ARGS})")
-        set(${LIB_OPTIONS_NAME} ${VALID_ARG_FIRST_ELEMENT})
-    else ()
-        message(STATUS "${LIB_OPTIONS_NAME}=${${LIB_OPTIONS_NAME}}")
-    endif()
+    # check if the option is valid
+    message(STATUS "${LIB_OPTIONS_NAME}=${${LIB_OPTIONS_NAME}}")
 
     # add to our interface for use later, we define both the value and a unique define
     target_compile_definitions(${LIB_OPTIONS_TARGET} INTERFACE

@@ -48,7 +48,7 @@ macro(lib_component component_name)
 
         # only after check if depends are set to not off
         foreach (depend ${LIB_COMPONENT_DEPENDS})
-            if (${depend} STREQUAL "off")
+            if (${depend} STREQUAL "off" OR ${depend} STREQUAL "OFF")
                 message(WARNING "${depend} is off, skipping component")
                 return()
             endif ()
