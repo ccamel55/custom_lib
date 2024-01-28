@@ -1,9 +1,14 @@
 #include <lib_rendering/render_api.hpp>
 
+// include our shaders
+#include <lib_rendering/shaders/basic_shader_frag.hpp>
+#include <lib_rendering/shaders/basic_shader_vert.hpp>
+
 #include <unordered_set>
 #include <ranges>
 #include <map>
 #include <optional>
+#include <filesystem>
 
 using namespace lib::rendering;
 
@@ -40,6 +45,13 @@ const std::unordered_set<std::string> validation_layers =
 #ifndef NDEBUG
 	"VK_LAYER_KHRONOS_validation"
 #endif
+};
+
+struct swapchain_support_details
+{
+	vk::SurfaceCapabilitiesKHR capabilities = {};
+	std::vector<vk::SurfaceFormatKHR> formats = {};
+	std::vector<vk::PresentModeKHR> present_modes = {};
 };
 
 const auto get_supported_extensions = [](const std::unordered_set<std::string>& extensions_set) {
@@ -126,13 +138,6 @@ const auto get_supported_layers = [](const std::unordered_set<std::string>& laye
 		});
 
 	return layers;
-};
-
-struct swapchain_support_details
-{
-	vk::SurfaceCapabilitiesKHR capabilities = {};
-	std::vector<vk::SurfaceFormatKHR> formats = {};
-	std::vector<vk::PresentModeKHR> present_modes = {};
 };
 
 const auto get_candidate_devices = [](const vk::Instance& instance) -> std::multimap<uint32_t, vk::PhysicalDevice>
@@ -280,6 +285,31 @@ const auto choose_swapchain_extent = [](
 	return extent;
 };
 
+const auto create_shader_module = [](
+	const vk::Device& device, const uint8_t shader_bytes[], const uint32_t shader_size) -> vk::ShaderModule
+{
+	vk::ShaderModuleCreateInfo shader_create_info = {};
+	{
+		shader_create_info.sType = vk::StructureType::eShaderModuleCreateInfo;
+		shader_create_info.codeSize = shader_size;
+
+		// data is expected as uint32, but we give as char, this is bad usally but data in vector
+		// is guarenteed to be aligned, thus uint32 should never overflow
+		shader_create_info.pCode = reinterpret_cast<const uint32_t*>(shader_bytes);
+	}
+
+	vk::ShaderModule shader_module = nullptr;
+
+	if (const auto result = device.createShaderModule(&shader_create_info, nullptr, &shader_module);
+		result != vk::Result::eSuccess)
+	{
+		lib_log_e("render_api: failed to create shader module {}", static_cast<int>(result));
+		assert(false);
+	}
+
+	assert(shader_module);
+	return shader_module;
+};
 }
 
 render_api::render_api(void* api_context, bool flush_buffers) :
@@ -305,10 +335,51 @@ render_api::render_api(void* api_context, bool flush_buffers) :
 		layers_list.push_back(entry.c_str());
 	});
 
+	// setup vulkan for drawing
 	init_vulkan(instance_extensions_list, layers_list);
 	init_surface();
 	init_device(layers_list);
 	init_swapcahin();
+	init_image_views();
+
+	// setup pipeline
+	init_render_passes();
+	init_graphics_pipeline();
+	init_frame_buffers();
+	init_command_pool();
+	init_command_buffer();
+
+	// setup synchronization objects
+	vk::SemaphoreCreateInfo semaphore_create_info = {};
+	{
+		semaphore_create_info.sType = vk::StructureType::eSemaphoreCreateInfo;
+	}
+
+	vk::FenceCreateInfo fence_create_info = {};
+	{
+		fence_create_info.sType = vk::StructureType::eFenceCreateInfo;
+		fence_create_info.flags = vk::FenceCreateFlagBits::eSignaled;
+	}
+
+	for (size_t i = 0; i < vulkan::max_frames_in_flight; i++)
+	{
+		if (_logical_device.createSemaphore(
+			&semaphore_create_info,
+			nullptr,
+			&_image_available_semaphores.at(i)) != vk::Result::eSuccess ||
+		_logical_device.createSemaphore(
+			&semaphore_create_info,
+			nullptr,
+			&_render_finished_semaphores.at(i)) != vk::Result::eSuccess ||
+		_logical_device.createFence(
+			&fence_create_info,
+			nullptr,
+			&_in_flight_fences.at(i)) != vk::Result::eSuccess)
+		{
+			lib_log_e("render_api: failed to create synchronization objects");
+			assert(false);
+		}
+	}
 
 	// call at least once to ensure that we have everything setup for some resoltion once
 	update_screen_size(default_window_size);
@@ -316,12 +387,21 @@ render_api::render_api(void* api_context, bool flush_buffers) :
 
 render_api::~render_api()
 {
-	std::ranges::for_each(_swapchain_image_views.begin(), _swapchain_image_views.end(),
-		[&](const auto& image_view) {
-		_logical_device.destroyImageView(image_view);
-	});
+	_logical_device.waitIdle();
+	destroy_swapchain();
 
-	_logical_device.destroySwapchainKHR(_swap_chain);
+	_logical_device.destroyPipeline(_pipeline);
+	_logical_device.destroyPipelineLayout(_pipeline_layout);
+	_logical_device.destroyRenderPass(_render_pass);
+
+	for (size_t i = 0; i < vulkan::max_frames_in_flight; i++)
+	{
+		_logical_device.destroySemaphore(_image_available_semaphores.at(i));
+		_logical_device.destroySemaphore(_render_finished_semaphores.at(i));
+		_logical_device.destroyFence(_in_flight_fences.at(i));
+	}
+
+	_logical_device.destroyCommandPool(_command_pool);
 	_logical_device.destroy();
 
 	_instance.destroySurfaceKHR(_window_surface);
@@ -336,16 +416,111 @@ void render_api::bind_atlas(const uint8_t* data, int width, int height)
 void render_api::update_screen_size(const lib::point2Di& window_size)
 {
 	_window_size = window_size;
+	_stop_rendering = (_window_size.x == 0 || _window_size.y == 0);
+
+	if (_stop_rendering)
+	{
+		return;
+	}
+
+	_logical_device.waitIdle();
+	destroy_swapchain();
+
+	init_swapcahin();
+	init_image_views();
+	init_frame_buffers();
 }
 
 void render_api::update_frame_buffer(const render_command& render_command)
 {
-
+	if (_stop_rendering)
+	{
+		return;
+	}
 }
 
 void render_api::draw_frame_buffer()
 {
+	if (_stop_rendering)
+	{
+		return;
+	}
 
+	// wait for gpu to finish drawing previous frame
+	assert(_logical_device.waitForFences(
+		1,
+		&_in_flight_fences.at(_current_frame),
+		vk::True, UINT64_MAX) == vk::Result::eSuccess);
+
+	assert(_logical_device.resetFences(1, &_in_flight_fences.at(_current_frame)) == vk::Result::eSuccess);
+
+	// aquire an image from the swap chain
+	uint32_t next_image_index = 0;
+	assert(_logical_device.acquireNextImageKHR(
+		_swap_chain,
+		UINT64_MAX,
+		_image_available_semaphores.at(_current_frame),
+		nullptr,
+		&next_image_index) == vk::Result::eSuccess);
+
+	// reset command buffer and render what we want
+	_command_buffers.at(_current_frame).reset();
+	record_command_buffer(_command_buffers.at(_current_frame), next_image_index);
+
+	// submit command buffer
+	const std::array<vk::Semaphore, 1> wait_semaphores = {
+		_image_available_semaphores.at(_current_frame)
+	};
+
+	const std::array<vk::Semaphore, 1> signal_semaphores = {
+		_render_finished_semaphores.at(_current_frame)
+	};
+
+	constexpr std::array<vk::PipelineStageFlags, 1> wait_stages = {
+		vk::PipelineStageFlagBits::eColorAttachmentOutput
+	};
+
+	vk::SubmitInfo submit_info = {};
+	{
+		submit_info.sType = vk::StructureType::eSubmitInfo;
+
+		submit_info.waitSemaphoreCount = wait_semaphores.size();
+		submit_info.pWaitSemaphores = wait_semaphores.data();
+
+		submit_info.pWaitDstStageMask = wait_stages.data();
+
+		submit_info.commandBufferCount = 1;
+		submit_info.pCommandBuffers = &_command_buffers.at(_current_frame);
+
+		submit_info.signalSemaphoreCount = signal_semaphores.size();
+		submit_info.pSignalSemaphores = signal_semaphores.data();
+	}
+
+	assert(_graphics_present_queue.submit(
+		1,
+		&submit_info,
+		_in_flight_fences.at(_current_frame)) == vk::Result::eSuccess);
+
+	const std::array<vk::SwapchainKHR, 1> swapchains = {
+		_swap_chain
+	};
+
+	vk::PresentInfoKHR present_info = {};
+	{
+		present_info.sType = vk::StructureType::ePresentInfoKHR;
+
+		present_info.waitSemaphoreCount = signal_semaphores.size();
+		present_info.pWaitSemaphores = signal_semaphores.data();
+
+		present_info.swapchainCount = swapchains.size();
+		present_info.pSwapchains = swapchains.data();
+
+		present_info.pImageIndices = &next_image_index;
+		present_info.pResults = nullptr;
+	}
+
+	assert( _graphics_present_queue.presentKHR(&present_info) == vk::Result::eSuccess);
+	_current_frame = (_current_frame + 1) % vulkan::max_frames_in_flight;
 }
 
 void render_api::init_vulkan(const std::vector<const char*>& extensions, const std::vector<const char*>& layers)
@@ -379,7 +554,10 @@ void render_api::init_vulkan(const std::vector<const char*>& extensions, const s
 #endif
 	}
 
-	if (const auto result = vk::createInstance(&create_info, nullptr, &_instance); result != vk::Result::eSuccess)
+	if (const auto result = vk::createInstance(
+		&create_info,
+		nullptr,
+		&_instance); result != vk::Result::eSuccess)
 	{
 		lib_log_e("render_api: failed to create vulkan instance {}", static_cast<int>(result));
 		assert(false);
@@ -396,8 +574,6 @@ void render_api::init_device(const std::vector<const char*>& layers)
 		lib_log_e("render_api: no supported vulkan devices");
 		assert(false);
 	}
-
-	std::optional<uint32_t> graphics_present_family = std::nullopt;
 
 	// try each device, starting from "best" to worst
 	for (const auto& device : std::views::values(candidate_devices))
@@ -435,20 +611,20 @@ void render_api::init_device(const std::vector<const char*>& layers)
 			if ((queue_families.at(i).queueFlags & vk::QueueFlagBits::eGraphics) && present_support)
 			{
 				_physical_device = device;
-				graphics_present_family = i;
+				_graphics_present_family_index = i;
 
 				break;
 			}
 		}
 
-		if (graphics_present_family.has_value())
+		if (_graphics_present_family_index.has_value())
 		{
 			break;
 		}
 	}
 
 	assert(_physical_device);
-	assert(graphics_present_family.has_value());
+	assert(_graphics_present_family_index.has_value());
 
 	lib_log_d("render_api: found physical device");
 
@@ -464,12 +640,16 @@ void render_api::init_device(const std::vector<const char*>& layers)
 	});
 
 	// setup queues we need
-	vk::DeviceQueueCreateInfo graphic_present_queue_create_info = {};
+	std::array<vk::DeviceQueueCreateInfo, 1> device_queue_create_infos = {};
 	{
-		graphic_present_queue_create_info.sType = vk::StructureType::eDeviceQueueCreateInfo;
-		graphic_present_queue_create_info.queueFamilyIndex = graphics_present_family.value();
-		graphic_present_queue_create_info.queueCount = 1;
-		graphic_present_queue_create_info.pQueuePriorities = &queue_priority;
+		{
+			auto& graphic_present_queue_create_info = device_queue_create_infos[0];
+
+			graphic_present_queue_create_info.sType = vk::StructureType::eDeviceQueueCreateInfo;
+			graphic_present_queue_create_info.queueFamilyIndex = _graphics_present_family_index.value();
+			graphic_present_queue_create_info.queueCount = 1;
+			graphic_present_queue_create_info.pQueuePriorities = &queue_priority;
+		}
 	}
 
 	vk::PhysicalDeviceFeatures device_features = {};
@@ -480,8 +660,8 @@ void render_api::init_device(const std::vector<const char*>& layers)
 	vk::DeviceCreateInfo create_info = {};
 	{
 		create_info.sType = vk::StructureType::eDeviceCreateInfo;
-		create_info.pQueueCreateInfos = &graphic_present_queue_create_info;
-		create_info.queueCreateInfoCount = 1;
+		create_info.pQueueCreateInfos = device_queue_create_infos.data();
+		create_info.queueCreateInfoCount = device_queue_create_infos.size();
 		create_info.pEnabledFeatures = &device_features;
 
 		create_info.enabledExtensionCount = devide_extensions_list.size();
@@ -501,7 +681,7 @@ void render_api::init_device(const std::vector<const char*>& layers)
 	lib_log_d("render_api: created logical device");
 
 	_logical_device.getQueue(
-		graphics_present_family.value(),
+		_graphics_present_family_index.value(),
 		queue_index,
 		&_graphics_present_queue);
 
@@ -544,7 +724,7 @@ void render_api::init_swapcahin()
 	// todo: use window size parameter
 	// we always want to use +1 on minium image count since the driver might be doing other stuff which will
 	// make us wait, slowing down the render process etc.
-	const auto extent = choose_swapchain_extent(swap_chain_support.capabilities, default_window_size);
+	const auto extent = choose_swapchain_extent(swap_chain_support.capabilities, _window_size);
 	auto image_count = swap_chain_support.capabilities.minImageCount + 1;
 
 	// if maximum images is 0 then unlimited images supported, if not need to clamp to max
@@ -667,4 +847,503 @@ void render_api::init_image_views()
 	assert(!_swapchain_image_views.empty());
 }
 
+void render_api::init_render_passes()
+{
+	constexpr int num_attatchments = 1;
+	constexpr int num_subpasses = 1;
+
+	std::array<vk::AttachmentDescription, num_attatchments> color_attachment_descriptions = {};
+	{
+		{
+			auto& color_attatchment = color_attachment_descriptions[0];
+
+			color_attatchment.format = _swapchian_format;
+			color_attatchment.samples = vk::SampleCountFlagBits::e1;
+
+			color_attatchment.loadOp = vk::AttachmentLoadOp::eClear;
+			color_attatchment.storeOp = vk::AttachmentStoreOp::eStore;
+
+			// we dont do nothing with the stencil buffer, just set to what ever
+			color_attatchment.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+			color_attatchment.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+
+			// don't care about image layout, present it to swap chain
+			color_attatchment.initialLayout = vk::ImageLayout::eUndefined;
+			color_attatchment.finalLayout = vk::ImageLayout::ePresentSrcKHR;
+		}
+	}
+
+	// we only have 1 sub pass since we don't do any fancy post processing crap in our renderer
+	std::array<vk::AttachmentReference, num_attatchments> color_attachment_references = {};
+	{
+		{
+			auto& color_attatchment_reference = color_attachment_references[0];
+
+			// refereces layout location, eg: layout(location = 0) out vec4 outColor
+			color_attatchment_reference.attachment = 0;
+			color_attatchment_reference.layout = vk::ImageLayout::eColorAttachmentOptimal;
+		}
+	}
+
+	std::array<vk::SubpassDescription, num_subpasses> subpass_descriptions = {};
+	{
+		{
+			auto& subpass_description = subpass_descriptions[0];
+
+			// colorAttachmentCount = how many attatch
+			subpass_description.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
+			subpass_description.colorAttachmentCount = color_attachment_references.size();
+			subpass_description.pColorAttachments = color_attachment_references.data();
+		}
+	}
+
+	std::array<vk::SubpassDependency, 1> subpass_dependencies = {};
+	{
+		{
+			auto& subpass_dependency = subpass_dependencies[0];
+
+			subpass_dependency.srcSubpass = vk::SubpassExternal;
+			subpass_dependency.dstSubpass = 0;
+
+			subpass_dependency.srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+			subpass_dependency.srcAccessMask = static_cast<vk::AccessFlags>(0);
+
+			subpass_dependency.dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+			subpass_dependency.dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;
+		}
+	}
+
+	vk::RenderPassCreateInfo render_pass_create_info = {};
+	{
+		render_pass_create_info.sType = vk::StructureType::eRenderPassCreateInfo;
+
+		render_pass_create_info.attachmentCount = color_attachment_descriptions.size();
+		render_pass_create_info.pAttachments = color_attachment_descriptions.data();
+
+		// only one subpass
+		render_pass_create_info.subpassCount = subpass_descriptions.size();
+		render_pass_create_info.pSubpasses = subpass_descriptions.data();
+
+		render_pass_create_info.dependencyCount = subpass_dependencies.size();
+		render_pass_create_info.pDependencies = subpass_dependencies.data();
+	}
+
+	if (const auto result = _logical_device.createRenderPass(&render_pass_create_info, nullptr, &_render_pass);
+		result != vk::Result::eSuccess)
+	{
+		lib_log_e("render_api: failed to create render pass {}", static_cast<int>(result));
+		assert(false);
+	}
+
+	assert(_render_pass);
+	lib_log_d("render_api: setup render pass");
+}
+
+void render_api::init_graphics_pipeline()
+{
+	// setup programmable parts of the pipeline
+
+	// shader modules can be nuked after creating pipeline
+	const auto vertex_shader = create_shader_module(
+		_logical_device,
+		vulkan::shaders::basic_shader_vert,
+		vulkan::shaders::basic_shader_vert_length);
+
+	const auto fragment_shader = create_shader_module(_logical_device,
+		vulkan::shaders::basic_shader_frag,
+		vulkan::shaders::basic_shader_frag_length);
+
+	// [0] = vertex
+	// [1] = fragment
+	std::array<vk::PipelineShaderStageCreateInfo, 2> shader_stage_create_infos = {};
+	{
+		{
+			auto& vertex_stage_create_info = shader_stage_create_infos[0];
+			vertex_stage_create_info.sType = vk::StructureType::ePipelineShaderStageCreateInfo;
+			vertex_stage_create_info.stage = vk::ShaderStageFlagBits::eVertex;
+			vertex_stage_create_info.module = vertex_shader;
+
+			// entry point, we can combine multiple shaders into one by specifying a entry point
+			vertex_stage_create_info.pName = "main";
+		}
+
+		{
+			auto& fragment_stage_create_info = shader_stage_create_infos[1];
+			fragment_stage_create_info.sType = vk::StructureType::ePipelineShaderStageCreateInfo;
+			fragment_stage_create_info.stage = vk::ShaderStageFlagBits::eFragment;
+			fragment_stage_create_info.module = fragment_shader;
+
+			// entry point, we can combine multiple shaders into one by specifying a entry point
+			fragment_stage_create_info.pName = "main";
+		}
+	}
+
+	// setup fixed function parts of the pipeline
+
+	// specify vertex data format
+	// todo: add using our vertex format
+	vk::PipelineVertexInputStateCreateInfo vertex_input_state_create_info = {};
+	{
+		vertex_input_state_create_info.sType = vk::StructureType::ePipelineVertexInputStateCreateInfo;
+
+		vertex_input_state_create_info.vertexBindingDescriptionCount = 0;
+		vertex_input_state_create_info.pVertexBindingDescriptions = nullptr; // Optional
+
+		vertex_input_state_create_info.vertexAttributeDescriptionCount = 0;
+		vertex_input_state_create_info.pVertexAttributeDescriptions = nullptr; // Optional
+	}
+
+	// specify what primitives we want to use, our renderer only uses triangles
+	// todo: enable index buffer support
+	vk::PipelineInputAssemblyStateCreateInfo input_assembly_state_create_info = {};
+	{
+		input_assembly_state_create_info.sType = vk::StructureType::ePipelineInputAssemblyStateCreateInfo;
+		input_assembly_state_create_info.topology = vk::PrimitiveTopology::eTriangleList;
+		input_assembly_state_create_info.primitiveRestartEnable = vk::False;
+	}
+
+	constexpr std::array<vk::DynamicState, 2> dynamic_states = {
+		vk::DynamicState::eViewport,
+		vk::DynamicState::eScissor
+	};
+
+	vk::PipelineDynamicStateCreateInfo dynamic_state_create_info = {};
+	{
+		dynamic_state_create_info.sType = vk::StructureType::ePipelineDynamicStateCreateInfo;
+		dynamic_state_create_info.dynamicStateCount = dynamic_states.size();
+		dynamic_state_create_info.pDynamicStates = dynamic_states.data();
+	}
+
+	vk::PipelineViewportStateCreateInfo viewport_state_create_info = {};
+	{
+		viewport_state_create_info.sType = vk::StructureType::ePipelineViewportStateCreateInfo;
+		viewport_state_create_info.viewportCount = 1;
+		viewport_state_create_info.scissorCount = 1;
+	}
+
+	// setup rastertizer
+	vk::PipelineRasterizationStateCreateInfo rasterization_state_create_info = {};
+	{
+		rasterization_state_create_info.sType = vk::StructureType::ePipelineRasterizationStateCreateInfo;
+
+		// dont touch these unless really needed, if do touch refer to documentation coz most require extra GPU features
+		rasterization_state_create_info.depthClampEnable = vk::False;
+		rasterization_state_create_info.rasterizerDiscardEnable = vk::False;
+		rasterization_state_create_info.polygonMode = vk::PolygonMode::eFill;
+		rasterization_state_create_info.lineWidth = 1.f;
+
+		// disable culling
+		rasterization_state_create_info.cullMode = vk::CullModeFlagBits::eNone;
+		rasterization_state_create_info.frontFace = vk::FrontFace::eClockwise;
+
+		// disable depth bias, we don't gaf about depth values now since we dont do anything with them
+		rasterization_state_create_info.depthBiasEnable = vk::False;
+		rasterization_state_create_info.depthBiasConstantFactor = 0.f;
+		rasterization_state_create_info.depthBiasClamp = 0.f;
+		rasterization_state_create_info.depthBiasSlopeFactor = 0.f;
+	}
+
+	// setup multisampling, we disable this since we don't care about it in our renderer
+	vk::PipelineMultisampleStateCreateInfo multisample_state_create_info = {};
+	{
+		multisample_state_create_info.sType = vk::StructureType::ePipelineMultisampleStateCreateInfo;
+		multisample_state_create_info.sampleShadingEnable = vk::False;
+		multisample_state_create_info.rasterizationSamples = vk::SampleCountFlagBits::e1;
+		multisample_state_create_info.minSampleShading = 1.f;
+		multisample_state_create_info.pSampleMask = nullptr;
+		multisample_state_create_info.alphaToCoverageEnable = vk::False;
+		multisample_state_create_info.alphaToOneEnable = vk::False;
+	}
+
+	// setup color blending
+	std::array<vk::PipelineColorBlendAttachmentState, 1> color_blend_attachment_states = {};
+	{
+		{
+			auto& color_blend_attachment_state = color_blend_attachment_states[0];
+
+			color_blend_attachment_state.colorWriteMask =
+			vk::ColorComponentFlagBits::eR |
+			vk::ColorComponentFlagBits::eG |
+			vk::ColorComponentFlagBits::eB |
+			vk::ColorComponentFlagBits::eA;
+
+			color_blend_attachment_state.blendEnable = vk::True;
+
+			// how to do color blending
+			color_blend_attachment_state.srcColorBlendFactor = vk::BlendFactor::eSrcAlpha;
+			color_blend_attachment_state.dstColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha;
+			color_blend_attachment_state.colorBlendOp = vk::BlendOp::eAdd;
+
+			// how to do alpha blending
+			color_blend_attachment_state.srcAlphaBlendFactor = vk::BlendFactor::eOne;
+			color_blend_attachment_state.dstAlphaBlendFactor = vk::BlendFactor::eZero;
+			color_blend_attachment_state.alphaBlendOp = vk::BlendOp::eAdd;
+		}
+	}
+
+	vk::PipelineColorBlendStateCreateInfo color_blend_state_create_info = {};
+	{
+		color_blend_state_create_info.sType = vk::StructureType::ePipelineColorBlendStateCreateInfo;
+
+		// disable bitwise combination of blending since we are using the attatchment method
+		color_blend_state_create_info.logicOpEnable = vk::False;
+		color_blend_state_create_info.logicOp = vk::LogicOp::eCopy; // Optional
+
+		// use color attatchment blending
+		color_blend_state_create_info.attachmentCount = color_blend_attachment_states.size();
+		color_blend_state_create_info.pAttachments = color_blend_attachment_states.data();
+
+		// we don't touch the constants
+		color_blend_state_create_info.blendConstants[0] = 0.f; // Optional
+		color_blend_state_create_info.blendConstants[1] = 0.f; // Optional
+		color_blend_state_create_info.blendConstants[2] = 0.f; // Optional
+		color_blend_state_create_info.blendConstants[3] = 0.f; // Optional
+	}
+
+	// create uniforms, needed even if we don't use any
+	// todo: add uniforms we need
+	vk::PipelineLayoutCreateInfo pipeline_layout_create_info = {};
+	{
+		pipeline_layout_create_info.sType = vk::StructureType::ePipelineLayoutCreateInfo;
+
+		pipeline_layout_create_info.setLayoutCount = 0;
+		pipeline_layout_create_info.pSetLayouts = nullptr;
+
+		pipeline_layout_create_info.pushConstantRangeCount = 0;
+		pipeline_layout_create_info.pPushConstantRanges = nullptr;
+	}
+
+	if (const auto result = _logical_device.createPipelineLayout(
+		&pipeline_layout_create_info,
+		nullptr,
+		&_pipeline_layout);
+		result != vk::Result::eSuccess)
+	{
+		lib_log_e("render_api: failed to create pipeline layout {}", static_cast<int>(result));
+		assert(false);
+	}
+
+	assert(_pipeline_layout);
+
+	// create the actual graphics pipeline
+	vk::GraphicsPipelineCreateInfo pipeline_create_info = {};
+	{
+		pipeline_create_info.sType = vk::StructureType::eGraphicsPipelineCreateInfo;
+
+		// frag/vertex shadeers
+		pipeline_create_info.stageCount = shader_stage_create_infos.size();
+		pipeline_create_info.pStages = shader_stage_create_infos.data();
+
+		// fixed functions
+		pipeline_create_info.pVertexInputState = &vertex_input_state_create_info;
+		pipeline_create_info.pInputAssemblyState = &input_assembly_state_create_info;
+		pipeline_create_info.pViewportState = &viewport_state_create_info;
+		pipeline_create_info.pRasterizationState = &rasterization_state_create_info;
+		pipeline_create_info.pMultisampleState = &multisample_state_create_info;
+		pipeline_create_info.pColorBlendState = &color_blend_state_create_info;
+		pipeline_create_info.pDynamicState = &dynamic_state_create_info;
+		pipeline_create_info.pDepthStencilState = nullptr;
+
+		// other descriptions of the render pipeline
+		pipeline_create_info.layout = _pipeline_layout;
+
+		pipeline_create_info.renderPass = _render_pass;
+		pipeline_create_info.subpass = 0;
+
+		// this is also our first graphics pipeline so we don't want to reference anything
+		pipeline_create_info.basePipelineHandle = nullptr; // Optional
+		pipeline_create_info.basePipelineIndex = -1; // Optional
+	}
+
+	if (const auto result = _logical_device.createGraphicsPipelines(
+		nullptr,
+		1,
+		&pipeline_create_info,
+		nullptr,
+		&_pipeline);
+		result != vk::Result::eSuccess)
+	{
+		lib_log_e("render_api: failed to create pipeline {}", static_cast<int>(result));
+		assert(false);
+	}
+
+	_logical_device.destroyShaderModule(vertex_shader);
+	_logical_device.destroyShaderModule(fragment_shader);
+
+	assert(_pipeline);
+	lib_log_d("render_api: created graphics pipeline");
+}
+
+void render_api::init_frame_buffers()
+{
+	// create frame buffer for each image view
+	_swapchain_frame_buffers.resize(_swapchain_image_views.size());
+
+	for (size_t i = 0; i < _swapchain_image_views.size(); i++)
+	{
+		const std::array<vk::ImageView, 1> attatchments =
+		{
+			_swapchain_image_views.at(i)
+		};
+
+		vk::FramebufferCreateInfo framebuffer_create_info = {};
+		{
+			framebuffer_create_info.sType = vk::StructureType::eFramebufferCreateInfo;
+			framebuffer_create_info.renderPass = _render_pass;
+
+			framebuffer_create_info.attachmentCount = attatchments.size();
+			framebuffer_create_info.pAttachments = attatchments.data();
+
+			framebuffer_create_info.width = _swapchain_extent.width;
+			framebuffer_create_info.height = _swapchain_extent.height;
+
+			framebuffer_create_info.layers = 1;
+		}
+
+		if (const auto result = _logical_device.createFramebuffer(
+			&framebuffer_create_info,
+			nullptr,
+			&_swapchain_frame_buffers.at(i));
+			result != vk::Result::eSuccess)
+		{
+			lib_log_e("render_api: failed to create frame buffer {}", static_cast<int>(result));
+			assert(false);
+		}
+
+		assert(_swapchain_frame_buffers.at(i));
+	}
+}
+
+void render_api::init_command_pool()
+{
+	vk::CommandPoolCreateInfo command_pool_create_info = {};
+	{
+		command_pool_create_info.sType = vk::StructureType::eCommandPoolCreateInfo;
+		command_pool_create_info.flags =
+			vk::CommandPoolCreateFlagBits::eResetCommandBuffer |
+			vk::CommandPoolCreateFlagBits::eTransient;
+
+		command_pool_create_info.queueFamilyIndex = _graphics_present_family_index.value();
+	}
+
+	if (const auto result = _logical_device.createCommandPool(
+		&command_pool_create_info,
+		nullptr,
+		&_command_pool);
+		result != vk::Result::eSuccess)
+	{
+		lib_log_e("render_api: failed to create command pool {}", static_cast<int>(result));
+		assert(false);
+	}
+
+	assert(_command_pool);
+	lib_log_d("render_api: created command pool");
+}
+
+void render_api::init_command_buffer()
+{
+	vk::CommandBufferAllocateInfo command_buffer_allocate_info = {};
+	{
+		command_buffer_allocate_info.sType = vk::StructureType::eCommandBufferAllocateInfo;
+		command_buffer_allocate_info.commandPool = _command_pool;
+		command_buffer_allocate_info.level = vk::CommandBufferLevel::ePrimary;
+		command_buffer_allocate_info.commandBufferCount = vulkan::max_frames_in_flight;
+	}
+
+	if (const auto result = _logical_device.allocateCommandBuffers(
+		&command_buffer_allocate_info,
+		_command_buffers.data());
+		result != vk::Result::eSuccess)
+	{
+		lib_log_e("render_api: failed to create command buffer {}", static_cast<int>(result));
+		assert(false);
+	}
+
+	lib_log_d("render_api: created command buffer");
+}
+
+void render_api::record_command_buffer(const vk::CommandBuffer& command_buffer, uint32_t image_index) const
+{
+	vk::CommandBufferBeginInfo command_buffer_begin_info = {};
+	{
+		command_buffer_begin_info.sType = vk::StructureType::eCommandBufferBeginInfo;
+
+		command_buffer_begin_info.flags = {};
+		command_buffer_begin_info.pInheritanceInfo = nullptr;
+	}
+
+	if (const auto result = command_buffer.begin(&command_buffer_begin_info);
+		result != vk::Result::eSuccess)
+	{
+		lib_log_e("render_api: failed to begin command buffer {}", static_cast<int>(result));
+		assert(false);
+	}
+
+	vk::ClearValue clear_color = {};
+	{
+		// clear color value
+		clear_color.color = vk::ClearColorValue(0.f, 0.f, 0.f, 0.f);
+	}
+
+	vk::RenderPassBeginInfo render_pass_begin_info = {};
+	{
+		render_pass_begin_info.sType = vk::StructureType::eRenderPassBeginInfo;
+
+		render_pass_begin_info.renderPass = _render_pass;
+		render_pass_begin_info.framebuffer = _swapchain_frame_buffers.at(image_index);
+
+		render_pass_begin_info.renderArea.offset = vk::Offset2D(0, 0);
+		render_pass_begin_info.renderArea.extent = _swapchain_extent;
+
+		render_pass_begin_info.clearValueCount = 1;
+		render_pass_begin_info.pClearValues = &clear_color;
+	}
+
+	// no secondary cmd buffer so inline
+	command_buffer.beginRenderPass(&render_pass_begin_info, vk::SubpassContents::eInline);
+	command_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, _pipeline);
+
+	// set viewport and scissor
+	vk::Viewport viewport = {};
+	{
+		viewport.x = 0.f;
+		viewport.y = 0.f;
+
+		viewport.width = static_cast<float>(_swapchain_extent.width);
+		viewport.height = static_cast<float>(_swapchain_extent.height);
+
+		viewport.minDepth = 0.f;
+		viewport.maxDepth = 0.f;
+	}
+	command_buffer.setViewport(0, 1, &viewport);
+
+	vk::Rect2D scissor = {};
+	{
+		scissor.offset = vk::Offset2D(0, 0);
+		scissor.extent = _swapchain_extent;
+	}
+	command_buffer.setScissor(0, 1, &scissor);
+
+	// draw command buffer
+	command_buffer.draw(3, 1, 0, 0);
+	command_buffer.endRenderPass();
+
+	// finish recording the command buffer
+	command_buffer.end();
+}
+
+void render_api::destroy_swapchain()
+{
+	std::ranges::for_each(_swapchain_frame_buffers.begin(), _swapchain_frame_buffers.end(),
+		[&](const auto& frame_buffer) {
+		_logical_device.destroyFramebuffer(frame_buffer);
+	});
+
+	std::ranges::for_each(_swapchain_image_views.begin(), _swapchain_image_views.end(),
+		[&](const auto& image_view) {
+		_logical_device.destroyImageView(image_view);
+	});
+
+	_logical_device.destroySwapchainKHR(_swap_chain);
+}
 
