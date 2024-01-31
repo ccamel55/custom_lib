@@ -12,20 +12,6 @@ inline constexpr uint8_t texture_pixel_size = 4;
 
 static_assert(sizeof(uint32_t) == texture_pixel_size);
 
-inline constexpr uint8_t frame_buffer_vertex_count = 6;
-inline constexpr vertex_t frame_buffer_vertices[] =
-{
-	vertex_t{{-1, 1}, {255, 255, 255, 255}, {0, 1}},
-	vertex_t{{1, 1}, {255, 255, 255, 255}, {1, 1}},
-	vertex_t{{1, -1}, {255, 255, 255, 255}, {1, 0}},
-
-	vertex_t{{1, -1}, {255, 255, 255, 255}, {1, 0}},
-	vertex_t{{-1, -1}, {255, 255, 255, 255}, {0, 0}},
-	vertex_t{{-1, 1}, {255, 255, 255, 255}, {0, 1}},
-};
-
-static_assert(sizeof(frame_buffer_vertices) == sizeof(vertex_t) * frame_buffer_vertex_count);
-
 // sometimes if this is too small we might end up with some weird artifacts
 inline constexpr uint8_t opaque_texture_width = 2;
 inline constexpr uint8_t opaque_texture_height = 2;

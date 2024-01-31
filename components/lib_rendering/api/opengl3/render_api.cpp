@@ -9,16 +9,33 @@ namespace
 constexpr char frame_buffer_vertex_shader[] = R"(
         #version 410 core
 
-        layout(location = 0) in vec2 position;
-        layout(location = 2) in vec2 uv;
-
 		out vec2 fragment_uv;
 
-        void main()
+		vec2 vertex_positions[6] = vec2[](
+			vec2(-1.0, 1.0),
+			vec2(1.0, 1.0),
+			vec2(1.0, -1.0),
+
+			vec2(1.0, -1.0),
+			vec2(-1.0, -1.0),
+			vec2(-1.0, 1.0)
+		);
+
+		vec2 texture_positions[6] = vec2[](
+			vec2(0.0, 1.0),
+			vec2(1.0, 1.0),
+			vec2(1.0, 0.0),
+
+			vec2(1.0, 0.0),
+			vec2(0.0, 0.0),
+			vec2(0.0, 1.0)
+		);
+
+		void main()
 		{
-			fragment_uv = uv;
-			gl_Position = vec4(position.xy, 0, 1);
-        }
+			fragment_uv = texture_positions[gl_VertexID];
+			gl_Position = vec4(vertex_positions[gl_VertexID].xy, 0, 1);
+		}
     )";
 
 constexpr char frame_buffer_fragment_shader[] = R"(
@@ -133,7 +150,7 @@ constexpr char sdf_outline_fragment_shader[] = R"(
     )";
 }  // namespace
 
-render_api::render_api(const void* api_context, bool flush_buffers)
+render_api::render_api(void* api_context, bool flush_buffers)
 	: render_api_base(api_context, flush_buffers)
 {
 	(void)api_context;
@@ -206,25 +223,7 @@ render_api::render_api(const void* api_context, bool flush_buffers)
 	// create frame buffer and it's respective draw codes
 	{
 		glGenFramebuffers(1, &_frame_buffer);
-		glGenBuffers(1, &_frame_buffer_vertex_buffer);
-
 		glGenVertexArrays(1, &_frame_buffer_vertex_array);
-		glBindVertexArray(_frame_buffer_vertex_array);
-
-		glBindBuffer(GL_ARRAY_BUFFER, _frame_buffer_vertex_buffer);
-		glBufferData(GL_ARRAY_BUFFER,
-			sizeof(frame_buffer_vertices),
-			frame_buffer_vertices,
-			GL_STATIC_DRAW);
-
-		glEnableVertexAttribArray(0);
-		glVertexAttribPointer(
-			0, 2, GL_FLOAT, GL_FALSE, sizeof(vertex_t), reinterpret_cast<void*>(offsetof(vertex_t, position)));
-
-		// texture position
-		glEnableVertexAttribArray(2);
-		glVertexAttribPointer(
-			2, 2, GL_FLOAT, GL_FALSE, sizeof(vertex_t), reinterpret_cast<void*>(offsetof(vertex_t, texture_position)));
 
 		_frame_buffer_shader.bind();
 		glUniform1i(_frame_buffer_shader.get_attribute_location("texture_sample"), 0);
@@ -244,8 +243,6 @@ render_api::~render_api()
 	glDeleteTextures(1, &_frame_buffer_texture);
 
 	glDeleteBuffers(1, &_vertex_buffer);
-	glDeleteBuffers(1, &_frame_buffer_vertex_buffer);
-
 	glDeleteBuffers(1, &_index_buffer);
 
 	glDeleteVertexArrays(1, &_vertex_array);
@@ -448,10 +445,9 @@ void render_api::draw_frame_buffer()
 
 	_frame_buffer_shader.bind();
 
+	// 6 vertices, two triangles make a rectangle
 	glBindVertexArray(_frame_buffer_vertex_array);
-	glBindBuffer(GL_ARRAY_BUFFER, _frame_buffer_vertex_buffer);
-
-	glDrawArrays(GL_TRIANGLES, 0, frame_buffer_vertex_count);
+	glDrawArrays(GL_TRIANGLES, 0,  6);
 
 	// this will restore the old frame buffer if it was set
 	_render_state.restore();

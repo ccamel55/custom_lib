@@ -9,7 +9,7 @@ namespace lib::rendering
 class render_api final : public render_api_base
 {
 public:
-	render_api(const void* api_context, bool flush_buffers);
+	render_api(void* api_context, bool flush_buffers);
 	~render_api() override;
 
 	void bind_atlas(const uint8_t* data, int width, int height) override;
@@ -33,7 +33,6 @@ private:
 
 	GLuint _frame_buffer = 0;
 	GLuint _frame_buffer_vertex_array = 0;
-	GLuint _frame_buffer_vertex_buffer = 0;
 	GLuint _frame_buffer_texture = 0;
 	gl3::shaders _frame_buffer_shader = {};
 };
