@@ -310,6 +310,191 @@ const auto create_shader_module = [](
 	assert(shader_module);
 	return shader_module;
 };
+
+const auto find_memory_type = [](
+	const vk::PhysicalDevice& device,
+	const vk::MemoryPropertyFlags& memory_property_flags,
+	uint32_t type_filter) -> uint32_t
+{
+	vk::PhysicalDeviceMemoryProperties memory_properties = {};
+	device.getMemoryProperties(&memory_properties);
+
+	for (uint32_t i = 0; i < memory_properties.memoryTypeCount; i++)
+	{
+		if ((type_filter & (1 << i)) &&
+			(memory_properties.memoryTypes[i].propertyFlags & memory_property_flags) == memory_property_flags)
+		{
+			return i;
+		}
+	}
+
+	lib_log_e("render_api: could not find appropriate memory properties");
+	assert(false);
+
+	return 0;
+};
+
+const auto get_vertex_binding_description = []() -> vk::VertexInputBindingDescription
+{
+	vk::VertexInputBindingDescription description = {};
+	{
+		description.binding = 0;
+		description.stride = sizeof(vertex_t);
+		description.inputRate = vk::VertexInputRate::eVertex;
+	}
+
+	return description;
+};
+
+const auto get_vertex_attribute_descriptions = []() -> std::array<vk::VertexInputAttributeDescription, 3>
+{
+	std::array<vk::VertexInputAttributeDescription, 3> descriptions = {};
+	{
+		{
+			auto& pos_description = descriptions.at(0);
+
+			pos_description.binding = 0;
+			pos_description.location = 0;
+			pos_description.format = vk::Format::eR32G32Sfloat;
+			pos_description.offset = offsetof(vertex_t, position);
+		}
+
+		{
+			auto& color_description = descriptions.at(1);
+			color_description.binding = 0;
+			color_description.location = 1;
+			color_description.format = vk::Format::eR32Uint;
+			color_description.offset = offsetof(vertex_t, color);
+		}
+
+		{
+			auto& texture_pos_description = descriptions.at(2);
+
+			texture_pos_description.binding = 0;
+			texture_pos_description.location = 2;
+			texture_pos_description.format = vk::Format::eR32G32Sfloat;
+			texture_pos_description.offset = offsetof(vertex_t, texture_position);
+		}
+	}
+
+	return descriptions;
+};
+
+const auto create_buffer = [](
+	const vk::PhysicalDevice& physical_device,
+	const vk::Device& device,
+	vk::DeviceSize size,
+	vk::BufferUsageFlags buffer_usage_flags,
+	vk::MemoryPropertyFlags memory_property_flags,
+	vk::Buffer& buffer,
+	vk::DeviceMemory& device_memory)
+{
+	vk::BufferCreateInfo buffer_create_info = {};
+	{
+		buffer_create_info.sType = vk::StructureType::eBufferCreateInfo;
+		buffer_create_info.size = size;
+
+		buffer_create_info.usage = buffer_usage_flags;
+		buffer_create_info.sharingMode = vk::SharingMode::eExclusive;
+	}
+
+	if (const auto result = device.createBuffer(&buffer_create_info, nullptr, &buffer);
+		result != vk::Result::eSuccess)
+	{
+		lib_log_e("render_api: failed to create buffer {}", static_cast<int>(result));
+		assert(false);
+	}
+
+	assert(buffer);
+
+	// allocate memory
+	vk::MemoryRequirements memory_requirements = {};
+	device.getBufferMemoryRequirements(buffer, &memory_requirements);
+
+	vk::MemoryAllocateInfo memory_allocate_info = {};
+	{
+		memory_allocate_info.sType = vk::StructureType::eMemoryAllocateInfo;
+		memory_allocate_info.allocationSize = memory_requirements.size;
+
+		memory_allocate_info.memoryTypeIndex = find_memory_type(
+			physical_device,
+			memory_property_flags,
+			memory_requirements.memoryTypeBits
+		);
+	}
+
+	if (const auto result = device.allocateMemory(
+		&memory_allocate_info, nullptr, &device_memory);
+		result != vk::Result::eSuccess)
+	{
+		lib_log_e("render_api: failed to allocate buffer memory {}", static_cast<int>(result));
+		assert(false);
+	}
+
+	assert(device_memory);
+	device.bindBufferMemory(buffer, device_memory, 0);
+};
+
+const auto copy_buffer = [](
+	const vk::Device& device,
+	const vk::CommandPool& command_pool,
+	const vk::Queue& queue,
+	vk::Buffer src_buffer,
+	vk::Buffer dst_buffer,
+	vk::DeviceSize size)
+{
+	vk::CommandBufferAllocateInfo allocate_info = {};
+	{
+		allocate_info.sType = vk::StructureType::eCommandBufferAllocateInfo;
+		allocate_info.level = vk::CommandBufferLevel::ePrimary;
+
+		allocate_info.commandPool = command_pool;
+		allocate_info.commandBufferCount = 1;
+	}
+
+	vk::CommandBuffer command_buffer = nullptr;
+	assert(device.allocateCommandBuffers(&allocate_info, &command_buffer) == vk::Result::eSuccess);
+
+	// start recording
+	vk::CommandBufferBeginInfo buffer_begin_info = {};
+	{
+		buffer_begin_info.sType = vk::StructureType::eCommandBufferBeginInfo;
+		buffer_begin_info.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
+	}
+
+	assert(command_buffer.begin(&buffer_begin_info) == vk::Result::eSuccess);
+
+	// copy src into dst buffer
+	vk::BufferCopy copy_region = {};
+	{
+		copy_region.srcOffset = 0;
+		copy_region.dstOffset = 0;
+		copy_region.size = size;
+	}
+
+	command_buffer.copyBuffer(src_buffer, dst_buffer, 1, &copy_region);
+	command_buffer.end();
+
+	// execute the command buffer
+	vk::SubmitInfo submit_info = {};
+	{
+		submit_info.sType = vk::StructureType::eSubmitInfo;
+		submit_info.commandBufferCount = 1;
+		submit_info.pCommandBuffers = &command_buffer;
+	}
+
+	assert(queue.submit(1, &submit_info, nullptr) == vk::Result::eSuccess);
+	queue.waitIdle();
+
+	// cleanup buffers
+	device.freeCommandBuffers(command_pool, 1, &command_buffer);
+};
+
+constexpr std::array<vertex_t, 3> vertex_buffer_test = {
+	vertex_t{ { 0.f, -0.5f }, { 255, 0, 0 }, { 0.f, 0.f } },
+	vertex_t{ { 0.5f, 0.5f }, { 0, 255, 0 }, { 0.f, 0.f } },
+	vertex_t{ { -0.5f, 0.5f }, { 0, 0, 255 }, { 0.f, 0.f } },
+};
 }
 
 render_api::render_api(void* api_context, bool flush_buffers) :
@@ -347,6 +532,8 @@ render_api::render_api(void* api_context, bool flush_buffers) :
 	init_graphics_pipeline();
 	init_frame_buffers();
 	init_command_pool();
+	init_vertex_buffer();
+	init_index_buffer();
 	init_command_buffer();
 
 	// setup synchronization objects
@@ -389,6 +576,12 @@ render_api::~render_api()
 {
 	_logical_device.waitIdle();
 	destroy_swapchain();
+
+	_logical_device.destroyBuffer(_vertex_buffer);
+	_logical_device.freeMemory(_vertex_buffer_memory);
+
+	_logical_device.destroyBuffer(_index_buffer);
+	_logical_device.freeMemory(_index_buffer_memory);
 
 	_logical_device.destroyPipeline(_pipeline);
 	_logical_device.destroyPipelineLayout(_pipeline_layout);
@@ -769,7 +962,6 @@ void render_api::init_swapcahin()
 		swapchain_create_info.clipped = vk::True;
 
 		// what we want to create a swapchain from, used if we resize window
-		// todo: change this depending on if we resize our window or not etc.
 		swapchain_create_info.oldSwapchain = nullptr;
 	}
 
@@ -981,16 +1173,18 @@ void render_api::init_graphics_pipeline()
 	// setup fixed function parts of the pipeline
 
 	// specify vertex data format
-	// todo: add using our vertex format
+	constexpr auto binding_description = get_vertex_binding_description();
+	constexpr auto attribute_description = get_vertex_attribute_descriptions();
+
 	vk::PipelineVertexInputStateCreateInfo vertex_input_state_create_info = {};
 	{
 		vertex_input_state_create_info.sType = vk::StructureType::ePipelineVertexInputStateCreateInfo;
 
-		vertex_input_state_create_info.vertexBindingDescriptionCount = 0;
-		vertex_input_state_create_info.pVertexBindingDescriptions = nullptr; // Optional
+		vertex_input_state_create_info.vertexBindingDescriptionCount = 1;
+		vertex_input_state_create_info.pVertexBindingDescriptions = &binding_description; // Optional
 
-		vertex_input_state_create_info.vertexAttributeDescriptionCount = 0;
-		vertex_input_state_create_info.pVertexAttributeDescriptions = nullptr; // Optional
+		vertex_input_state_create_info.vertexAttributeDescriptionCount = attribute_description.size();
+		vertex_input_state_create_info.pVertexAttributeDescriptions = attribute_description.data(); // Optional
 	}
 
 	// specify what primitives we want to use, our renderer only uses triangles
@@ -1325,7 +1519,17 @@ void render_api::record_command_buffer(const vk::CommandBuffer& command_buffer, 
 	command_buffer.setScissor(0, 1, &scissor);
 
 	// draw command buffer
-	command_buffer.draw(3, 1, 0, 0);
+	const std::array<vk::Buffer, 1> vertex_buffers = {
+		_vertex_buffer
+	};
+
+	constexpr std::array<vk::DeviceSize, 1> vertex_buffer_offets = {
+		0
+	};
+
+	command_buffer.bindVertexBuffers(0, vertex_buffers, vertex_buffer_offets);
+
+	command_buffer.draw(vertex_buffer_test.size(), 1, 0, 0);
 	command_buffer.endRenderPass();
 
 	// finish recording the command buffer
@@ -1347,3 +1551,61 @@ void render_api::destroy_swapchain()
 	_logical_device.destroySwapchainKHR(_swap_chain);
 }
 
+void render_api::init_vertex_buffer()
+{
+	constexpr vk::DeviceSize buffer_size = sizeof(vertex_t) * MAX_VERTICES;
+
+	// create staging buffer, used to write data from CPU to GPU
+	vk::Buffer staging_buffer = nullptr;
+	vk::DeviceMemory staging_buffer_memory = nullptr;
+
+	create_buffer(
+		_physical_device,
+		_logical_device,
+		buffer_size,
+		vk::BufferUsageFlagBits::eTransferSrc,
+		vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
+		staging_buffer,
+		staging_buffer_memory);
+
+	// map data into the buffer and write to it
+	void* data = nullptr;
+	assert(_logical_device.mapMemory(
+		staging_buffer_memory,
+		0,
+		buffer_size,
+		static_cast<vk::MemoryMapFlagBits>(0),
+		&data) == vk::Result::eSuccess);
+
+	// copy data into vertex buffer
+	std::memcpy(data, vertex_buffer_test.data(), sizeof(vertex_buffer_test));
+	_logical_device.unmapMemory(staging_buffer_memory);
+
+	// create actual vertex buffer used by GPU
+	create_buffer(
+		_physical_device,
+		_logical_device,
+		buffer_size,
+		vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer,
+		vk::MemoryPropertyFlagBits::eDeviceLocal,
+		_vertex_buffer,
+		_vertex_buffer_memory);
+
+	// copy contents of cpu memory mapped buffer into device buffer
+	copy_buffer(
+		_logical_device,
+		_command_pool,
+		_graphics_present_queue,
+		staging_buffer,
+		_vertex_buffer,
+		buffer_size);
+
+	// destroy staging buffer
+	_logical_device.destroyBuffer(staging_buffer);
+	_logical_device.freeMemory(staging_buffer_memory);
+}
+
+void render_api::init_index_buffer()
+{
+
+}

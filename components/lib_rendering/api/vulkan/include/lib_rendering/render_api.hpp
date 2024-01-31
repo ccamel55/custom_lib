@@ -43,6 +43,8 @@ private:
     void init_graphics_pipeline();
     void init_frame_buffers();
     void init_command_pool();
+    void init_vertex_buffer();
+    void init_index_buffer();
     void init_command_buffer();
 
     void destroy_swapchain();
@@ -72,6 +74,12 @@ private:
     vk::RenderPass _render_pass = nullptr;
     vk::PipelineLayout _pipeline_layout = nullptr;
     vk::Pipeline _pipeline = nullptr;
+
+    vk::Buffer _vertex_buffer = nullptr;
+    vk::DeviceMemory _vertex_buffer_memory = nullptr;
+
+    vk::Buffer _index_buffer = nullptr;
+    vk::DeviceMemory _index_buffer_memory = nullptr;
 
     // synchronization
     std::array<vk::Semaphore, vulkan::max_frames_in_flight> _image_available_semaphores = {};
