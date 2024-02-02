@@ -40,29 +40,42 @@ private:
     void init_image_views();
 
     void init_render_passes();
+    void init_descriptor_set_layout();
     void init_graphics_pipeline();
     void init_frame_buffers();
     void init_command_pool();
     void init_vertex_buffer();
     void init_index_buffer();
+    void init_unifrom_buffer();
     void init_command_buffer();
+    void init_descriptor_pool();
+    void init_descriptor_set();
+    void init_texture_view();
+    void init_texture_sampler();
 
     void destroy_swapchain();
-    void record_command_buffer(const vk::CommandBuffer& command_buffer, uint32_t image_index) const;
+    void destroy_image();
+
+    void update_uniform_buffer(uint32_t current_frame) const;
+    void record_command_buffer(
+        const vk::CommandBuffer& command_buffer,
+        uint32_t image_index,
+        uint32_t current_frame,
+        const render_command& render_command) const;
 
 private:
     std::optional<uint32_t> _graphics_present_family_index = std::nullopt;
 
-    vk::Instance _instance = nullptr;
-    vk::SurfaceKHR _window_surface = nullptr;
+    vk::Instance _instance = {};
+    vk::SurfaceKHR _window_surface = {};
 
-    vk::PhysicalDevice _physical_device = nullptr;
-    vk::Device _logical_device = nullptr;
-    vk::Queue _graphics_present_queue = nullptr;
-    vk::CommandPool _command_pool = nullptr;
+    vk::PhysicalDevice _physical_device = {};
+    vk::Device _logical_device = {};
+    vk::Queue _graphics_present_queue = {};
+    vk::CommandPool _command_pool = {};
     std::array<vk::CommandBuffer, vulkan::max_frames_in_flight> _command_buffers = {};
 
-    vk::SwapchainKHR _swap_chain = nullptr;
+    vk::SwapchainKHR _swap_chain = {};
     std::vector<vk::Image> _swapchain_images = {};
     std::vector<vk::ImageView> _swapchain_image_views = {};
     std::vector<vk::Framebuffer> _swapchain_frame_buffers = {};
@@ -71,22 +84,45 @@ private:
     vk::Format _swapchian_format = {};
     vk::Extent2D _swapchain_extent = {};
 
-    vk::RenderPass _render_pass = nullptr;
-    vk::PipelineLayout _pipeline_layout = nullptr;
-    vk::Pipeline _pipeline = nullptr;
+    vk::RenderPass _render_pass = {};
+    vk::DescriptorSetLayout _descriptor_set_layout = {};
+    vk::DescriptorPool _descriptor_pool = {};
+    vk::PipelineLayout _pipeline_layout = {};
+    vk::Pipeline _pipeline = {};
 
-    vk::Buffer _vertex_buffer = nullptr;
-    vk::DeviceMemory _vertex_buffer_memory = nullptr;
+    vk::Image _texture_atlas = {};
+    vk::DeviceMemory _texture_atlas_memory = {};
+    vk::ImageView _texture_atlas_view = {};
+    vk::Sampler _texture_sampler = {};
 
-    vk::Buffer _index_buffer = nullptr;
-    vk::DeviceMemory _index_buffer_memory = nullptr;
+    vk::Buffer _vertex_buffer = {};
+    vk::DeviceMemory _vertex_buffer_memory = {};
+
+    vk::Buffer _vertex_staging_buffer = {};
+    vk::DeviceMemory _vertex_staging_buffer_memory = {};
+    void* _vertex_staging_buffer_mapped = nullptr;
+
+    vk::Buffer _index_buffer = {};
+    vk::DeviceMemory _index_buffer_memory = {};
+
+    vk::Buffer _index_staging_buffer = {};
+    vk::DeviceMemory _index_staging_buffer_memory = {};
+    void* _index_staging_buffer_mapped = nullptr;
 
     // synchronization
     std::array<vk::Semaphore, vulkan::max_frames_in_flight> _image_available_semaphores = {};
     std::array<vk::Semaphore, vulkan::max_frames_in_flight> _render_finished_semaphores = {};
     std::array<vk::Fence, vulkan::max_frames_in_flight> _in_flight_fences = {};
 
+    std::array<vk::Buffer, vulkan::max_frames_in_flight> _uniform_buffer = {};
+    std::array<vk::DeviceMemory, vulkan::max_frames_in_flight> _uniform_buffer_memory = {};
+    std::array<void*, vulkan::max_frames_in_flight> _uniform_buffer_mapped = {};
+
+    std::array<vk::DescriptorSet, vulkan::max_frames_in_flight> _descriptor_set = {};
+
     uint32_t _current_frame = 0;
+
     bool _stop_rendering = false;
+    bool _init_texture = false;
 };
 }  // namespace lib::rendering

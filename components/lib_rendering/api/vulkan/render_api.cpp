@@ -1,8 +1,10 @@
 #include <lib_rendering/render_api.hpp>
 
 // include our shaders
-#include <lib_rendering/shaders/basic_shader_frag.hpp>
 #include <lib_rendering/shaders/basic_shader_vert.hpp>
+#include <lib_rendering/shaders/normal_shader_frag.hpp>
+#include <lib_rendering/shaders/sdf_shader_frag.hpp>
+#include <lib_rendering/shaders/outline_shader_frag.hpp>
 
 #include <unordered_set>
 #include <ranges>
@@ -47,11 +49,19 @@ const std::unordered_set<std::string> validation_layers =
 #endif
 };
 
-struct swapchain_support_details
+struct swapchain_support_details_t
 {
 	vk::SurfaceCapabilitiesKHR capabilities = {};
 	std::vector<vk::SurfaceFormatKHR> formats = {};
 	std::vector<vk::PresentModeKHR> present_modes = {};
+};
+
+// ubo to pass to vertex shader
+// note: careful because vulkan expects shit to be aligned in a certain way depending on type
+struct uniform_buffer_object_t
+{
+	float scale[2];
+	float translate[2];
 };
 
 const auto get_supported_extensions = [](const std::unordered_set<std::string>& extensions_set) {
@@ -193,9 +203,9 @@ const auto query_queue_family_properties = [](const vk::PhysicalDevice& device) 
 
 const auto query_swapchain_support = [](
 	const vk::PhysicalDevice& device,
-	const vk::SurfaceKHR& surface) -> swapchain_support_details
+	const vk::SurfaceKHR& surface) -> swapchain_support_details_t
 {
-	swapchain_support_details details = {};
+	swapchain_support_details_t details = {};
 	assert(device.getSurfaceCapabilitiesKHR(surface, &details.capabilities) == vk::Result::eSuccess);
 
 	uint32_t format_count = 0;
@@ -435,13 +445,85 @@ const auto create_buffer = [](
 	device.bindBufferMemory(buffer, device_memory, 0);
 };
 
-const auto copy_buffer = [](
+const auto create_texture = [](
+	const vk::PhysicalDevice& physical_device,
 	const vk::Device& device,
-	const vk::CommandPool& command_pool,
-	const vk::Queue& queue,
-	vk::Buffer src_buffer,
-	vk::Buffer dst_buffer,
-	vk::DeviceSize size)
+	uint32_t width,
+	uint32_t height,
+	vk::Format format,
+	vk::ImageTiling tiling,
+	vk::ImageUsageFlags usage_flags,
+	vk::MemoryPropertyFlags memory_property_flags,
+	vk::Image& image,
+	vk::DeviceMemory& image_memory
+)
+{
+	vk::ImageCreateInfo image_create_info = {};
+	{
+		image_create_info.sType = vk::StructureType::eImageCreateInfo;
+		image_create_info.imageType = vk::ImageType::e2D;
+
+		image_create_info.extent.width = width;
+		image_create_info.extent.height = height;
+
+		image_create_info.extent.depth = 1;
+		image_create_info.mipLevels = 1;
+		image_create_info.arrayLayers = 1;
+
+		image_create_info.format = format;
+		image_create_info.tiling = tiling;
+		image_create_info.initialLayout = vk::ImageLayout::eUndefined;
+
+		image_create_info.usage = usage_flags;
+		image_create_info.sharingMode = vk::SharingMode::eExclusive;
+
+		// multisampling stuff we wont be using
+		image_create_info.samples = vk::SampleCountFlagBits::e1;
+		image_create_info.flags = static_cast<vk::ImageCreateFlagBits>(0);
+	}
+
+	if (const auto result = device.createImage(
+		&image_create_info,
+		nullptr,
+		&image); result != vk::Result::eSuccess)
+	{
+		lib_log_e("render_api: failed to create image {}", static_cast<int>(result));
+		assert(false);
+	}
+
+	// create memory for image
+	vk::MemoryRequirements memory_requirements = {};
+	device.getImageMemoryRequirements(image, &memory_requirements);
+
+	vk::MemoryAllocateInfo allocate_info = {};
+	{
+		allocate_info.sType = vk::StructureType::eMemoryAllocateInfo;
+		allocate_info.allocationSize = memory_requirements.size;
+
+		allocate_info.memoryTypeIndex = find_memory_type(
+			physical_device,
+			memory_property_flags,
+			memory_requirements.memoryTypeBits
+			);
+	}
+
+	if (const auto result = device.allocateMemory(
+		&allocate_info,
+		nullptr,
+		&image_memory); result != vk::Result::eSuccess)
+	{
+		lib_log_e("render_api: failed to allocate texture memory {}", static_cast<int>(result));
+		assert(false);
+	}
+
+	// bind image to memory
+	device.bindImageMemory(image, image_memory, 0);
+};
+
+// todo: combine operations into single command buffer and execute then asynchronously (one setup buffer)
+const auto begin_single_time_command = [](
+	const vk::Device& device,
+	const vk::CommandPool& command_pool) -> vk::CommandBuffer
 {
 	vk::CommandBufferAllocateInfo allocate_info = {};
 	{
@@ -452,7 +534,7 @@ const auto copy_buffer = [](
 		allocate_info.commandBufferCount = 1;
 	}
 
-	vk::CommandBuffer command_buffer = nullptr;
+	vk::CommandBuffer command_buffer = {};
 	assert(device.allocateCommandBuffers(&allocate_info, &command_buffer) == vk::Result::eSuccess);
 
 	// start recording
@@ -464,15 +546,15 @@ const auto copy_buffer = [](
 
 	assert(command_buffer.begin(&buffer_begin_info) == vk::Result::eSuccess);
 
-	// copy src into dst buffer
-	vk::BufferCopy copy_region = {};
-	{
-		copy_region.srcOffset = 0;
-		copy_region.dstOffset = 0;
-		copy_region.size = size;
-	}
+	return command_buffer;
+};
 
-	command_buffer.copyBuffer(src_buffer, dst_buffer, 1, &copy_region);
+const auto end_single_time_command = [](
+	const vk::Device& device,
+	const vk::CommandPool& command_pool,
+	const vk::Queue& queue,
+	const vk::CommandBuffer& command_buffer)
+{
 	command_buffer.end();
 
 	// execute the command buffer
@@ -490,10 +572,173 @@ const auto copy_buffer = [](
 	device.freeCommandBuffers(command_pool, 1, &command_buffer);
 };
 
-constexpr std::array<vertex_t, 3> vertex_buffer_test = {
-	vertex_t{ { 0.f, -0.5f }, { 255, 0, 0 }, { 0.f, 0.f } },
-	vertex_t{ { 0.5f, 0.5f }, { 0, 255, 0 }, { 0.f, 0.f } },
-	vertex_t{ { -0.5f, 0.5f }, { 0, 0, 255 }, { 0.f, 0.f } },
+const auto copy_buffer_to_image = [](
+	const vk::Device& device,
+	const vk::CommandPool& command_pool,
+	const vk::Queue& queue,
+	const vk::Buffer& buffer,
+	const vk::Image& image,
+	uint32_t width,
+	uint32_t height)
+{
+	const auto command_buffer = begin_single_time_command(device, command_pool);
+
+	vk::BufferImageCopy region = {};
+	{
+		region.bufferOffset = 0;
+		region.bufferRowLength = 0;
+		region.bufferImageHeight = 0;
+
+		region.imageSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
+		region.imageSubresource.mipLevel = 0;
+		region.imageSubresource.baseArrayLayer = 0;
+		region.imageSubresource.layerCount = 1;
+
+		region.imageOffset = vk::Offset3D(0, 0, 0);
+		region.imageExtent = vk::Extent3D(width, height, 1);
+	}
+
+	command_buffer.copyBufferToImage(
+		buffer,
+		image,
+		vk::ImageLayout::eTransferDstOptimal,
+		1,
+		&region);
+
+	end_single_time_command(device, command_pool, queue, command_buffer);
+};
+
+const auto copy_buffer = [](
+	const vk::Device& device,
+	const vk::CommandPool& command_pool,
+	const vk::Queue& queue,
+	const vk::Buffer& src_buffer,
+	const vk::Buffer& dst_buffer,
+	vk::DeviceSize size)
+{
+	const auto command_buffer = begin_single_time_command(device, command_pool);
+
+	// copy src into dst buffer
+	vk::BufferCopy copy_region = {};
+	{
+		copy_region.srcOffset = 0;
+		copy_region.dstOffset = 0;
+		copy_region.size = size;
+	}
+
+	command_buffer.copyBuffer(src_buffer, dst_buffer, 1, &copy_region);
+
+	end_single_time_command(device, command_pool, queue, command_buffer);
+};
+
+const auto transition_image_layout = [](
+	const vk::Device& device,
+	const vk::CommandPool& command_pool,
+	const vk::Queue& queue,
+	const vk::Image& image,
+	vk::Format format,
+	vk::ImageLayout old_layoyt,
+	vk::ImageLayout new_layout)
+{
+	const auto command_buffer = begin_single_time_command(device, command_pool);
+
+	vk::PipelineStageFlags source_stage = {};
+	vk::PipelineStageFlags destination_stage = {};
+
+	vk::ImageMemoryBarrier barrier = {};
+	{
+		barrier.sType = vk::StructureType::eImageMemoryBarrier;
+
+		barrier.oldLayout = old_layoyt;
+		barrier.newLayout = new_layout;
+
+		barrier.srcQueueFamilyIndex = vk::QueueFamilyIgnored;
+		barrier.dstQueueFamilyIndex = vk::QueueFamilyIgnored;
+
+		barrier.image = image;
+		barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+
+		barrier.subresourceRange.baseMipLevel = 0;
+		barrier.subresourceRange.levelCount = 1;
+
+		barrier.subresourceRange.baseArrayLayer = 0;
+		barrier.subresourceRange.layerCount = 1;
+
+		// note: add more depending on transition we need to do
+		if (old_layoyt == vk::ImageLayout::eUndefined && new_layout == vk::ImageLayout::eTransferDstOptimal)
+		{
+			barrier.srcAccessMask = static_cast<vk::AccessFlags>(0);
+			barrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
+
+			source_stage = vk::PipelineStageFlagBits::eTopOfPipe;
+			destination_stage = vk::PipelineStageFlagBits::eTransfer;
+		}
+		else if (old_layoyt == vk::ImageLayout::eTransferDstOptimal && new_layout == vk::ImageLayout::eShaderReadOnlyOptimal)
+		{
+			barrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
+			barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
+
+			source_stage = vk::PipelineStageFlagBits::eTransfer;
+			destination_stage = vk::PipelineStageFlagBits::eFragmentShader;
+		}
+		else
+		{
+			lib_log_e("render_api: unsupported transition");
+			assert(false);
+		}
+	}
+
+	command_buffer.pipelineBarrier(
+		source_stage, destination_stage,
+		static_cast<vk::DependencyFlags>(0),
+		0, nullptr,
+		0, nullptr,
+		1, &barrier);
+
+	end_single_time_command(device, command_pool, queue, command_buffer);
+};
+
+const auto create_image_view = [](
+	const vk::Device& device,
+	const vk::Image& image,
+	vk::Format format) -> vk::ImageView
+{
+	vk::ImageViewCreateInfo image_view_create_info = {};
+	{
+		image_view_create_info.sType = vk::StructureType::eImageViewCreateInfo;
+		image_view_create_info.image = image;
+		image_view_create_info.viewType = vk::ImageViewType::e2D;
+		image_view_create_info.format = format;
+
+		// how we want to map image channels, we just want to stick to using default
+		image_view_create_info.components.r = vk::ComponentSwizzle::eIdentity;
+		image_view_create_info.components.g = vk::ComponentSwizzle::eIdentity;
+		image_view_create_info.components.b = vk::ComponentSwizzle::eIdentity;
+		image_view_create_info.components.a = vk::ComponentSwizzle::eIdentity;
+
+		// 2d image, color target without mipmapping levels or multiple layers
+		image_view_create_info.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+
+		image_view_create_info.subresourceRange.baseMipLevel = 0;
+		image_view_create_info.subresourceRange.levelCount = 1;
+
+		image_view_create_info.subresourceRange.baseArrayLayer = 0;
+		image_view_create_info.subresourceRange.layerCount = 1;
+	}
+
+	vk::ImageView image_view = {};
+
+	if (const auto result = device.createImageView(
+		&image_view_create_info,
+		nullptr,
+		&image_view);
+		result != vk::Result::eSuccess)
+	{
+		lib_log_e("render_api: failed to create image view {}", static_cast<int>(result));
+		assert(false);
+	}
+
+	return image_view;
 };
 }
 
@@ -529,11 +774,14 @@ render_api::render_api(void* api_context, bool flush_buffers) :
 
 	// setup pipeline
 	init_render_passes();
+	init_descriptor_set_layout();
 	init_graphics_pipeline();
 	init_frame_buffers();
 	init_command_pool();
 	init_vertex_buffer();
 	init_index_buffer();
+	init_unifrom_buffer();
+	init_descriptor_pool();
 	init_command_buffer();
 
 	// setup synchronization objects
@@ -575,10 +823,31 @@ render_api::render_api(void* api_context, bool flush_buffers) :
 render_api::~render_api()
 {
 	_logical_device.waitIdle();
+
 	destroy_swapchain();
+	destroy_image();
+
+	for (size_t i = 0; i < vulkan::max_frames_in_flight; i++)
+	{
+		_logical_device.destroyBuffer(_uniform_buffer.at(i));
+		_logical_device.freeMemory(_uniform_buffer_memory.at(i));
+	}
+
+	_logical_device.destroySampler(_texture_sampler);
+	_logical_device.destroyDescriptorPool(_descriptor_pool);
+	_logical_device.destroyDescriptorSetLayout(_descriptor_set_layout);
+
+	_logical_device.unmapMemory(_vertex_staging_buffer_memory);
+	_logical_device.unmapMemory(_index_staging_buffer_memory);
+
+	_logical_device.destroyBuffer(_vertex_staging_buffer);
+	_logical_device.freeMemory(_vertex_staging_buffer_memory);
 
 	_logical_device.destroyBuffer(_vertex_buffer);
 	_logical_device.freeMemory(_vertex_buffer_memory);
+
+	_logical_device.destroyBuffer(_index_staging_buffer);
+	_logical_device.freeMemory(_index_staging_buffer_memory);
 
 	_logical_device.destroyBuffer(_index_buffer);
 	_logical_device.freeMemory(_index_buffer_memory);
@@ -603,7 +872,88 @@ render_api::~render_api()
 
 void render_api::bind_atlas(const uint8_t* data, int width, int height)
 {
+	// remove pre existing texture atlas if needed
+	if (_init_texture)
+	{
+		_logical_device.waitIdle();
+		destroy_image();
+	}
 
+	_init_texture = true;
+	const vk::DeviceSize buffer_size = width * height * texture_pixel_size;
+
+	vk::Buffer staging_buffer = nullptr;
+	vk::DeviceMemory staging_buffer_memory = nullptr;
+
+	create_buffer(
+		_physical_device,
+		_logical_device,
+		buffer_size,
+		vk::BufferUsageFlagBits::eTransferSrc,
+		vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
+		staging_buffer,
+		staging_buffer_memory);
+
+	// copy data into staging buffer
+	void* staging_buffer_mapped = nullptr;
+	assert(_logical_device.mapMemory(
+		staging_buffer_memory,
+		0,
+		buffer_size,
+		static_cast<vk::MemoryMapFlagBits>(0),
+		&staging_buffer_mapped) == vk::Result::eSuccess);
+
+	std::memcpy(staging_buffer_mapped, data, buffer_size);
+	_logical_device.unmapMemory(staging_buffer_memory);
+
+	create_texture(
+		_physical_device,
+		_logical_device,
+		width,
+		height,
+		vk::Format::eR8G8B8A8Srgb,
+		vk::ImageTiling::eOptimal,
+		vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
+		vk::MemoryPropertyFlagBits::eDeviceLocal,
+		_texture_atlas,
+		_texture_atlas_memory);
+
+	transition_image_layout(
+		_logical_device,
+		_command_pool,
+		_graphics_present_queue,
+		_texture_atlas,
+		vk::Format::eR8G8B8A8Srgb,
+		vk::ImageLayout::eUndefined,
+		vk::ImageLayout::eTransferDstOptimal);
+
+	copy_buffer_to_image(
+		_logical_device,
+		_command_pool,
+		_graphics_present_queue,
+		staging_buffer,
+		_texture_atlas,
+		width,
+		height);
+
+	transition_image_layout(
+		_logical_device,
+		_command_pool,
+		_graphics_present_queue,
+		_texture_atlas,
+		vk::Format::eR8G8B8A8Srgb,
+		vk::ImageLayout::eTransferDstOptimal,
+		vk::ImageLayout::eShaderReadOnlyOptimal);
+
+	_logical_device.destroyBuffer(staging_buffer);
+	_logical_device.freeMemory(staging_buffer_memory);
+
+	// both are related to textures, our descriptor set can be used for other things but
+	// we don't have anything else to use it with right now
+	init_texture_view();
+	init_texture_sampler();
+
+	init_descriptor_set();
 }
 
 void render_api::update_screen_size(const lib::point2Di& window_size)
@@ -630,20 +980,14 @@ void render_api::update_frame_buffer(const render_command& render_command)
 	{
 		return;
 	}
-}
-
-void render_api::draw_frame_buffer()
-{
-	if (_stop_rendering)
-	{
-		return;
-	}
 
 	// wait for gpu to finish drawing previous frame
 	assert(_logical_device.waitForFences(
 		1,
 		&_in_flight_fences.at(_current_frame),
 		vk::True, UINT64_MAX) == vk::Result::eSuccess);
+
+	update_uniform_buffer(_current_frame);
 
 	assert(_logical_device.resetFences(1, &_in_flight_fences.at(_current_frame)) == vk::Result::eSuccess);
 
@@ -658,7 +1002,7 @@ void render_api::draw_frame_buffer()
 
 	// reset command buffer and render what we want
 	_command_buffers.at(_current_frame).reset();
-	record_command_buffer(_command_buffers.at(_current_frame), next_image_index);
+	record_command_buffer(_command_buffers.at(_current_frame), next_image_index, _current_frame, render_command);
 
 	// submit command buffer
 	const std::array<vk::Semaphore, 1> wait_semaphores = {
@@ -714,6 +1058,14 @@ void render_api::draw_frame_buffer()
 
 	assert( _graphics_present_queue.presentKHR(&present_info) == vk::Result::eSuccess);
 	_current_frame = (_current_frame + 1) % vulkan::max_frames_in_flight;
+}
+
+void render_api::draw_frame_buffer()
+{
+	if (_stop_rendering)
+	{
+		return;
+	}
 }
 
 void render_api::init_vulkan(const std::vector<const char*>& extensions, const std::vector<const char*>& layers)
@@ -847,7 +1199,7 @@ void render_api::init_device(const std::vector<const char*>& layers)
 
 	vk::PhysicalDeviceFeatures device_features = {};
 	{
-		// todo: add shit for device features
+		// we dont use any device features right now so leave empty
 	}
 
 	vk::DeviceCreateInfo create_info = {};
@@ -914,7 +1266,6 @@ void render_api::init_swapcahin()
 	const auto surface_format = choose_swapchain_format(swap_chain_support.formats);
 	const auto present_mode = choose_swapchain_present_mode(swap_chain_support.present_modes);
 
-	// todo: use window size parameter
 	// we always want to use +1 on minium image count since the driver might be doing other stuff which will
 	// make us wait, slowing down the render process etc.
 	const auto extent = choose_swapchain_extent(swap_chain_support.capabilities, _window_size);
@@ -1001,41 +1352,13 @@ void render_api::init_image_views()
 
 	for (size_t i = 0; i < _swapchain_images.size(); i++)
 	{
-		vk::ImageViewCreateInfo image_view_create_info = {};
-		{
-			image_view_create_info.sType = vk::StructureType::eImageViewCreateInfo;
-			image_view_create_info.image = _swapchain_images.at(i);
-			image_view_create_info.viewType = vk::ImageViewType::e2D;
-			image_view_create_info.format = _swapchian_format;
-
-			// how we want to map image channels, we just want to stick to using default
-			image_view_create_info.components.r = vk::ComponentSwizzle::eIdentity;
-			image_view_create_info.components.g = vk::ComponentSwizzle::eIdentity;
-			image_view_create_info.components.b = vk::ComponentSwizzle::eIdentity;
-			image_view_create_info.components.a = vk::ComponentSwizzle::eIdentity;
-
-			// 2d image, color target without mipmapping levels or multiple layers
-			image_view_create_info.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
-			image_view_create_info.subresourceRange.baseMipLevel = 0;
-			image_view_create_info.subresourceRange.levelCount = 1;
-			image_view_create_info.subresourceRange.baseArrayLayer = 0;
-			image_view_create_info.subresourceRange.layerCount = 1;
-		}
-
-		if (const auto result = _logical_device.createImageView(
-			&image_view_create_info,
-			nullptr,
-			&_swapchain_image_views.at(i));
-			result != vk::Result::eSuccess)
-		{
-			lib_log_e("render_api: failed to create image view {}", static_cast<int>(result));
-			assert(false);
-		}
-
-		assert(_swapchain_image_views.at(i));
-		lib_log_w("render_api: created image view");
+		_swapchain_image_views.at(i) =create_image_view(
+			_logical_device,
+			_swapchain_images.at(i),
+			_swapchian_format);
 	}
 
+	lib_log_w("render_api: created swapchain image view");
 	assert(!_swapchain_image_views.empty());
 }
 
@@ -1131,6 +1454,64 @@ void render_api::init_render_passes()
 	lib_log_d("render_api: setup render pass");
 }
 
+void render_api::init_descriptor_set_layout()
+{
+
+	std::array<vk::DescriptorSetLayoutBinding, 2> layout_bindings = {};
+	{
+		// ubo descriptor layout
+		{
+			auto& layout_binding = layout_bindings.at(0);
+
+			// binding slot 0
+			layout_binding.binding = 0;
+
+			// only 1 uniform buffer object to bind
+			layout_binding.descriptorType = vk::DescriptorType::eUniformBuffer;
+			layout_binding.descriptorCount = 1;
+
+			// only apply for vertex shaders
+			layout_binding.stageFlags = vk::ShaderStageFlagBits::eVertex;
+			layout_binding.pImmutableSamplers = nullptr;
+		}
+
+		// sampler layout
+		{
+			auto& layout_binding = layout_bindings.at(1);
+
+			// binding slot 0
+			layout_binding.binding = 1;
+
+			// only 1 uniform buffer object to bind
+			layout_binding.descriptorType = vk::DescriptorType::eCombinedImageSampler;
+			layout_binding.descriptorCount = 1;
+
+			// only apply for vertex shaders
+			layout_binding.stageFlags = vk::ShaderStageFlagBits::eFragment;
+			layout_binding.pImmutableSamplers = nullptr;
+		}
+	}
+
+	vk::DescriptorSetLayoutCreateInfo create_info = {};
+	{
+		create_info.sType = vk::StructureType::eDescriptorSetLayoutCreateInfo;
+
+		create_info.bindingCount = layout_bindings.size();
+		create_info.pBindings = layout_bindings.data();
+	}
+
+	if (const auto result = _logical_device.createDescriptorSetLayout(
+		&create_info,
+		nullptr,
+		&_descriptor_set_layout);
+		result != vk::Result::eSuccess)
+	{
+		lib_log_e("render_api: failed to create descriptor set layout {}", static_cast<int>(result));
+		assert(false);
+	}
+}
+
+
 void render_api::init_graphics_pipeline()
 {
 	// setup programmable parts of the pipeline
@@ -1141,9 +1522,18 @@ void render_api::init_graphics_pipeline()
 		vulkan::shaders::basic_shader_vert,
 		vulkan::shaders::basic_shader_vert_length);
 
-	const auto fragment_shader = create_shader_module(_logical_device,
-		vulkan::shaders::basic_shader_frag,
-		vulkan::shaders::basic_shader_frag_length);
+	const auto fragment_shader_normal = create_shader_module(_logical_device,
+		vulkan::shaders::normal_shader_frag,
+		vulkan::shaders::normal_shader_frag_length);
+
+	// unused for now ok?
+	const auto fragment_shader_sdf = create_shader_module(_logical_device,
+		vulkan::shaders::sdf_shader_frag,
+		vulkan::shaders::sdf_shader_frag_length);
+
+	const auto fragment_shader_outline = create_shader_module(_logical_device,
+		vulkan::shaders::outline_shader_frag,
+		vulkan::shaders::outline_shader_frag_length);
 
 	// [0] = vertex
 	// [1] = fragment
@@ -1163,7 +1553,7 @@ void render_api::init_graphics_pipeline()
 			auto& fragment_stage_create_info = shader_stage_create_infos[1];
 			fragment_stage_create_info.sType = vk::StructureType::ePipelineShaderStageCreateInfo;
 			fragment_stage_create_info.stage = vk::ShaderStageFlagBits::eFragment;
-			fragment_stage_create_info.module = fragment_shader;
+			fragment_stage_create_info.module = fragment_shader_outline;
 
 			// entry point, we can combine multiple shaders into one by specifying a entry point
 			fragment_stage_create_info.pName = "main";
@@ -1188,7 +1578,6 @@ void render_api::init_graphics_pipeline()
 	}
 
 	// specify what primitives we want to use, our renderer only uses triangles
-	// todo: enable index buffer support
 	vk::PipelineInputAssemblyStateCreateInfo input_assembly_state_create_info = {};
 	{
 		input_assembly_state_create_info.sType = vk::StructureType::ePipelineInputAssemblyStateCreateInfo;
@@ -1295,13 +1684,12 @@ void render_api::init_graphics_pipeline()
 	}
 
 	// create uniforms, needed even if we don't use any
-	// todo: add uniforms we need
 	vk::PipelineLayoutCreateInfo pipeline_layout_create_info = {};
 	{
 		pipeline_layout_create_info.sType = vk::StructureType::ePipelineLayoutCreateInfo;
 
-		pipeline_layout_create_info.setLayoutCount = 0;
-		pipeline_layout_create_info.pSetLayouts = nullptr;
+		pipeline_layout_create_info.setLayoutCount = 1;
+		pipeline_layout_create_info.pSetLayouts = &_descriptor_set_layout;
 
 		pipeline_layout_create_info.pushConstantRangeCount = 0;
 		pipeline_layout_create_info.pPushConstantRanges = nullptr;
@@ -1362,7 +1750,9 @@ void render_api::init_graphics_pipeline()
 	}
 
 	_logical_device.destroyShaderModule(vertex_shader);
-	_logical_device.destroyShaderModule(fragment_shader);
+	_logical_device.destroyShaderModule(fragment_shader_normal);
+	_logical_device.destroyShaderModule(fragment_shader_sdf);
+	_logical_device.destroyShaderModule(fragment_shader_outline);
 
 	assert(_pipeline);
 	lib_log_d("render_api: created graphics pipeline");
@@ -1456,8 +1846,55 @@ void render_api::init_command_buffer()
 	lib_log_d("render_api: created command buffer");
 }
 
-void render_api::record_command_buffer(const vk::CommandBuffer& command_buffer, uint32_t image_index) const
+void render_api::update_uniform_buffer(uint32_t current_frame) const
 {
+	// todo: use push constants
+	uniform_buffer_object_t ubo = {};
+
+	// thank you imgui, I love you
+	ubo.scale[0] = 2.f / static_cast<float>(_window_size.x);
+	ubo.scale[1] = 2.f / static_cast<float>(_window_size.y);
+
+	// consider changing if you want to offset the "projection matrix"
+	ubo.translate[0] = -1.f;
+	ubo.translate[1] = -1.f;
+
+	std::memcpy(_uniform_buffer_mapped.at(current_frame), &ubo, sizeof(uniform_buffer_object_t));
+}
+
+void render_api::record_command_buffer(
+	const vk::CommandBuffer& command_buffer,
+	uint32_t image_index,
+	uint32_t current_frame,
+	const render_command& render_command) const
+{
+	const auto vertex_buffer_size = sizeof(vertex_t) * render_command.vertex_count;
+	const auto index_buffer_size = sizeof(uint32_t) * render_command.index_count;
+
+	// copy data into vertex buffer
+	std::memcpy(_vertex_staging_buffer_mapped, render_command.vertices.data(), vertex_buffer_size);
+
+	// copy contents of cpu memory mapped buffer into device buffer
+	copy_buffer(
+		_logical_device,
+		_command_pool,
+		_graphics_present_queue,
+		_vertex_staging_buffer,
+		_vertex_buffer,
+		vertex_buffer_size);
+
+	// copy data into index buffer
+	std::memcpy(_index_staging_buffer_mapped, render_command.indices.data(), index_buffer_size);
+
+	// copy contents of cpu memory mapped buffer into device buffer
+	copy_buffer(
+		_logical_device,
+		_command_pool,
+		_graphics_present_queue,
+		_index_staging_buffer,
+		_index_buffer,
+		index_buffer_size);
+
 	vk::CommandBufferBeginInfo command_buffer_begin_info = {};
 	{
 		command_buffer_begin_info.sType = vk::StructureType::eCommandBufferBeginInfo;
@@ -1528,12 +1965,196 @@ void render_api::record_command_buffer(const vk::CommandBuffer& command_buffer, 
 	};
 
 	command_buffer.bindVertexBuffers(0, vertex_buffers, vertex_buffer_offets);
+	command_buffer.bindIndexBuffer(_index_buffer, 0, vk::IndexType::eUint32);
 
-	command_buffer.draw(vertex_buffer_test.size(), 1, 0, 0);
-	command_buffer.endRenderPass();
+	command_buffer.bindDescriptorSets(
+		vk::PipelineBindPoint::eGraphics,
+		_pipeline_layout,
+		0,
+		1,
+		&_descriptor_set.at(current_frame),
+		0,
+		nullptr);
+
+	command_buffer.drawIndexed(render_command.index_count, 1, 0, 0, 0);
 
 	// finish recording the command buffer
+	command_buffer.endRenderPass();
 	command_buffer.end();
+}
+
+void render_api::init_descriptor_pool()
+{
+	std::array<vk::DescriptorPoolSize, 2> pool_sizes = {};
+	{
+		// ubo pool size
+		{
+			auto& pool_size = pool_sizes.at(0);
+
+			pool_size.type = vk::DescriptorType::eUniformBuffer;
+			pool_size.descriptorCount = vulkan::max_frames_in_flight;
+		}
+
+		// sampler pool size
+		{
+			auto& pool_size = pool_sizes.at(1);
+
+			pool_size.type = vk::DescriptorType::eCombinedImageSampler;
+			pool_size.descriptorCount = vulkan::max_frames_in_flight;
+		}
+	}
+
+	vk::DescriptorPoolCreateInfo create_info = {};
+	{
+		create_info.sType = vk::StructureType::eDescriptorPoolCreateInfo;
+
+		create_info.poolSizeCount = pool_sizes.size();
+		create_info.pPoolSizes = pool_sizes.data();
+
+		create_info.flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
+		create_info.maxSets = vulkan::max_frames_in_flight;
+	}
+
+	if (const auto result = _logical_device.createDescriptorPool(
+		&create_info,
+		nullptr,
+		&_descriptor_pool);
+		result != vk::Result::eSuccess)
+	{
+		lib_log_e("render_api: failed to create descriptor pool {}", static_cast<int>(result));
+		assert(false);
+	}
+}
+
+void render_api::init_descriptor_set()
+{
+	std::array<vk::DescriptorSetLayout, vulkan::max_frames_in_flight> layouts = {};
+	std::ranges::fill(layouts.begin(), layouts.end(), _descriptor_set_layout);
+
+	vk::DescriptorSetAllocateInfo allocate_info = {};
+	{
+		allocate_info.sType = vk::StructureType::eDescriptorSetAllocateInfo;
+		allocate_info.descriptorPool = _descriptor_pool;
+
+		allocate_info.descriptorSetCount = layouts.size();
+		allocate_info.pSetLayouts = layouts.data();
+	}
+
+	if (const auto result = _logical_device.allocateDescriptorSets(
+		&allocate_info,
+		_descriptor_set.data());
+		result != vk::Result::eSuccess)
+	{
+		lib_log_e("render_api: failed to allocate descriptor sets {}", static_cast<int>(result));
+		assert(false);
+	}
+
+	// populate each descriptor set
+	for (size_t i = 0; i < vulkan::max_frames_in_flight; i++)
+	{
+		// ubo descriptor buffer
+		vk::DescriptorBufferInfo buffer_info = {};
+		{
+			buffer_info.buffer = _uniform_buffer.at(i);
+
+			buffer_info.offset = 0;
+			buffer_info.range = sizeof(uniform_buffer_object_t);
+		}
+
+		// smapler descriptor buffer
+		vk::DescriptorImageInfo image_info = {};
+		{
+			image_info.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+
+			image_info.imageView = _texture_atlas_view;
+			image_info.sampler = _texture_sampler;
+		}
+
+		std::array<vk::WriteDescriptorSet, 2> descriptor_writes = {};
+		{
+			// ubo write
+			{
+				auto& descriptor_write = descriptor_writes.at(0);
+
+				descriptor_write.sType = vk::StructureType::eWriteDescriptorSet;
+
+				descriptor_write.dstSet = _descriptor_set.at(i);
+				descriptor_write.dstBinding = 0;
+				descriptor_write.dstArrayElement = 0;
+
+				descriptor_write.descriptorType = vk::DescriptorType::eUniformBuffer;
+				descriptor_write.descriptorCount = 1;
+				descriptor_write.pBufferInfo = &buffer_info;
+			}
+
+			// sampler write
+			{
+				auto& descriptor_write = descriptor_writes.at(1);
+
+				descriptor_write.dstSet = _descriptor_set.at(i);
+				descriptor_write.dstBinding = 1;
+				descriptor_write.dstArrayElement = 0;
+
+				descriptor_write.descriptorType = vk::DescriptorType::eCombinedImageSampler;
+				descriptor_write.descriptorCount = 1;
+				descriptor_write.pImageInfo = &image_info;
+			}
+		}
+
+		_logical_device.updateDescriptorSets(
+			descriptor_writes.size(), descriptor_writes.data(),
+			0, nullptr);
+	}
+}
+
+void render_api::init_texture_view()
+{
+	_texture_atlas_view = create_image_view(
+		_logical_device,
+		_texture_atlas,
+		vk::Format::eR8G8B8A8Srgb);
+}
+
+void render_api::init_texture_sampler()
+{
+	vk::PhysicalDeviceProperties device_properties = {};
+	_physical_device.getProperties(&device_properties);
+
+	vk::SamplerCreateInfo create_info = {};
+	{
+		create_info.sType = vk::StructureType::eSamplerCreateInfo;
+
+		create_info.magFilter = vk::Filter::eLinear;
+		create_info.minFilter = vk::Filter::eLinear;
+
+		create_info.addressModeU = vk::SamplerAddressMode::eRepeat;
+		create_info.addressModeV = vk::SamplerAddressMode::eRepeat;
+		create_info.addressModeW = vk::SamplerAddressMode::eRepeat;
+
+		create_info.anisotropyEnable = vk::False;
+		create_info.maxAnisotropy = 1.f;
+
+		create_info.borderColor = vk::BorderColor::eIntTransparentBlack;
+		create_info.unnormalizedCoordinates = vk::False;
+
+		create_info.compareEnable = vk::False;
+		create_info.compareOp = vk::CompareOp::eAlways;
+
+		create_info.mipmapMode = vk::SamplerMipmapMode::eLinear;
+		create_info.mipLodBias = 0.0f;
+		create_info.minLod = 0.0f;
+		create_info.maxLod = 0.0f;
+	}
+
+	if (const auto result = _logical_device.createSampler(
+		&create_info,
+		nullptr,
+		&_texture_sampler);
+		result != vk::Result::eSuccess)
+	{
+		lib_log_e("render_api: failed to create texture sampler {}", static_cast<int>(result));
+		assert(false);
+	}
 }
 
 void render_api::destroy_swapchain()
@@ -1551,35 +2172,40 @@ void render_api::destroy_swapchain()
 	_logical_device.destroySwapchainKHR(_swap_chain);
 }
 
+void render_api::destroy_image()
+{
+	assert(_logical_device.freeDescriptorSets(
+		_descriptor_pool,
+		_descriptor_set.size(),
+		_descriptor_set.data()) == vk::Result::eSuccess);
+
+	_logical_device.destroyImageView(_texture_atlas_view);
+	_logical_device.destroyImage(_texture_atlas);
+	_logical_device.freeMemory(_texture_atlas_memory);
+
+	_init_texture = false;
+}
+
 void render_api::init_vertex_buffer()
 {
 	constexpr vk::DeviceSize buffer_size = sizeof(vertex_t) * MAX_VERTICES;
 
 	// create staging buffer, used to write data from CPU to GPU
-	vk::Buffer staging_buffer = nullptr;
-	vk::DeviceMemory staging_buffer_memory = nullptr;
-
 	create_buffer(
 		_physical_device,
 		_logical_device,
 		buffer_size,
 		vk::BufferUsageFlagBits::eTransferSrc,
 		vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
-		staging_buffer,
-		staging_buffer_memory);
+		_vertex_staging_buffer,
+		_vertex_staging_buffer_memory);
 
-	// map data into the buffer and write to it
-	void* data = nullptr;
 	assert(_logical_device.mapMemory(
-		staging_buffer_memory,
+		_vertex_staging_buffer_memory,
 		0,
-		buffer_size,
+		sizeof(vertex_t) * MAX_VERTICES,
 		static_cast<vk::MemoryMapFlagBits>(0),
-		&data) == vk::Result::eSuccess);
-
-	// copy data into vertex buffer
-	std::memcpy(data, vertex_buffer_test.data(), sizeof(vertex_buffer_test));
-	_logical_device.unmapMemory(staging_buffer_memory);
+		&_vertex_staging_buffer_mapped) == vk::Result::eSuccess);
 
 	// create actual vertex buffer used by GPU
 	create_buffer(
@@ -1590,22 +2216,59 @@ void render_api::init_vertex_buffer()
 		vk::MemoryPropertyFlagBits::eDeviceLocal,
 		_vertex_buffer,
 		_vertex_buffer_memory);
-
-	// copy contents of cpu memory mapped buffer into device buffer
-	copy_buffer(
-		_logical_device,
-		_command_pool,
-		_graphics_present_queue,
-		staging_buffer,
-		_vertex_buffer,
-		buffer_size);
-
-	// destroy staging buffer
-	_logical_device.destroyBuffer(staging_buffer);
-	_logical_device.freeMemory(staging_buffer_memory);
 }
 
 void render_api::init_index_buffer()
 {
+	constexpr vk::DeviceSize buffer_size = sizeof(uint32_t) * MAX_INDICES;
 
+	create_buffer(
+		_physical_device,
+		_logical_device,
+		buffer_size,
+		vk::BufferUsageFlagBits::eTransferSrc,
+		vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
+		_index_staging_buffer,
+		_index_staging_buffer_memory);
+
+	assert(_logical_device.mapMemory(
+		_index_staging_buffer_memory,
+		0,
+		sizeof(uint32_t) * MAX_INDICES,
+		static_cast<vk::MemoryMapFlagBits>(0),
+		&_index_staging_buffer_mapped) == vk::Result::eSuccess);
+
+	// create actual index buffer used by GPU
+	create_buffer(
+		_physical_device,
+		_logical_device,
+		buffer_size,
+		vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
+		vk::MemoryPropertyFlagBits::eDeviceLocal,
+		_index_buffer,
+		_index_buffer_memory);
+}
+
+void render_api::init_unifrom_buffer()
+{
+	for (size_t i = 0; i < vulkan::max_frames_in_flight; i++)
+	{
+		constexpr vk::DeviceSize buffer_size = sizeof(uniform_buffer_object_t);
+
+		create_buffer(
+			_physical_device,
+			_logical_device,
+			buffer_size,
+			vk::BufferUsageFlagBits::eUniformBuffer,
+			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
+			_uniform_buffer.at(i),
+			_uniform_buffer_memory.at(i));
+
+		assert(_logical_device.mapMemory(
+			_uniform_buffer_memory.at(i),
+			0,
+			buffer_size,
+			static_cast<vk::MemoryMapFlagBits>(0),
+			&_uniform_buffer_mapped.at(i)) == vk::Result::eSuccess);
+	}
 }

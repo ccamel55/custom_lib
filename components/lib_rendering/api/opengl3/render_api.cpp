@@ -252,6 +252,7 @@ render_api::~render_api()
 void render_api::bind_atlas(const uint8_t* data, int width, int height)
 {
 	// only use 1 atlas ever
+	// todo: destroy current texture and re init if texture exists
 	assert(_texture_atlas == 0);
 
 	// create texture setup how our texture will be sampled
