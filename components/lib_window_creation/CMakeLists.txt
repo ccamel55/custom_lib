@@ -4,7 +4,7 @@ lib_option(
     DESCRIPTION
         "Build window creation library"
     VALID_ARGS
-        off glfw win32
+        off on
 )
 
 lib_component(lib_window_creation
@@ -16,12 +16,8 @@ lib_component(lib_window_creation
         LIB_WINDOW_CREATION
     LINK_LIBS
         lib_core
+        glfw
 )
-
-# additional linking and includes for glfw
-if (LIB_WINDOW_CREATION STREQUAL glfw)
-    add_subdirectory(api/glfw)
-endif ()
 
 if (NOT LIB_RENDERING STREQUAL off)
     target_link_libraries(lib_window_creation PUBLIC
