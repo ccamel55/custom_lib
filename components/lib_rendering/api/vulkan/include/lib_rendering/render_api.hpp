@@ -1,6 +1,7 @@
 #pragma once
 
 #include <lib_rendering/render_api_base.hpp>
+#include <core_sdk/types/vector/vector2D.hpp>
 
 // todo: maybe move this into cmake? IDK what is more appropriate
 #if WIN32
@@ -18,6 +19,20 @@ namespace lib::rendering
 namespace vulkan
 {
 constexpr uint8_t max_frames_in_flight = 2;
+
+struct swapchain_support_details_t
+{
+    vk::SurfaceCapabilitiesKHR capabilities = {};
+    std::vector<vk::SurfaceFormatKHR> formats = {};
+    std::vector<vk::PresentModeKHR> present_modes = {};
+};
+
+// note: careful because vulkan expects shit to be aligned in a certain way depending on type
+struct push_constants_t
+{
+    lib::vector2D scale = {};
+    lib::vector2D translate = {};
+};
 }
 
 class render_api final : public render_api_base
@@ -39,10 +54,8 @@ private:
     void init_swapcahin();
     void init_image_views();
 
-    void init_render_passes();
     void init_descriptor_set_layout();
     void init_graphics_pipeline();
-    void init_frame_buffers();
     void init_command_pool();
     void init_vertex_buffer();
     void init_index_buffer();
@@ -76,11 +89,14 @@ private:
     vk::SwapchainKHR _swap_chain = {};
     std::vector<vk::Image> _swapchain_images = {};
     std::vector<vk::ImageView> _swapchain_image_views = {};
-    std::vector<vk::Framebuffer> _swapchain_frame_buffers = {};
 
     // states of current swapchain, so we can use later
     vk::Format _swapchian_format = {};
     vk::Extent2D _swapchain_extent = {};
+
+    // render class crap
+    vk::Viewport _viewport = {};
+    vulkan::push_constants_t _push_constants = {};
 
     vk::RenderPass _render_pass = {};
     vk::DescriptorSetLayout _descriptor_set_layout = {};

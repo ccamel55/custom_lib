@@ -51,18 +51,15 @@ const std::unordered_set<std::string> validation_layers =
 #endif
 };
 
-struct swapchain_support_details_t
+enum class image_transition_type
 {
-	vk::SurfaceCapabilitiesKHR capabilities = {};
-	std::vector<vk::SurfaceFormatKHR> formats = {};
-	std::vector<vk::PresentModeKHR> present_modes = {};
-};
+	undefined_to_transfer_dst_optimal,
+	undefined_to_color_attatchment_optimal,
 
-// note: careful because vulkan expects shit to be aligned in a certain way depending on type
-struct push_constants_t
-{
-	lib::vector2D scale = {};
-	lib::vector2D translate = {};
+	transfer_dst_optimal_to_shader_read_only_optimal,
+	color_attatchment_optimal_to_present_src,
+
+	num_transition_types,
 };
 
 const auto get_supported_extensions = [](const std::unordered_set<std::string>& extensions_set) {
@@ -204,9 +201,9 @@ const auto query_queue_family_properties = [](const vk::PhysicalDevice& device) 
 
 const auto query_swapchain_support = [](
 	const vk::PhysicalDevice& device,
-	const vk::SurfaceKHR& surface) -> swapchain_support_details_t
+	const vk::SurfaceKHR& surface) -> vulkan::swapchain_support_details_t
 {
-	swapchain_support_details_t details = {};
+	vulkan::swapchain_support_details_t details = {};
 	assert(device.getSurfaceCapabilitiesKHR(surface, &details.capabilities) == vk::Result::eSuccess);
 
 	uint32_t format_count = 0;
@@ -520,8 +517,8 @@ const auto create_texture = [](
 	device.bindImageMemory(image, image_memory, 0);
 };
 
-// todo: combine operations into single command buffer and execute then asynchronously (one setup buffer)
-const auto begin_single_time_command = [](
+// synchronous command buffer used to initalize some things
+const auto begin_command_buffer = [](
 	const vk::Device& device,
 	const vk::CommandPool& command_pool) -> vk::CommandBuffer
 {
@@ -541,7 +538,9 @@ const auto begin_single_time_command = [](
 	vk::CommandBufferBeginInfo buffer_begin_info = {};
 	{
 		buffer_begin_info.sType = vk::StructureType::eCommandBufferBeginInfo;
-		buffer_begin_info.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
+
+		buffer_begin_info.flags = {};
+		buffer_begin_info.pInheritanceInfo = nullptr;
 	}
 
 	assert(command_buffer.begin(&buffer_begin_info) == vk::Result::eSuccess);
@@ -549,7 +548,7 @@ const auto begin_single_time_command = [](
 	return command_buffer;
 };
 
-const auto end_single_time_command = [](
+const auto end_and_submit_command_buffer = [](
 	const vk::Device& device,
 	const vk::CommandPool& command_pool,
 	const vk::Queue& queue,
@@ -561,6 +560,7 @@ const auto end_single_time_command = [](
 	vk::SubmitInfo submit_info = {};
 	{
 		submit_info.sType = vk::StructureType::eSubmitInfo;
+
 		submit_info.commandBufferCount = 1;
 		submit_info.pCommandBuffers = &command_buffer;
 	}
@@ -573,16 +573,12 @@ const auto end_single_time_command = [](
 };
 
 const auto copy_buffer_to_image = [](
-	const vk::Device& device,
-	const vk::CommandPool& command_pool,
-	const vk::Queue& queue,
+	const vk::CommandBuffer& command_buffer,
 	const vk::Buffer& buffer,
 	const vk::Image& image,
 	uint32_t width,
 	uint32_t height)
 {
-	const auto command_buffer = begin_single_time_command(device, command_pool);
-
 	vk::BufferImageCopy region = {};
 	{
 		region.bufferOffset = 0;
@@ -604,20 +600,14 @@ const auto copy_buffer_to_image = [](
 		vk::ImageLayout::eTransferDstOptimal,
 		1,
 		&region);
-
-	end_single_time_command(device, command_pool, queue, command_buffer);
 };
 
 const auto copy_buffer = [](
-	const vk::Device& device,
-	const vk::CommandPool& command_pool,
-	const vk::Queue& queue,
+	const vk::CommandBuffer& command_buffer,
 	const vk::Buffer& src_buffer,
 	const vk::Buffer& dst_buffer,
 	vk::DeviceSize size)
 {
-	const auto command_buffer = begin_single_time_command(device, command_pool);
-
 	// copy src into dst buffer
 	vk::BufferCopy copy_region = {};
 	{
@@ -627,29 +617,19 @@ const auto copy_buffer = [](
 	}
 
 	command_buffer.copyBuffer(src_buffer, dst_buffer, 1, &copy_region);
-
-	end_single_time_command(device, command_pool, queue, command_buffer);
 };
 
 const auto transition_image_layout = [](
-	const vk::Device& device,
-	const vk::CommandPool& command_pool,
-	const vk::Queue& queue,
+	const vk::CommandBuffer& command_buffer,
 	const vk::Image& image,
-	vk::ImageLayout old_layoyt,
-	vk::ImageLayout new_layout)
+	image_transition_type transition)
 {
-	const auto command_buffer = begin_single_time_command(device, command_pool);
-
 	vk::PipelineStageFlags source_stage = {};
 	vk::PipelineStageFlags destination_stage = {};
 
 	vk::ImageMemoryBarrier barrier = {};
 	{
 		barrier.sType = vk::StructureType::eImageMemoryBarrier;
-
-		barrier.oldLayout = old_layoyt;
-		barrier.newLayout = new_layout;
 
 		barrier.srcQueueFamilyIndex = vk::QueueFamilyIgnored;
 		barrier.dstQueueFamilyIndex = vk::QueueFamilyIgnored;
@@ -663,26 +643,57 @@ const auto transition_image_layout = [](
 		barrier.subresourceRange.baseArrayLayer = 0;
 		barrier.subresourceRange.layerCount = 1;
 
-		// note: add more depending on transition we need to do
-		if (old_layoyt == vk::ImageLayout::eUndefined && new_layout == vk::ImageLayout::eTransferDstOptimal)
+		switch (transition)
 		{
+		case image_transition_type::undefined_to_transfer_dst_optimal:
+
+			barrier.oldLayout = vk::ImageLayout::eUndefined;
+			barrier.newLayout = vk::ImageLayout::eTransferDstOptimal;
+
 			barrier.srcAccessMask = static_cast<vk::AccessFlags>(0);
 			barrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
 
 			source_stage = vk::PipelineStageFlagBits::eTopOfPipe;
 			destination_stage = vk::PipelineStageFlagBits::eTransfer;
-		}
-		else if (old_layoyt == vk::ImageLayout::eTransferDstOptimal && new_layout == vk::ImageLayout::eShaderReadOnlyOptimal)
-		{
+
+			break;
+		case image_transition_type::undefined_to_color_attatchment_optimal:
+
+			barrier.oldLayout = vk::ImageLayout::eUndefined;
+			barrier.newLayout = vk::ImageLayout::eColorAttachmentOptimal;
+
+			barrier.srcAccessMask = static_cast<vk::AccessFlags>(0);
+			barrier.dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;
+
+			source_stage = vk::PipelineStageFlagBits::eTopOfPipe;
+			destination_stage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+
+			break;
+		case image_transition_type::transfer_dst_optimal_to_shader_read_only_optimal:
+
+			barrier.oldLayout = vk::ImageLayout::eTransferDstOptimal;
+			barrier.newLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+
 			barrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
 			barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
 
 			source_stage = vk::PipelineStageFlagBits::eTransfer;
 			destination_stage = vk::PipelineStageFlagBits::eFragmentShader;
-		}
-		else
-		{
-			lib_log_e("render_api: unsupported transition");
+
+			break;
+		case image_transition_type::color_attatchment_optimal_to_present_src:
+
+			barrier.oldLayout = vk::ImageLayout::eColorAttachmentOptimal;
+			barrier.newLayout = vk::ImageLayout::ePresentSrcKHR;
+
+			barrier.srcAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;
+			barrier.dstAccessMask = static_cast<vk::AccessFlags>(0);
+
+			source_stage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+			destination_stage = vk::PipelineStageFlagBits::eBottomOfPipe;
+
+			break;
+		case image_transition_type::num_transition_types:
 			assert(false);
 		}
 	}
@@ -693,8 +704,6 @@ const auto transition_image_layout = [](
 		0, nullptr,
 		0, nullptr,
 		1, &barrier);
-
-	end_single_time_command(device, command_pool, queue, command_buffer);
 };
 
 const auto create_image_view = [](
@@ -772,10 +781,8 @@ render_api::render_api(void* api_context, bool flush_buffers) :
 	init_image_views();
 
 	// setup pipeline
-	// init_render_passes();
 	init_descriptor_set_layout();
 	init_graphics_pipeline();
-	// init_frame_buffers();
 	init_command_pool();
 	init_vertex_buffer();
 	init_index_buffer();
@@ -846,7 +853,6 @@ render_api::~render_api()
 
 	_logical_device.destroyPipeline(_pipeline);
 	_logical_device.destroyPipelineLayout(_pipeline_layout);
-	_logical_device.destroyRenderPass(_render_pass);
 
 	for (size_t i = 0; i < vulkan::max_frames_in_flight; i++)
 	{
@@ -910,30 +916,32 @@ void render_api::bind_atlas(const uint8_t* data, int width, int height)
 		_texture_atlas,
 		_texture_atlas_memory);
 
-	transition_image_layout(
+	const auto command_buffer = begin_command_buffer(
 		_logical_device,
-		_command_pool,
-		_graphics_present_queue,
+		_command_pool);
+
+	transition_image_layout(
+		command_buffer,
 		_texture_atlas,
-		vk::ImageLayout::eUndefined,
-		vk::ImageLayout::eTransferDstOptimal);
+		image_transition_type::undefined_to_transfer_dst_optimal);
 
 	copy_buffer_to_image(
-		_logical_device,
-		_command_pool,
-		_graphics_present_queue,
+		command_buffer,
 		staging_buffer,
 		_texture_atlas,
 		width,
 		height);
 
 	transition_image_layout(
+		command_buffer,
+		_texture_atlas,
+		image_transition_type::transfer_dst_optimal_to_shader_read_only_optimal);
+
+	end_and_submit_command_buffer(
 		_logical_device,
 		_command_pool,
 		_graphics_present_queue,
-		_texture_atlas,
-		vk::ImageLayout::eTransferDstOptimal,
-		vk::ImageLayout::eShaderReadOnlyOptimal);
+		command_buffer);
 
 	_logical_device.destroyBuffer(staging_buffer);
 	_logical_device.freeMemory(staging_buffer_memory);
@@ -961,7 +969,23 @@ void render_api::update_screen_size(const lib::point2Di& window_size)
 
 	init_swapcahin();
 	init_image_views();
-	// init_frame_buffers();
+
+	_viewport.x = 0.f;
+	_viewport.y = 0.f;
+
+	_viewport.width = static_cast<float>(_swapchain_extent.width);
+	_viewport.height = static_cast<float>(_swapchain_extent.height);
+
+	_viewport.minDepth = 0.f;
+	_viewport.maxDepth = 0.f;
+
+	// thank you imgui, I love you
+	_push_constants.scale.x = 2.f / static_cast<float>(_swapchain_extent.width);
+	_push_constants.scale.y = 2.f / static_cast<float>(_swapchain_extent.height);
+
+	// consider changing if you want to offset the "projection matrix"
+	_push_constants.translate.x = -1.f;
+	_push_constants.translate.y = -1.f;
 }
 
 void render_api::update_frame_buffer(const render_command& render_command)
@@ -972,35 +996,27 @@ void render_api::update_frame_buffer(const render_command& render_command)
 	}
 
 	// wait for gpu to finish drawing previous frame
-	assert(_logical_device.waitForFences(
+	(void)_logical_device.waitForFences(
 		1,
 		&_in_flight_fences.at(_current_frame),
-		vk::True, UINT64_MAX) == vk::Result::eSuccess);
+		vk::True, UINT64_MAX);
 
-	assert(_logical_device.resetFences(1, &_in_flight_fences.at(_current_frame)) == vk::Result::eSuccess);
+	(void)_logical_device.resetFences(1, &_in_flight_fences.at(_current_frame));
 
 	// aquire an image from the swap chain
 	uint32_t next_image_index = 0;
-	assert(_logical_device.acquireNextImageKHR(
+	(void)_logical_device.acquireNextImageKHR(
 		_swap_chain,
 		UINT64_MAX,
 		_image_available_semaphores.at(_current_frame),
 		nullptr,
-		&next_image_index) == vk::Result::eSuccess);
+		&next_image_index);
 
 	// reset command buffer and render what we want
 	_command_buffers.at(_current_frame).reset();
 	record_command_buffer(_command_buffers.at(_current_frame), next_image_index, _current_frame, render_command);
 
 	// submit command buffer
-	const std::array<vk::Semaphore, 1> wait_semaphores = {
-		_image_available_semaphores.at(_current_frame)
-	};
-
-	const std::array<vk::Semaphore, 1> signal_semaphores = {
-		_render_finished_semaphores.at(_current_frame)
-	};
-
 	constexpr std::array<vk::PipelineStageFlags, 1> wait_stages = {
 		vk::PipelineStageFlagBits::eColorAttachmentOutput
 	};
@@ -1009,42 +1025,38 @@ void render_api::update_frame_buffer(const render_command& render_command)
 	{
 		submit_info.sType = vk::StructureType::eSubmitInfo;
 
-		submit_info.waitSemaphoreCount = wait_semaphores.size();
-		submit_info.pWaitSemaphores = wait_semaphores.data();
+		submit_info.waitSemaphoreCount = 1;
+		submit_info.pWaitSemaphores = &_image_available_semaphores.at(_current_frame);
 
 		submit_info.pWaitDstStageMask = wait_stages.data();
 
 		submit_info.commandBufferCount = 1;
 		submit_info.pCommandBuffers = &_command_buffers.at(_current_frame);
 
-		submit_info.signalSemaphoreCount = signal_semaphores.size();
-		submit_info.pSignalSemaphores = signal_semaphores.data();
+		submit_info.signalSemaphoreCount = 1;
+		submit_info.pSignalSemaphores = &_render_finished_semaphores.at(_current_frame);
 	}
 
-	assert(_graphics_present_queue.submit(
+	(void)_graphics_present_queue.submit(
 		1,
 		&submit_info,
-		_in_flight_fences.at(_current_frame)) == vk::Result::eSuccess);
-
-	const std::array<vk::SwapchainKHR, 1> swapchains = {
-		_swap_chain
-	};
+		_in_flight_fences.at(_current_frame));
 
 	vk::PresentInfoKHR present_info = {};
 	{
 		present_info.sType = vk::StructureType::ePresentInfoKHR;
 
-		present_info.waitSemaphoreCount = signal_semaphores.size();
-		present_info.pWaitSemaphores = signal_semaphores.data();
+		present_info.waitSemaphoreCount = 1;
+		present_info.pWaitSemaphores = &_render_finished_semaphores.at(_current_frame);
 
-		present_info.swapchainCount = swapchains.size();
-		present_info.pSwapchains = swapchains.data();
+		present_info.swapchainCount = 1;
+		present_info.pSwapchains = &_swap_chain;
 
 		present_info.pImageIndices = &next_image_index;
 		present_info.pResults = nullptr;
 	}
 
-	assert( _graphics_present_queue.presentKHR(&present_info) == vk::Result::eSuccess);
+	(void)_graphics_present_queue.presentKHR(&present_info);
 	_current_frame = (_current_frame + 1) % vulkan::max_frames_in_flight;
 }
 
@@ -1358,98 +1370,6 @@ void render_api::init_image_views()
 	assert(!_swapchain_image_views.empty());
 }
 
-void render_api::init_render_passes()
-{
-	constexpr int num_attatchments = 1;
-	constexpr int num_subpasses = 1;
-
-	std::array<vk::AttachmentDescription, num_attatchments> color_attachment_descriptions = {};
-	{
-		{
-			auto& color_attatchment = color_attachment_descriptions[0];
-
-			color_attatchment.format = _swapchian_format;
-			color_attatchment.samples = vk::SampleCountFlagBits::e1;
-
-			color_attatchment.loadOp = vk::AttachmentLoadOp::eClear;
-			color_attatchment.storeOp = vk::AttachmentStoreOp::eStore;
-
-			// we dont do nothing with the stencil buffer, just set to what ever
-			color_attatchment.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
-			color_attatchment.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
-
-			// don't care about image layout, present it to swap chain
-			color_attatchment.initialLayout = vk::ImageLayout::eUndefined;
-			color_attatchment.finalLayout = vk::ImageLayout::ePresentSrcKHR;
-		}
-	}
-
-	// we only have 1 sub pass since we don't do any fancy post processing crap in our renderer
-	std::array<vk::AttachmentReference, num_attatchments> color_attachment_references = {};
-	{
-		{
-			auto& color_attatchment_reference = color_attachment_references[0];
-
-			// refereces layout location, eg: layout(location = 0) out vec4 outColor
-			color_attatchment_reference.attachment = 0;
-			color_attatchment_reference.layout = vk::ImageLayout::eColorAttachmentOptimal;
-		}
-	}
-
-	std::array<vk::SubpassDescription, num_subpasses> subpass_descriptions = {};
-	{
-		{
-			auto& subpass_description = subpass_descriptions[0];
-
-			// colorAttachmentCount = how many attatch
-			subpass_description.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
-			subpass_description.colorAttachmentCount = color_attachment_references.size();
-			subpass_description.pColorAttachments = color_attachment_references.data();
-		}
-	}
-
-	std::array<vk::SubpassDependency, 1> subpass_dependencies = {};
-	{
-		{
-			auto& subpass_dependency = subpass_dependencies[0];
-
-			subpass_dependency.srcSubpass = vk::SubpassExternal;
-			subpass_dependency.dstSubpass = 0;
-
-			subpass_dependency.srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-			subpass_dependency.srcAccessMask = static_cast<vk::AccessFlags>(0);
-
-			subpass_dependency.dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-			subpass_dependency.dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;
-		}
-	}
-
-	vk::RenderPassCreateInfo render_pass_create_info = {};
-	{
-		render_pass_create_info.sType = vk::StructureType::eRenderPassCreateInfo;
-
-		render_pass_create_info.attachmentCount = color_attachment_descriptions.size();
-		render_pass_create_info.pAttachments = color_attachment_descriptions.data();
-
-		// only one subpass
-		render_pass_create_info.subpassCount = subpass_descriptions.size();
-		render_pass_create_info.pSubpasses = subpass_descriptions.data();
-
-		render_pass_create_info.dependencyCount = subpass_dependencies.size();
-		render_pass_create_info.pDependencies = subpass_dependencies.data();
-	}
-
-	if (const auto result = _logical_device.createRenderPass(&render_pass_create_info, nullptr, &_render_pass);
-		result != vk::Result::eSuccess)
-	{
-		lib_log_e("render_api: failed to create render pass {}", static_cast<int>(result));
-		assert(false);
-	}
-
-	assert(_render_pass);
-	lib_log_d("render_api: setup render pass");
-}
-
 void render_api::init_descriptor_set_layout()
 {
 	std::array<vk::DescriptorSetLayoutBinding, 1> layout_bindings = {};
@@ -1667,7 +1587,7 @@ void render_api::init_graphics_pipeline()
 		push_constant_range.stageFlags = vk::ShaderStageFlagBits::eVertex;
 
 		push_constant_range.offset = 0;
-		push_constant_range.size = sizeof(push_constants_t);
+		push_constant_range.size = sizeof(vulkan::push_constants_t);
 	}
 
 	vk::PipelineLayoutCreateInfo pipeline_layout_create_info = {};
@@ -1722,7 +1642,6 @@ void render_api::init_graphics_pipeline()
 		// other descriptions of the render pipeline
 		pipeline_create_info.layout = _pipeline_layout;
 
-		// pipeline_create_info.renderPass = _render_pass;
 		pipeline_create_info.renderPass = nullptr;
 		pipeline_create_info.subpass = 0;
 
@@ -1750,46 +1669,6 @@ void render_api::init_graphics_pipeline()
 
 	assert(_pipeline);
 	lib_log_d("render_api: created graphics pipeline");
-}
-
-void render_api::init_frame_buffers()
-{
-	// create frame buffer for each image view
-	_swapchain_frame_buffers.resize(_swapchain_image_views.size());
-
-	for (size_t i = 0; i < _swapchain_image_views.size(); i++)
-	{
-		const std::array<vk::ImageView, 1> attatchments =
-		{
-			_swapchain_image_views.at(i)
-		};
-
-		vk::FramebufferCreateInfo framebuffer_create_info = {};
-		{
-			framebuffer_create_info.sType = vk::StructureType::eFramebufferCreateInfo;
-			framebuffer_create_info.renderPass = _render_pass;
-
-			framebuffer_create_info.attachmentCount = attatchments.size();
-			framebuffer_create_info.pAttachments = attatchments.data();
-
-			framebuffer_create_info.width = _swapchain_extent.width;
-			framebuffer_create_info.height = _swapchain_extent.height;
-
-			framebuffer_create_info.layers = 1;
-		}
-
-		if (const auto result = _logical_device.createFramebuffer(
-			&framebuffer_create_info,
-			nullptr,
-			&_swapchain_frame_buffers.at(i));
-			result != vk::Result::eSuccess)
-		{
-			lib_log_e("render_api: failed to create frame buffer {}", static_cast<int>(result));
-			assert(false);
-		}
-
-		assert(_swapchain_frame_buffers.at(i));
-	}
 }
 
 void render_api::init_command_pool()
@@ -1849,29 +1728,9 @@ void render_api::record_command_buffer(
 	const auto vertex_buffer_size = sizeof(vertex_t) * render_command.vertex_count;
 	const auto index_buffer_size = sizeof(uint32_t) * render_command.index_count;
 
-	// copy data into vertex buffer
+	// copy data into vertex and index buffer
 	std::memcpy(_vertex_staging_buffer_mapped, render_command.vertices.data(), vertex_buffer_size);
-
-	// copy contents of cpu memory mapped buffer into device buffer
-	copy_buffer(
-		_logical_device,
-		_command_pool,
-		_graphics_present_queue,
-		_vertex_staging_buffer,
-		_vertex_buffer,
-		vertex_buffer_size);
-
-	// copy data into index buffer
 	std::memcpy(_index_staging_buffer_mapped, render_command.indices.data(), index_buffer_size);
-
-	// copy contents of cpu memory mapped buffer into device buffer
-	copy_buffer(
-		_logical_device,
-		_command_pool,
-		_graphics_present_queue,
-		_index_staging_buffer,
-		_index_buffer,
-		index_buffer_size);
 
 	vk::CommandBufferBeginInfo command_buffer_begin_info = {};
 	{
@@ -1881,32 +1740,30 @@ void render_api::record_command_buffer(
 		command_buffer_begin_info.pInheritanceInfo = nullptr;
 	}
 
-	if (const auto result = command_buffer.begin(&command_buffer_begin_info);
-		result != vk::Result::eSuccess)
-	{
-		lib_log_e("render_api: failed to begin command buffer {}", static_cast<int>(result));
-		assert(false);
-	}
+	(void)command_buffer.begin(&command_buffer_begin_info);
+
+	copy_buffer(
+		command_buffer,
+		_vertex_staging_buffer,
+		_vertex_buffer,
+		vertex_buffer_size);
+
+	copy_buffer(
+		command_buffer,
+		_index_staging_buffer,
+		_index_buffer,
+		index_buffer_size);
+
+	transition_image_layout(
+		command_buffer,
+		_swapchain_images.at(image_index),
+		image_transition_type::undefined_to_color_attatchment_optimal);
 
 	vk::ClearValue clear_color = {};
 	{
 		// clear color value
 		clear_color.color = vk::ClearColorValue(0.f, 0.f, 0.f, 0.f);
 	}
-
-	// vk::RenderPassBeginInfo render_pass_begin_info = {};
-	// {
-	// 	render_pass_begin_info.sType = vk::StructureType::eRenderPassBeginInfo;
-	//
-	// 	render_pass_begin_info.renderPass = _render_pass;
-	// 	render_pass_begin_info.framebuffer = _swapchain_frame_buffers.at(image_index);
-	//
-	// 	render_pass_begin_info.renderArea.offset = vk::Offset2D(0, 0);
-	// 	render_pass_begin_info.renderArea.extent = _swapchain_extent;
-	//
-	// 	render_pass_begin_info.clearValueCount = 1;
-	// 	render_pass_begin_info.pClearValues = &clear_color;
-	// }
 
 	vk::RenderingAttachmentInfo color_attatchment_info = {};
 	{
@@ -1919,7 +1776,6 @@ void render_api::record_command_buffer(
 		color_attatchment_info.storeOp = vk::AttachmentStoreOp::eStore;
 
 		color_attatchment_info.clearValue = clear_color;
-
 	}
 
 	vk::RenderingInfo rendering_info = {};
@@ -1936,50 +1792,9 @@ void render_api::record_command_buffer(
 	}
 
 	// no secondary cmd buffer so inline
-	// command_buffer.beginRenderPass(&render_pass_begin_info, vk::SubpassContents::eInline);
 	command_buffer.beginRendering(&rendering_info);
 	command_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, _pipeline);
 
-	// set viewport and scissor
-	vk::Viewport viewport = {};
-	{
-		viewport.x = 0.f;
-		viewport.y = 0.f;
-
-		viewport.width = static_cast<float>(_swapchain_extent.width);
-		viewport.height = static_cast<float>(_swapchain_extent.height);
-
-		viewport.minDepth = 0.f;
-		viewport.maxDepth = 0.f;
-	}
-	command_buffer.setViewport(0, 1, &viewport);
-
-	vk::Rect2D scissor = {};
-	{
-		scissor.offset = vk::Offset2D(0, 0);
-		scissor.extent = _swapchain_extent;
-	}
-	command_buffer.setScissor(0, 1, &scissor);
-
-	push_constants_t push_constants = {};
-	{
-		// thank you imgui, I love you
-		push_constants.scale.x = 2.f / static_cast<float>(_window_size.x);
-		push_constants.scale.y = 2.f / static_cast<float>(_window_size.y);
-
-		// consider changing if you want to offset the "projection matrix"
-		push_constants.translate.x = -1.f;
-		push_constants.translate.y = -1.f;
-	}
-
-	command_buffer.pushConstants(
-		_pipeline_layout,
-		vk::ShaderStageFlagBits::eVertex,
-		0,
-		sizeof(push_constants_t),
-		&push_constants);
-
-	// draw command buffer
 	const std::array<vk::Buffer, 1> vertex_buffers = {
 		_vertex_buffer
 	};
@@ -1991,6 +1806,16 @@ void render_api::record_command_buffer(
 	command_buffer.bindVertexBuffers(0, vertex_buffers, vertex_buffer_offets);
 	command_buffer.bindIndexBuffer(_index_buffer, 0, vk::IndexType::eUint32);
 
+	// set viewport
+	command_buffer.setViewport(0, 1, &_viewport);
+
+	command_buffer.pushConstants(
+		_pipeline_layout,
+		vk::ShaderStageFlagBits::eVertex,
+		0,
+		sizeof(vulkan::push_constants_t),
+		&_push_constants);
+
 	command_buffer.bindDescriptorSets(
 		vk::PipelineBindPoint::eGraphics,
 		_pipeline_layout,
@@ -2000,11 +1825,46 @@ void render_api::record_command_buffer(
 		0,
 		nullptr);
 
-	command_buffer.drawIndexed(render_command.index_count, 1, 0, 0, 0);
+	// draw command buffer
+	for (uint32_t i = 0; i < render_command.batch_count; i++)
+	{
+		const auto& batch = render_command.batches.at(i);
+
+		// switch (batch.shader)
+		// {
+		// case shader_type::normal:
+		// 	_normal_shader.bind();
+		// 	break;
+		// case shader_type::sdf:
+		// 	_sdf_shader.bind();
+		// 	break;
+		// case shader_type::sdf_outline:
+		// 	_sdf_outline_shader.bind();
+		// 	break;
+		// }
+
+		vk::Rect2D scissor = {};
+		{
+			scissor.offset = vk::Offset2D(batch.clipped_area.x, batch.clipped_area.y);
+			scissor.extent = vk::Extent2D(batch.clipped_area.z, batch.clipped_area.w);
+		}
+		command_buffer.setScissor(0, 1, &scissor);
+		command_buffer.drawIndexed(
+			batch.count,
+			1,
+			batch.offset,
+			0,
+			0);
+	}
 
 	// finish recording the command buffer
-	// command_buffer.endRenderPass();
 	command_buffer.endRendering();
+
+	transition_image_layout(
+		command_buffer,
+		_swapchain_images.at(image_index),
+		image_transition_type::color_attatchment_optimal_to_present_src);
+
 	command_buffer.end();
 }
 
@@ -2152,11 +2012,6 @@ void render_api::init_texture_sampler()
 
 void render_api::destroy_swapchain()
 {
-	std::ranges::for_each(_swapchain_frame_buffers.begin(), _swapchain_frame_buffers.end(),
-		[&](const auto& frame_buffer) {
-		_logical_device.destroyFramebuffer(frame_buffer);
-	});
-
 	std::ranges::for_each(_swapchain_image_views.begin(), _swapchain_image_views.end(),
 		[&](const auto& image_view) {
 		_logical_device.destroyImageView(image_view);
