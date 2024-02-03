@@ -198,19 +198,8 @@ window_creation::window_creation(const window_parameters_t& window_parameters)
 	}
 
 	glfwSetWindowPos(_glfw_window_ptr, window_parameters.x_position, window_parameters.y_position);
-
 	glfwMakeContextCurrent(_glfw_window_ptr);
 
-	if (window_parameters.flags.has(window_flags::window_flag_vsync))
-	{
-		glfwSwapInterval(1);
-	}
-	else
-	{
-		glfwSwapInterval(0);
-	}
-
-	glfwSetInputMode(_glfw_window_ptr, GLFW_STICKY_KEYS, GLFW_TRUE);
 	glfwSetWindowUserPointer(_glfw_window_ptr, this);
 }
 
@@ -224,14 +213,16 @@ void window_creation::run_window_loop() const
 	lib_log_d("window_creation: starting window loop");
 
 	// run main render thread from current thread
-	while (glfwWindowShouldClose(_glfw_window_ptr) == 0)
+	while (!glfwWindowShouldClose(_glfw_window_ptr))
 	{
 		glfwPollEvents();
 
 		// callback the parent which will do more stuff
 		_render_callback();
 
+#ifdef DEF_LIB_RENDERING_gl3
 		glfwSwapBuffers(_glfw_window_ptr);
+#endif
 	}
 
 	lib_log_d("window_creation: destroying window");

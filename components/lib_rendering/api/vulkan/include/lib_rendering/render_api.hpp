@@ -11,6 +11,10 @@
 #error "Add vulkan apple implementation"
 #endif
 
+// disable no discard, asserts sometimes fuck up parameters on release?
+// seems to be a bug but not sure lol
+#define VULKAN_HPP_NO_NODISCARD_WARNINGS
+
 #include <vulkan/vulkan.hpp>
 #include <optional>
 

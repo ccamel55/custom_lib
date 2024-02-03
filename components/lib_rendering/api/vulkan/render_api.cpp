@@ -1,4 +1,5 @@
 #include <lib_rendering/render_api.hpp>
+#include <core_sdk/types/vector/vector2D.hpp>
 
 // include our shaders
 #include <lib_rendering/shaders/basic_shader_vert.hpp>
@@ -11,7 +12,6 @@
 #include <map>
 #include <optional>
 #include <filesystem>
-#include <core_sdk/types/vector/vector2D.hpp>
 
 using namespace lib::rendering;
 
@@ -33,9 +33,6 @@ const std::unordered_set<std::string> vulkan_instace_extensions =
 	// apply needs this since vulkan 1.3.216
 	"VK_KHR_portability_enumeration",
 #endif
-
-	// custom extensions we need to use
-
 };
 
 const std::unordered_set<std::string> vulkan_device_extensions =
@@ -68,13 +65,13 @@ const auto get_supported_extensions = [](const std::unordered_set<std::string>& 
 	std::vector<std::string> extensions = {};
 
 	uint32_t extension_count = 0;
-	assert(vk::enumerateInstanceExtensionProperties(nullptr, &extension_count, nullptr) == vk::Result::eSuccess);
+	vk::enumerateInstanceExtensionProperties(nullptr, &extension_count, nullptr);
 
 	std::vector<vk::ExtensionProperties> extension_properties(extension_count);
-	assert(vk::enumerateInstanceExtensionProperties(
+	vk::enumerateInstanceExtensionProperties(
 		nullptr,
 		&extension_count,
-		extension_properties.data()) == vk::Result::eSuccess);
+		extension_properties.data());
 
 	std::ranges::for_each(
 		extension_properties.begin(),
@@ -99,13 +96,13 @@ const auto get_supported_device_extensions = [](
 	std::vector<std::string> extensions = {};
 
 	uint32_t extension_count = 0;
-	assert(device.enumerateDeviceExtensionProperties(nullptr, &extension_count, nullptr) == vk::Result::eSuccess);
+	device.enumerateDeviceExtensionProperties(nullptr, &extension_count, nullptr);
 
 	std::vector<vk::ExtensionProperties> extension_properties(extension_count);
-	assert(device.enumerateDeviceExtensionProperties(
+	device.enumerateDeviceExtensionProperties(
 		nullptr,
 		&extension_count,
-		extension_properties.data()) == vk::Result::eSuccess);
+		extension_properties.data());
 
 	std::ranges::for_each(
 		extension_properties.begin(),
@@ -128,10 +125,10 @@ const auto get_supported_layers = [](const std::unordered_set<std::string>& laye
 	std::vector<std::string> layers = {};
 
 	uint32_t layer_count = 0;
-	assert(vk::enumerateInstanceLayerProperties(&layer_count, nullptr) == vk::Result::eSuccess);
+	vk::enumerateInstanceLayerProperties(&layer_count, nullptr);
 
 	std::vector<vk::LayerProperties> layer_properties(layer_count);
-	assert(vk::enumerateInstanceLayerProperties(&layer_count, layer_properties.data()) == vk::Result::eSuccess);
+	vk::enumerateInstanceLayerProperties(&layer_count, layer_properties.data());
 
 	std::ranges::for_each(
 		layer_properties.begin(),
@@ -151,11 +148,10 @@ const auto get_supported_layers = [](const std::unordered_set<std::string>& laye
 const auto get_candidate_devices = [](const vk::Instance& instance) -> std::multimap<uint32_t, vk::PhysicalDevice>
 {
 	uint32_t device_count = 0;
-	assert(instance.enumeratePhysicalDevices(&device_count, nullptr) == vk::Result::eSuccess);
-	assert(device_count != 0);
+	instance.enumeratePhysicalDevices(&device_count, nullptr);
 
 	std::vector<vk::PhysicalDevice> device_list(device_count);
-	assert(instance.enumeratePhysicalDevices(&device_count, device_list.data()) == vk::Result::eSuccess);
+	instance.enumeratePhysicalDevices(&device_count, device_list.data());
 
 	std::multimap<uint32_t, vk::PhysicalDevice> candidate_devices = {};
 	std::ranges::for_each(
@@ -204,19 +200,19 @@ const auto query_swapchain_support = [](
 	const vk::SurfaceKHR& surface) -> vulkan::swapchain_support_details_t
 {
 	vulkan::swapchain_support_details_t details = {};
-	assert(device.getSurfaceCapabilitiesKHR(surface, &details.capabilities) == vk::Result::eSuccess);
+	device.getSurfaceCapabilitiesKHR(surface, &details.capabilities);
 
 	uint32_t format_count = 0;
-	assert(device.getSurfaceFormatsKHR(surface, &format_count, nullptr) == vk::Result::eSuccess);
+	device.getSurfaceFormatsKHR(surface, &format_count, nullptr);
 
 	details.formats.resize(format_count);
-	assert(device.getSurfaceFormatsKHR(surface, &format_count, details.formats.data()) == vk::Result::eSuccess);
+	device.getSurfaceFormatsKHR(surface, &format_count, details.formats.data());
 
 	uint32_t present_mode_couunt = 0;
-	assert(device.getSurfacePresentModesKHR(surface, &present_mode_couunt, nullptr) == vk::Result::eSuccess);
+	device.getSurfacePresentModesKHR(surface, &present_mode_couunt, nullptr);
 
 	details.present_modes.resize(present_mode_couunt);
-	assert(device.getSurfacePresentModesKHR(surface, &present_mode_couunt, details.present_modes.data()) == vk::Result::eSuccess);
+	device.getSurfacePresentModesKHR(surface, &present_mode_couunt, details.present_modes.data());
 
 	return details;
 };
@@ -314,7 +310,6 @@ const auto create_shader_module = [](
 		assert(false);
 	}
 
-	assert(shader_module);
 	return shader_module;
 };
 
@@ -412,8 +407,6 @@ const auto create_buffer = [](
 		assert(false);
 	}
 
-	assert(buffer);
-
 	// allocate memory
 	vk::MemoryRequirements memory_requirements = {};
 	device.getBufferMemoryRequirements(buffer, &memory_requirements);
@@ -438,7 +431,6 @@ const auto create_buffer = [](
 		assert(false);
 	}
 
-	assert(device_memory);
 	device.bindBufferMemory(buffer, device_memory, 0);
 };
 
@@ -532,7 +524,7 @@ const auto begin_command_buffer = [](
 	}
 
 	vk::CommandBuffer command_buffer = {};
-	assert(device.allocateCommandBuffers(&allocate_info, &command_buffer) == vk::Result::eSuccess);
+	device.allocateCommandBuffers(&allocate_info, &command_buffer);
 
 	// start recording
 	vk::CommandBufferBeginInfo buffer_begin_info = {};
@@ -543,7 +535,7 @@ const auto begin_command_buffer = [](
 		buffer_begin_info.pInheritanceInfo = nullptr;
 	}
 
-	assert(command_buffer.begin(&buffer_begin_info) == vk::Result::eSuccess);
+	command_buffer.begin(&buffer_begin_info);
 
 	return command_buffer;
 };
@@ -565,7 +557,7 @@ const auto end_and_submit_command_buffer = [](
 		submit_info.pCommandBuffers = &command_buffer;
 	}
 
-	assert(queue.submit(1, &submit_info, nullptr) == vk::Result::eSuccess);
+	queue.submit(1, &submit_info, nullptr);
 	queue.waitIdle();
 
 	// cleanup buffers
@@ -894,12 +886,12 @@ void render_api::bind_atlas(const uint8_t* data, int width, int height)
 
 	// copy data into staging buffer
 	void* staging_buffer_mapped = nullptr;
-	assert(_logical_device.mapMemory(
+	_logical_device.mapMemory(
 		staging_buffer_memory,
 		0,
 		buffer_size,
 		static_cast<vk::MemoryMapFlagBits>(0),
-		&staging_buffer_mapped) == vk::Result::eSuccess);
+		&staging_buffer_mapped);
 
 	std::memcpy(staging_buffer_mapped, data, buffer_size);
 	_logical_device.unmapMemory(staging_buffer_memory);
@@ -1151,7 +1143,7 @@ void render_api::init_device(const std::vector<const char*>& layers)
 		for (size_t i = 0; i < queue_families.size(); i++)
 		{
 			vk::Bool32 present_support = false;
-			assert(device.getSurfaceSupportKHR(i, _window_surface, &present_support) == vk::Result::eSuccess);
+			device.getSurfaceSupportKHR(i, _window_surface, &present_support);
 
 			if ((queue_families.at(i).queueFlags & vk::QueueFlagBits::eGraphics) && present_support)
 			{
@@ -1167,9 +1159,6 @@ void render_api::init_device(const std::vector<const char*>& layers)
 			break;
 		}
 	}
-
-	assert(_physical_device);
-	assert(_graphics_present_family_index.has_value());
 
 	lib_log_d("render_api: found physical device");
 
@@ -1237,8 +1226,6 @@ void render_api::init_device(const std::vector<const char*>& layers)
 		_graphics_present_family_index.value(),
 		queue_index,
 		&_graphics_present_queue);
-
-	assert(_graphics_present_queue);
 }
 
 void render_api::init_surface()
@@ -1262,9 +1249,6 @@ void render_api::init_surface()
 	// todo, find wtf apple uses with GLFW, I assume metal??
 #error "Add vulkan apple implementation"
 #endif
-
-	assert(_window_surface);
-	lib_log_d("render_api: created render surface");
 }
 
 void render_api::init_swapcahin()
@@ -1334,20 +1318,14 @@ void render_api::init_swapcahin()
 		assert(false);
 	}
 
-	assert(_swap_chain);
 	lib_log_d("render_api: created swap chain");
 
 	// get swap chain images
 	image_count = 0;
-    assert(_logical_device.getSwapchainImagesKHR(_swap_chain, &image_count, nullptr) == vk::Result::eSuccess);
+    _logical_device.getSwapchainImagesKHR(_swap_chain, &image_count, nullptr);
 
 	_swapchain_images.resize(image_count);
-	assert(_logical_device.getSwapchainImagesKHR(
-		_swap_chain,
-		&image_count,
-		_swapchain_images.data()) == vk::Result::eSuccess);
-
-	assert(!_swapchain_images.empty());
+	_logical_device.getSwapchainImagesKHR(_swap_chain, &image_count, _swapchain_images.data());
 
 	// save states for use late
 	_swapchian_format = surface_format.format;
@@ -1366,8 +1344,7 @@ void render_api::init_image_views()
 			_swapchian_format);
 	}
 
-	lib_log_w("render_api: created swapchain image view");
-	assert(!_swapchain_image_views.empty());
+	lib_log_d("render_api: created swapchain image view");
 }
 
 void render_api::init_descriptor_set_layout()
@@ -1667,7 +1644,6 @@ void render_api::init_graphics_pipeline()
 	_logical_device.destroyShaderModule(fragment_shader_sdf);
 	_logical_device.destroyShaderModule(fragment_shader_outline);
 
-	assert(_pipeline);
 	lib_log_d("render_api: created graphics pipeline");
 }
 
@@ -1693,7 +1669,6 @@ void render_api::init_command_pool()
 		assert(false);
 	}
 
-	assert(_command_pool);
 	lib_log_d("render_api: created command pool");
 }
 
@@ -2022,10 +1997,10 @@ void render_api::destroy_swapchain()
 
 void render_api::destroy_image()
 {
-	assert(_logical_device.freeDescriptorSets(
+	_logical_device.freeDescriptorSets(
 		_descriptor_pool,
 		_descriptor_set.size(),
-		_descriptor_set.data()) == vk::Result::eSuccess);
+		_descriptor_set.data());
 
 	_logical_device.destroyImageView(_texture_atlas_view);
 	_logical_device.destroyImage(_texture_atlas);
@@ -2048,12 +2023,12 @@ void render_api::init_vertex_buffer()
 		_vertex_staging_buffer,
 		_vertex_staging_buffer_memory);
 
-	assert(_logical_device.mapMemory(
+	_logical_device.mapMemory(
 		_vertex_staging_buffer_memory,
 		0,
 		sizeof(vertex_t) * MAX_VERTICES,
 		static_cast<vk::MemoryMapFlagBits>(0),
-		&_vertex_staging_buffer_mapped) == vk::Result::eSuccess);
+		&_vertex_staging_buffer_mapped);
 
 	// create actual vertex buffer used by GPU
 	create_buffer(
@@ -2079,12 +2054,12 @@ void render_api::init_index_buffer()
 		_index_staging_buffer,
 		_index_staging_buffer_memory);
 
-	assert(_logical_device.mapMemory(
+	_logical_device.mapMemory(
 		_index_staging_buffer_memory,
 		0,
 		sizeof(uint32_t) * MAX_INDICES,
 		static_cast<vk::MemoryMapFlagBits>(0),
-		&_index_staging_buffer_mapped) == vk::Result::eSuccess);
+		&_index_staging_buffer_mapped);
 
 	// create actual index buffer used by GPU
 	create_buffer(
