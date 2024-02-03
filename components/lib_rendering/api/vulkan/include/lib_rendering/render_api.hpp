@@ -46,7 +46,6 @@ private:
     void init_command_pool();
     void init_vertex_buffer();
     void init_index_buffer();
-    void init_unifrom_buffer();
     void init_command_buffer();
     void init_descriptor_pool();
     void init_descriptor_set();
@@ -56,7 +55,6 @@ private:
     void destroy_swapchain();
     void destroy_image();
 
-    void update_uniform_buffer(uint32_t current_frame) const;
     void record_command_buffer(
         const vk::CommandBuffer& command_buffer,
         uint32_t image_index,
@@ -113,10 +111,6 @@ private:
     std::array<vk::Semaphore, vulkan::max_frames_in_flight> _image_available_semaphores = {};
     std::array<vk::Semaphore, vulkan::max_frames_in_flight> _render_finished_semaphores = {};
     std::array<vk::Fence, vulkan::max_frames_in_flight> _in_flight_fences = {};
-
-    std::array<vk::Buffer, vulkan::max_frames_in_flight> _uniform_buffer = {};
-    std::array<vk::DeviceMemory, vulkan::max_frames_in_flight> _uniform_buffer_memory = {};
-    std::array<void*, vulkan::max_frames_in_flight> _uniform_buffer_mapped = {};
 
     std::array<vk::DescriptorSet, vulkan::max_frames_in_flight> _descriptor_set = {};
 

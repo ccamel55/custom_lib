@@ -11,6 +11,7 @@
 #include <map>
 #include <optional>
 #include <filesystem>
+#include <core_sdk/types/vector/vector2D.hpp>
 
 using namespace lib::rendering;
 
@@ -56,12 +57,11 @@ struct swapchain_support_details_t
 	std::vector<vk::PresentModeKHR> present_modes = {};
 };
 
-// ubo to pass to vertex shader
 // note: careful because vulkan expects shit to be aligned in a certain way depending on type
-struct uniform_buffer_object_t
+struct push_constants_t
 {
-	float scale[2];
-	float translate[2];
+	lib::vector2D scale = {};
+	lib::vector2D translate = {};
 };
 
 const auto get_supported_extensions = [](const std::unordered_set<std::string>& extensions_set) {
@@ -227,7 +227,6 @@ const auto choose_swapchain_format = [](
 	const std::vector<vk::SurfaceFormatKHR>& surface_formats) -> vk::SurfaceFormatKHR
 {
 	// we want to use SRGB since thats kinda the standard
-	// todo: confirm if color is BGRA or ARGB etc, all i know is it's 32bit lol
 	for (const auto& format: surface_formats)
 	{
 		if (format.format != vk::Format::eB8G8R8A8Srgb)
@@ -780,7 +779,6 @@ render_api::render_api(void* api_context, bool flush_buffers) :
 	init_command_pool();
 	init_vertex_buffer();
 	init_index_buffer();
-	init_unifrom_buffer();
 	init_descriptor_pool();
 	init_command_buffer();
 
@@ -826,12 +824,6 @@ render_api::~render_api()
 
 	destroy_swapchain();
 	destroy_image();
-
-	for (size_t i = 0; i < vulkan::max_frames_in_flight; i++)
-	{
-		_logical_device.destroyBuffer(_uniform_buffer.at(i));
-		_logical_device.freeMemory(_uniform_buffer_memory.at(i));
-	}
 
 	_logical_device.destroySampler(_texture_sampler);
 	_logical_device.destroyDescriptorPool(_descriptor_pool);
@@ -986,8 +978,6 @@ void render_api::update_frame_buffer(const render_command& render_command)
 		1,
 		&_in_flight_fences.at(_current_frame),
 		vk::True, UINT64_MAX) == vk::Result::eSuccess);
-
-	update_uniform_buffer(_current_frame);
 
 	assert(_logical_device.resetFences(1, &_in_flight_fences.at(_current_frame)) == vk::Result::eSuccess);
 
@@ -1456,33 +1446,15 @@ void render_api::init_render_passes()
 
 void render_api::init_descriptor_set_layout()
 {
-
-	std::array<vk::DescriptorSetLayoutBinding, 2> layout_bindings = {};
+	std::array<vk::DescriptorSetLayoutBinding, 1> layout_bindings = {};
 	{
-		// ubo descriptor layout
+		// sampler layout
 		{
 			auto& layout_binding = layout_bindings.at(0);
 
 			// binding slot 0
 			layout_binding.binding = 0;
 
-			// only 1 uniform buffer object to bind
-			layout_binding.descriptorType = vk::DescriptorType::eUniformBuffer;
-			layout_binding.descriptorCount = 1;
-
-			// only apply for vertex shaders
-			layout_binding.stageFlags = vk::ShaderStageFlagBits::eVertex;
-			layout_binding.pImmutableSamplers = nullptr;
-		}
-
-		// sampler layout
-		{
-			auto& layout_binding = layout_bindings.at(1);
-
-			// binding slot 0
-			layout_binding.binding = 1;
-
-			// only 1 uniform buffer object to bind
 			layout_binding.descriptorType = vk::DescriptorType::eCombinedImageSampler;
 			layout_binding.descriptorCount = 1;
 
@@ -1683,7 +1655,15 @@ void render_api::init_graphics_pipeline()
 		color_blend_state_create_info.blendConstants[3] = 0.f; // Optional
 	}
 
-	// create uniforms, needed even if we don't use any
+	// setup push constants
+	vk::PushConstantRange push_constant_range = {};
+	{
+		push_constant_range.stageFlags = vk::ShaderStageFlagBits::eVertex;
+
+		push_constant_range.offset = 0;
+		push_constant_range.size = sizeof(push_constants_t);
+	}
+
 	vk::PipelineLayoutCreateInfo pipeline_layout_create_info = {};
 	{
 		pipeline_layout_create_info.sType = vk::StructureType::ePipelineLayoutCreateInfo;
@@ -1691,8 +1671,8 @@ void render_api::init_graphics_pipeline()
 		pipeline_layout_create_info.setLayoutCount = 1;
 		pipeline_layout_create_info.pSetLayouts = &_descriptor_set_layout;
 
-		pipeline_layout_create_info.pushConstantRangeCount = 0;
-		pipeline_layout_create_info.pPushConstantRanges = nullptr;
+		pipeline_layout_create_info.pushConstantRangeCount = 1;
+		pipeline_layout_create_info.pPushConstantRanges = &push_constant_range;
 	}
 
 	if (const auto result = _logical_device.createPipelineLayout(
@@ -1846,22 +1826,6 @@ void render_api::init_command_buffer()
 	lib_log_d("render_api: created command buffer");
 }
 
-void render_api::update_uniform_buffer(uint32_t current_frame) const
-{
-	// todo: use push constants
-	uniform_buffer_object_t ubo = {};
-
-	// thank you imgui, I love you
-	ubo.scale[0] = 2.f / static_cast<float>(_window_size.x);
-	ubo.scale[1] = 2.f / static_cast<float>(_window_size.y);
-
-	// consider changing if you want to offset the "projection matrix"
-	ubo.translate[0] = -1.f;
-	ubo.translate[1] = -1.f;
-
-	std::memcpy(_uniform_buffer_mapped.at(current_frame), &ubo, sizeof(uniform_buffer_object_t));
-}
-
 void render_api::record_command_buffer(
 	const vk::CommandBuffer& command_buffer,
 	uint32_t image_index,
@@ -1955,6 +1919,24 @@ void render_api::record_command_buffer(
 	}
 	command_buffer.setScissor(0, 1, &scissor);
 
+	push_constants_t push_constants = {};
+	{
+		// thank you imgui, I love you
+		push_constants.scale.x = 2.f / static_cast<float>(_window_size.x);
+		push_constants.scale.y = 2.f / static_cast<float>(_window_size.y);
+
+		// consider changing if you want to offset the "projection matrix"
+		push_constants.translate.x = -1.f;
+		push_constants.translate.y = -1.f;
+	}
+
+	command_buffer.pushConstants(
+		_pipeline_layout,
+		vk::ShaderStageFlagBits::eVertex,
+		0,
+		sizeof(push_constants_t),
+		&push_constants);
+
 	// draw command buffer
 	const std::array<vk::Buffer, 1> vertex_buffers = {
 		_vertex_buffer
@@ -1985,19 +1967,11 @@ void render_api::record_command_buffer(
 
 void render_api::init_descriptor_pool()
 {
-	std::array<vk::DescriptorPoolSize, 2> pool_sizes = {};
+	std::array<vk::DescriptorPoolSize, 1> pool_sizes = {};
 	{
-		// ubo pool size
-		{
-			auto& pool_size = pool_sizes.at(0);
-
-			pool_size.type = vk::DescriptorType::eUniformBuffer;
-			pool_size.descriptorCount = vulkan::max_frames_in_flight;
-		}
-
 		// sampler pool size
 		{
-			auto& pool_size = pool_sizes.at(1);
+			auto& pool_size = pool_sizes.at(0);
 
 			pool_size.type = vk::DescriptorType::eCombinedImageSampler;
 			pool_size.descriptorCount = vulkan::max_frames_in_flight;
@@ -2052,15 +2026,6 @@ void render_api::init_descriptor_set()
 	// populate each descriptor set
 	for (size_t i = 0; i < vulkan::max_frames_in_flight; i++)
 	{
-		// ubo descriptor buffer
-		vk::DescriptorBufferInfo buffer_info = {};
-		{
-			buffer_info.buffer = _uniform_buffer.at(i);
-
-			buffer_info.offset = 0;
-			buffer_info.range = sizeof(uniform_buffer_object_t);
-		}
-
 		// smapler descriptor buffer
 		vk::DescriptorImageInfo image_info = {};
 		{
@@ -2070,29 +2035,14 @@ void render_api::init_descriptor_set()
 			image_info.sampler = _texture_sampler;
 		}
 
-		std::array<vk::WriteDescriptorSet, 2> descriptor_writes = {};
+		std::array<vk::WriteDescriptorSet, 1> descriptor_writes = {};
 		{
-			// ubo write
+			// sampler write
 			{
 				auto& descriptor_write = descriptor_writes.at(0);
 
-				descriptor_write.sType = vk::StructureType::eWriteDescriptorSet;
-
 				descriptor_write.dstSet = _descriptor_set.at(i);
 				descriptor_write.dstBinding = 0;
-				descriptor_write.dstArrayElement = 0;
-
-				descriptor_write.descriptorType = vk::DescriptorType::eUniformBuffer;
-				descriptor_write.descriptorCount = 1;
-				descriptor_write.pBufferInfo = &buffer_info;
-			}
-
-			// sampler write
-			{
-				auto& descriptor_write = descriptor_writes.at(1);
-
-				descriptor_write.dstSet = _descriptor_set.at(i);
-				descriptor_write.dstBinding = 1;
 				descriptor_write.dstArrayElement = 0;
 
 				descriptor_write.descriptorType = vk::DescriptorType::eCombinedImageSampler;
@@ -2247,28 +2197,4 @@ void render_api::init_index_buffer()
 		vk::MemoryPropertyFlagBits::eDeviceLocal,
 		_index_buffer,
 		_index_buffer_memory);
-}
-
-void render_api::init_unifrom_buffer()
-{
-	for (size_t i = 0; i < vulkan::max_frames_in_flight; i++)
-	{
-		constexpr vk::DeviceSize buffer_size = sizeof(uniform_buffer_object_t);
-
-		create_buffer(
-			_physical_device,
-			_logical_device,
-			buffer_size,
-			vk::BufferUsageFlagBits::eUniformBuffer,
-			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
-			_uniform_buffer.at(i),
-			_uniform_buffer_memory.at(i));
-
-		assert(_logical_device.mapMemory(
-			_uniform_buffer_memory.at(i),
-			0,
-			buffer_size,
-			static_cast<vk::MemoryMapFlagBits>(0),
-			&_uniform_buffer_mapped.at(i)) == vk::Result::eSuccess);
-	}
 }

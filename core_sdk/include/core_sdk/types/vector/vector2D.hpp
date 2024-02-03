@@ -10,6 +10,7 @@ namespace lib
 class vector2D : public point2Df
 {
 public:
+	constexpr vector2D() = default;
 	constexpr vector2D(float x, float y)
 	{
 		this->x = x;
