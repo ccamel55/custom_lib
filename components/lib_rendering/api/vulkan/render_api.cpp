@@ -223,7 +223,7 @@ const auto choose_swapchain_format = [](
 	// we want to use SRGB since thats kinda the standard
 	for (const auto& format: surface_formats)
 	{
-		if (format.format != vk::Format::eB8G8R8A8Srgb)
+		if (format.format != vk::Format::eB8G8R8A8Unorm)
 		{
 			continue;
 		}
@@ -901,7 +901,7 @@ void render_api::bind_atlas(const uint8_t* data, int width, int height)
 		_logical_device,
 		width,
 		height,
-		vk::Format::eR8G8B8A8Srgb,
+		vk::Format::eR8G8B8A8Unorm,
 		vk::ImageTiling::eOptimal,
 		vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
 		vk::MemoryPropertyFlagBits::eDeviceLocal,
@@ -1940,7 +1940,7 @@ void render_api::init_texture_view()
 	_texture_atlas_view = create_image_view(
 		_logical_device,
 		_texture_atlas,
-		vk::Format::eR8G8B8A8Srgb);
+		vk::Format::eR8G8B8A8Unorm);
 }
 
 void render_api::init_texture_sampler()
