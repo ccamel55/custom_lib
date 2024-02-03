@@ -41,6 +41,7 @@ const std::unordered_set<std::string> vulkan_instace_extensions =
 const std::unordered_set<std::string> vulkan_device_extensions =
 {
 	"VK_KHR_swapchain",
+	"VK_KHR_dynamic_rendering"
 };
 
 const std::unordered_set<std::string> validation_layers =
@@ -635,7 +636,6 @@ const auto transition_image_layout = [](
 	const vk::CommandPool& command_pool,
 	const vk::Queue& queue,
 	const vk::Image& image,
-	vk::Format format,
 	vk::ImageLayout old_layoyt,
 	vk::ImageLayout new_layout)
 {
@@ -772,10 +772,10 @@ render_api::render_api(void* api_context, bool flush_buffers) :
 	init_image_views();
 
 	// setup pipeline
-	init_render_passes();
+	// init_render_passes();
 	init_descriptor_set_layout();
 	init_graphics_pipeline();
-	init_frame_buffers();
+	// init_frame_buffers();
 	init_command_pool();
 	init_vertex_buffer();
 	init_index_buffer();
@@ -915,7 +915,6 @@ void render_api::bind_atlas(const uint8_t* data, int width, int height)
 		_command_pool,
 		_graphics_present_queue,
 		_texture_atlas,
-		vk::Format::eR8G8B8A8Srgb,
 		vk::ImageLayout::eUndefined,
 		vk::ImageLayout::eTransferDstOptimal);
 
@@ -933,7 +932,6 @@ void render_api::bind_atlas(const uint8_t* data, int width, int height)
 		_command_pool,
 		_graphics_present_queue,
 		_texture_atlas,
-		vk::Format::eR8G8B8A8Srgb,
 		vk::ImageLayout::eTransferDstOptimal,
 		vk::ImageLayout::eShaderReadOnlyOptimal);
 
@@ -963,7 +961,7 @@ void render_api::update_screen_size(const lib::point2Di& window_size)
 
 	init_swapcahin();
 	init_image_views();
-	init_frame_buffers();
+	// init_frame_buffers();
 }
 
 void render_api::update_frame_buffer(const render_command& render_command)
@@ -1192,9 +1190,17 @@ void render_api::init_device(const std::vector<const char*>& layers)
 		// we dont use any device features right now so leave empty
 	}
 
+	vk::PhysicalDeviceDynamicRenderingFeatures dynamic_rendering_features = {};
+	{
+		dynamic_rendering_features.sType = vk::StructureType::ePhysicalDeviceDynamicRenderingFeatures;
+		dynamic_rendering_features.dynamicRendering = true;
+	}
+
 	vk::DeviceCreateInfo create_info = {};
 	{
 		create_info.sType = vk::StructureType::eDeviceCreateInfo;
+		create_info.pNext = &dynamic_rendering_features;
+
 		create_info.pQueueCreateInfos = device_queue_create_infos.data();
 		create_info.queueCreateInfoCount = device_queue_create_infos.size();
 		create_info.pEnabledFeatures = &device_features;
@@ -1342,7 +1348,7 @@ void render_api::init_image_views()
 
 	for (size_t i = 0; i < _swapchain_images.size(); i++)
 	{
-		_swapchain_image_views.at(i) =create_image_view(
+		_swapchain_image_views.at(i) = create_image_view(
 			_logical_device,
 			_swapchain_images.at(i),
 			_swapchian_format);
@@ -1685,12 +1691,19 @@ void render_api::init_graphics_pipeline()
 		assert(false);
 	}
 
-	assert(_pipeline_layout);
+	vk::PipelineRenderingCreateInfo pipeline_rendering_create_info = {};
+	{
+		pipeline_rendering_create_info.sType = vk::StructureType::ePipelineRenderingCreateInfo;
+
+		pipeline_rendering_create_info.colorAttachmentCount = 1;
+		pipeline_rendering_create_info.pColorAttachmentFormats = &_swapchian_format;
+	}
 
 	// create the actual graphics pipeline
 	vk::GraphicsPipelineCreateInfo pipeline_create_info = {};
 	{
 		pipeline_create_info.sType = vk::StructureType::eGraphicsPipelineCreateInfo;
+		pipeline_create_info.pNext = &pipeline_rendering_create_info;
 
 		// frag/vertex shadeers
 		pipeline_create_info.stageCount = shader_stage_create_infos.size();
@@ -1709,7 +1722,8 @@ void render_api::init_graphics_pipeline()
 		// other descriptions of the render pipeline
 		pipeline_create_info.layout = _pipeline_layout;
 
-		pipeline_create_info.renderPass = _render_pass;
+		// pipeline_create_info.renderPass = _render_pass;
+		pipeline_create_info.renderPass = nullptr;
 		pipeline_create_info.subpass = 0;
 
 		// this is also our first graphics pipeline so we don't want to reference anything
@@ -1880,22 +1894,50 @@ void render_api::record_command_buffer(
 		clear_color.color = vk::ClearColorValue(0.f, 0.f, 0.f, 0.f);
 	}
 
-	vk::RenderPassBeginInfo render_pass_begin_info = {};
+	// vk::RenderPassBeginInfo render_pass_begin_info = {};
+	// {
+	// 	render_pass_begin_info.sType = vk::StructureType::eRenderPassBeginInfo;
+	//
+	// 	render_pass_begin_info.renderPass = _render_pass;
+	// 	render_pass_begin_info.framebuffer = _swapchain_frame_buffers.at(image_index);
+	//
+	// 	render_pass_begin_info.renderArea.offset = vk::Offset2D(0, 0);
+	// 	render_pass_begin_info.renderArea.extent = _swapchain_extent;
+	//
+	// 	render_pass_begin_info.clearValueCount = 1;
+	// 	render_pass_begin_info.pClearValues = &clear_color;
+	// }
+
+	vk::RenderingAttachmentInfo color_attatchment_info = {};
 	{
-		render_pass_begin_info.sType = vk::StructureType::eRenderPassBeginInfo;
+		color_attatchment_info.sType = vk::StructureType::eRenderingAttachmentInfo;
 
-		render_pass_begin_info.renderPass = _render_pass;
-		render_pass_begin_info.framebuffer = _swapchain_frame_buffers.at(image_index);
+		color_attatchment_info.imageView = _swapchain_image_views.at(image_index);
+		color_attatchment_info.imageLayout = vk::ImageLayout::eColorAttachmentOptimal;
 
-		render_pass_begin_info.renderArea.offset = vk::Offset2D(0, 0);
-		render_pass_begin_info.renderArea.extent = _swapchain_extent;
+		color_attatchment_info.loadOp = vk::AttachmentLoadOp::eClear;
+		color_attatchment_info.storeOp = vk::AttachmentStoreOp::eStore;
 
-		render_pass_begin_info.clearValueCount = 1;
-		render_pass_begin_info.pClearValues = &clear_color;
+		color_attatchment_info.clearValue = clear_color;
+
+	}
+
+	vk::RenderingInfo rendering_info = {};
+	{
+		rendering_info.sType = vk::StructureType::eRenderingInfo;
+
+		rendering_info.renderArea.offset = vk::Offset2D(0, 0);
+		rendering_info.renderArea.extent = _swapchain_extent;
+
+		rendering_info.layerCount = 1;
+
+		rendering_info.colorAttachmentCount = 1;
+		rendering_info.pColorAttachments = &color_attatchment_info;
 	}
 
 	// no secondary cmd buffer so inline
-	command_buffer.beginRenderPass(&render_pass_begin_info, vk::SubpassContents::eInline);
+	// command_buffer.beginRenderPass(&render_pass_begin_info, vk::SubpassContents::eInline);
+	command_buffer.beginRendering(&rendering_info);
 	command_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, _pipeline);
 
 	// set viewport and scissor
@@ -1961,7 +2003,8 @@ void render_api::record_command_buffer(
 	command_buffer.drawIndexed(render_command.index_count, 1, 0, 0, 0);
 
 	// finish recording the command buffer
-	command_buffer.endRenderPass();
+	// command_buffer.endRenderPass();
+	command_buffer.endRendering();
 	command_buffer.end();
 }
 
