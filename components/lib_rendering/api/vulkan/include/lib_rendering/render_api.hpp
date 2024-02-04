@@ -17,6 +17,7 @@
 
 #include <vk_mem_alloc.h>
 #include <vulkan/vulkan.hpp>
+
 #include <optional>
 
 namespace lib::rendering
@@ -87,7 +88,6 @@ private:
     vk::PhysicalDevice _physical_device = {};
     vk::Device _logical_device = {};
     vk::SurfaceKHR _window_surface = {};
-    VmaAllocator _vk_allocator = {};
 
     vk::Queue _graphics_present_queue = {};
     vk::CommandPool _command_pool = {};
@@ -114,24 +114,27 @@ private:
     vk::Pipeline _sdf_pipeline = {};
     vk::Pipeline _outline_pipeline = {};
 
-    vk::Image _texture_atlas = {};
-    vk::DeviceMemory _texture_atlas_memory = {};
     vk::ImageView _texture_atlas_view = {};
     vk::Sampler _texture_sampler = {};
 
-    vk::Buffer _vertex_buffer = {};
-    vk::DeviceMemory _vertex_buffer_memory = {};
+    VmaAllocator _vk_allocator = nullptr;
 
-    vk::Buffer _vertex_staging_buffer = {};
-    vk::DeviceMemory _vertex_staging_buffer_memory = {};
-    void* _vertex_staging_buffer_mapped = nullptr;
+    VkImage _texture_atlas = {};
+    VmaAllocation _texture_atlas_alloc = nullptr;
 
-    vk::Buffer _index_buffer = {};
-    vk::DeviceMemory _index_buffer_memory = {};
+    VkBuffer _vertex_buffer = {};
+    VmaAllocation _vertex_buffer_alloc = nullptr;
 
-    vk::Buffer _index_staging_buffer = {};
-    vk::DeviceMemory _index_staging_buffer_memory = {};
-    void* _index_staging_buffer_mapped = nullptr;
+    VkBuffer _vertex_staging_buffer = {};
+    VmaAllocation _vertex_staging_buffer_alloc = nullptr;
+    VmaAllocationInfo _vertex_staging_buffer_alloc_info = {};
+
+    VkBuffer _index_buffer = {};
+    VmaAllocation _index_buffer_alloc = nullptr;
+
+    VkBuffer _index_staging_buffer = {};
+    VmaAllocation _index_staging_buffer_alloc = nullptr;
+    VmaAllocationInfo _index_staging_buffer_alloc_info = {};
 
     // synchronization
     std::array<vk::Semaphore, vulkan::max_frames_in_flight> _image_available_semaphores = {};

@@ -1,6 +1,9 @@
 #include <lib_rendering/render_api.hpp>
 #include <core_sdk/types/vector/vector2D.hpp>
 
+#define VMA_IMPLEMENTATION
+#include <vk_mem_alloc.h>
+
 // include our shaders
 #include <lib_rendering/shaders/basic_shader_vert.hpp>
 #include <lib_rendering/shaders/normal_shader_frag.hpp>
@@ -319,29 +322,6 @@ const auto create_shader_module = [](
 	return shader_module;
 };
 
-const auto find_memory_type = [](
-	const vk::PhysicalDevice& device,
-	const vk::MemoryPropertyFlags& memory_property_flags,
-	uint32_t type_filter) -> uint32_t
-{
-	vk::PhysicalDeviceMemoryProperties memory_properties = {};
-	device.getMemoryProperties(&memory_properties);
-
-	for (uint32_t i = 0; i < memory_properties.memoryTypeCount; i++)
-	{
-		if ((type_filter & (1 << i)) &&
-			(memory_properties.memoryTypes[i].propertyFlags & memory_property_flags) == memory_property_flags)
-		{
-			return i;
-		}
-	}
-
-	lib_log_e("render_api: could not find appropriate memory properties");
-	assert(false);
-
-	return 0;
-};
-
 const auto get_vertex_binding_description = []() -> vk::VertexInputBindingDescription
 {
 	vk::VertexInputBindingDescription description = {};
@@ -388,133 +368,6 @@ const auto get_vertex_attribute_descriptions = []() -> std::array<vk::VertexInpu
 	return descriptions;
 };
 
-const auto create_buffer = [](
-	const vk::PhysicalDevice& physical_device,
-	const vk::Device& device,
-	vk::DeviceSize size,
-	vk::BufferUsageFlags buffer_usage_flags,
-	vk::MemoryPropertyFlags memory_property_flags,
-	vk::Buffer& buffer,
-	vk::DeviceMemory& device_memory)
-{
-	vk::BufferCreateInfo buffer_create_info = {};
-	{
-		buffer_create_info.sType = vk::StructureType::eBufferCreateInfo;
-		buffer_create_info.size = size;
-
-		buffer_create_info.usage = buffer_usage_flags;
-		buffer_create_info.sharingMode = vk::SharingMode::eExclusive;
-	}
-
-	if (const auto result = device.createBuffer(&buffer_create_info, nullptr, &buffer);
-		result != vk::Result::eSuccess)
-	{
-		lib_log_e("render_api: failed to create buffer {}", static_cast<int>(result));
-		assert(false);
-	}
-
-	// allocate memory
-	vk::MemoryRequirements memory_requirements = {};
-	device.getBufferMemoryRequirements(buffer, &memory_requirements);
-
-	vk::MemoryAllocateInfo memory_allocate_info = {};
-	{
-		memory_allocate_info.sType = vk::StructureType::eMemoryAllocateInfo;
-		memory_allocate_info.allocationSize = memory_requirements.size;
-
-		memory_allocate_info.memoryTypeIndex = find_memory_type(
-			physical_device,
-			memory_property_flags,
-			memory_requirements.memoryTypeBits
-		);
-	}
-
-	if (const auto result = device.allocateMemory(
-		&memory_allocate_info, nullptr, &device_memory);
-		result != vk::Result::eSuccess)
-	{
-		lib_log_e("render_api: failed to allocate buffer memory {}", static_cast<int>(result));
-		assert(false);
-	}
-
-	device.bindBufferMemory(buffer, device_memory, 0);
-};
-
-const auto create_texture = [](
-	const vk::PhysicalDevice& physical_device,
-	const vk::Device& device,
-	uint32_t width,
-	uint32_t height,
-	vk::Format format,
-	vk::ImageTiling tiling,
-	vk::ImageUsageFlags usage_flags,
-	vk::MemoryPropertyFlags memory_property_flags,
-	vk::Image& image,
-	vk::DeviceMemory& image_memory
-)
-{
-	vk::ImageCreateInfo image_create_info = {};
-	{
-		image_create_info.sType = vk::StructureType::eImageCreateInfo;
-		image_create_info.imageType = vk::ImageType::e2D;
-
-		image_create_info.extent.width = width;
-		image_create_info.extent.height = height;
-
-		image_create_info.extent.depth = 1;
-		image_create_info.mipLevels = 1;
-		image_create_info.arrayLayers = 1;
-
-		image_create_info.format = format;
-		image_create_info.tiling = tiling;
-		image_create_info.initialLayout = vk::ImageLayout::eUndefined;
-
-		image_create_info.usage = usage_flags;
-		image_create_info.sharingMode = vk::SharingMode::eExclusive;
-
-		// multisampling stuff we wont be using
-		image_create_info.samples = vk::SampleCountFlagBits::e1;
-		image_create_info.flags = static_cast<vk::ImageCreateFlagBits>(0);
-	}
-
-	if (const auto result = device.createImage(
-		&image_create_info,
-		nullptr,
-		&image); result != vk::Result::eSuccess)
-	{
-		lib_log_e("render_api: failed to create image {}", static_cast<int>(result));
-		assert(false);
-	}
-
-	// create memory for image
-	vk::MemoryRequirements memory_requirements = {};
-	device.getImageMemoryRequirements(image, &memory_requirements);
-
-	vk::MemoryAllocateInfo allocate_info = {};
-	{
-		allocate_info.sType = vk::StructureType::eMemoryAllocateInfo;
-		allocate_info.allocationSize = memory_requirements.size;
-
-		allocate_info.memoryTypeIndex = find_memory_type(
-			physical_device,
-			memory_property_flags,
-			memory_requirements.memoryTypeBits
-			);
-	}
-
-	if (const auto result = device.allocateMemory(
-		&allocate_info,
-		nullptr,
-		&image_memory); result != vk::Result::eSuccess)
-	{
-		lib_log_e("render_api: failed to allocate texture memory {}", static_cast<int>(result));
-		assert(false);
-	}
-
-	// bind image to memory
-	device.bindImageMemory(image, image_memory, 0);
-};
-
 // synchronous command buffer used to initalize some things
 const auto begin_command_buffer = [](
 	const vk::Device& device,
@@ -537,12 +390,11 @@ const auto begin_command_buffer = [](
 	{
 		buffer_begin_info.sType = vk::StructureType::eCommandBufferBeginInfo;
 
-		buffer_begin_info.flags = {};
+		buffer_begin_info.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
 		buffer_begin_info.pInheritanceInfo = nullptr;
 	}
 
-	command_buffer.begin(&buffer_begin_info);
-
+	(void)command_buffer.begin(&buffer_begin_info);
 	return command_buffer;
 };
 
@@ -563,7 +415,7 @@ const auto end_and_submit_command_buffer = [](
 		submit_info.pCommandBuffers = &command_buffer;
 	}
 
-	queue.submit(1, &submit_info, nullptr);
+	(void)queue.submit(1, &submit_info, nullptr);
 	queue.waitIdle();
 
 	// cleanup buffers
@@ -772,6 +624,7 @@ render_api::render_api(void* api_context, bool flush_buffers) :
 	});
 
 	// setup vulkan for drawing
+	// todo: move this into rendere/window creation
 	init_vulkan(instance_extensions_list, layers_list);
 	init_surface();
 	init_device(layers_list);
@@ -780,7 +633,7 @@ render_api::render_api(void* api_context, bool flush_buffers) :
 	VmaAllocatorCreateInfo allocation_create_info = {};
 	{
 		allocation_create_info.vulkanApiVersion = vulkan_api_version;
-		allocation_create_info.flags = VmaAllocatorCreateFlagBits::VMA_ALLOCATOR_CREATE_EXTERNALLY_SYNCHRONIZED_BIT;
+		allocation_create_info.flags = VMA_ALLOCATOR_CREATE_EXTERNALLY_SYNCHRONIZED_BIT;
 
 		allocation_create_info.physicalDevice = _physical_device;
 		allocation_create_info.device = _logical_device;
@@ -851,20 +704,11 @@ render_api::~render_api()
 	_logical_device.destroyDescriptorPool(_descriptor_pool);
 	_logical_device.destroyDescriptorSetLayout(_descriptor_set_layout);
 
-	_logical_device.unmapMemory(_vertex_staging_buffer_memory);
-	_logical_device.unmapMemory(_index_staging_buffer_memory);
+	vmaDestroyBuffer(_vk_allocator, _vertex_staging_buffer, _vertex_staging_buffer_alloc);
+	vmaDestroyBuffer(_vk_allocator, _index_staging_buffer, _index_staging_buffer_alloc);
 
-	_logical_device.destroyBuffer(_vertex_staging_buffer);
-	_logical_device.freeMemory(_vertex_staging_buffer_memory);
-
-	_logical_device.destroyBuffer(_vertex_buffer);
-	_logical_device.freeMemory(_vertex_buffer_memory);
-
-	_logical_device.destroyBuffer(_index_staging_buffer);
-	_logical_device.freeMemory(_index_staging_buffer_memory);
-
-	_logical_device.destroyBuffer(_index_buffer);
-	_logical_device.freeMemory(_index_buffer_memory);
+	vmaDestroyBuffer(_vk_allocator, _vertex_buffer, _vertex_buffer_alloc);
+	vmaDestroyBuffer(_vk_allocator, _index_buffer, _index_buffer_alloc);
 
 	_logical_device.destroyPipeline(_normal_pipeline);
 	_logical_device.destroyPipeline(_sdf_pipeline);
@@ -881,9 +725,10 @@ render_api::~render_api()
 
 	_logical_device.destroyCommandPool(_command_pool);
 
-	// must be nuked before device is nuked
 	vmaDestroyAllocator(_vk_allocator);
 
+	// must be nuked before device is nuked
+	// todo: move this into rendere/window creation
 	_logical_device.destroy();
 	_instance.destroySurfaceKHR(_window_surface);
 	_instance.destroy();
@@ -901,41 +746,75 @@ void render_api::bind_atlas(const uint8_t* data, int width, int height)
 	_init_texture = true;
 	const vk::DeviceSize buffer_size = width * height * texture_pixel_size;
 
-	vk::Buffer staging_buffer = nullptr;
-	vk::DeviceMemory staging_buffer_memory = nullptr;
+	VkBuffer staging_buffer = nullptr;
+	VmaAllocation staging_buffer_alloc = nullptr;
+	VmaAllocationInfo staging_buffer_alloc_info = {};
 
-	create_buffer(
-		_physical_device,
-		_logical_device,
-		buffer_size,
-		vk::BufferUsageFlagBits::eTransferSrc,
-		vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
-		staging_buffer,
-		staging_buffer_memory);
+	VkBufferCreateInfo buffer_create_info = {};
+	{
+		buffer_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		buffer_create_info.size = buffer_size;
+
+		buffer_create_info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+		buffer_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	}
+
+	VmaAllocationCreateInfo buffer_allocation_info = {};
+	{
+		buffer_allocation_info.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
+		buffer_allocation_info.flags =
+			VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
+			VMA_ALLOCATION_CREATE_MAPPED_BIT;
+	}
+
+	vmaCreateBuffer(
+		_vk_allocator,
+		&buffer_create_info,
+		&buffer_allocation_info,
+		&staging_buffer,
+		&staging_buffer_alloc,
+		&staging_buffer_alloc_info);
 
 	// copy data into staging buffer
-	void* staging_buffer_mapped = nullptr;
-	_logical_device.mapMemory(
-		staging_buffer_memory,
-		0,
-		buffer_size,
-		static_cast<vk::MemoryMapFlagBits>(0),
-		&staging_buffer_mapped);
+	std::memcpy(staging_buffer_alloc_info.pMappedData, data, buffer_size);
 
-	std::memcpy(staging_buffer_mapped, data, buffer_size);
-	_logical_device.unmapMemory(staging_buffer_memory);
+	VkImageCreateInfo image_create_info = {};
+	{
+		image_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+		image_create_info.imageType = VK_IMAGE_TYPE_2D;
 
-	create_texture(
-		_physical_device,
-		_logical_device,
-		width,
-		height,
-		vk::Format::eR8G8B8A8Unorm,
-		vk::ImageTiling::eOptimal,
-		vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
-		vk::MemoryPropertyFlagBits::eDeviceLocal,
-		_texture_atlas,
-		_texture_atlas_memory);
+		image_create_info.extent.width = width;
+		image_create_info.extent.height = height;
+
+		image_create_info.extent.depth = 1;
+		image_create_info.mipLevels = 1;
+		image_create_info.arrayLayers = 1;
+
+		image_create_info.format = VK_FORMAT_R8G8B8A8_UNORM;
+		image_create_info.tiling = VK_IMAGE_TILING_OPTIMAL;
+		image_create_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+		image_create_info.usage = 	VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+		image_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+		// multisampling stuff we wont be using
+		image_create_info.samples = VK_SAMPLE_COUNT_1_BIT;
+		image_create_info.flags = 0;
+	}
+
+	VmaAllocationCreateInfo image_allocation_info = {};
+	{
+		buffer_allocation_info.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+	}
+
+	vmaCreateImage(
+		_vk_allocator,
+		&image_create_info,
+		&image_allocation_info,
+		&_texture_atlas,
+		&_texture_atlas_alloc,
+		nullptr
+		);
 
 	const auto command_buffer = begin_command_buffer(
 		_logical_device,
@@ -964,8 +843,7 @@ void render_api::bind_atlas(const uint8_t* data, int width, int height)
 		_graphics_present_queue,
 		command_buffer);
 
-	_logical_device.destroyBuffer(staging_buffer);
-	_logical_device.freeMemory(staging_buffer_memory);
+	vmaDestroyBuffer(_vk_allocator, staging_buffer, staging_buffer_alloc);
 
 	// both are related to textures, our descriptor set can be used for other things but
 	// we don't have anything else to use it with right now
@@ -1077,7 +955,7 @@ void render_api::draw(const render_command& render_command)
 		present_info.pResults = nullptr;
 	}
 
-	_graphics_present_queue.presentKHR(&present_info);
+	(void)_graphics_present_queue.presentKHR(&present_info);
 	_current_frame = (_current_frame + 1) % vulkan::max_frames_in_flight;
 }
 
@@ -1810,8 +1688,8 @@ void render_api::record_command_buffer(
 	const auto index_buffer_size = sizeof(uint32_t) * render_command.index_count;
 
 	// copy data into vertex and index buffer
-	std::memcpy(_vertex_staging_buffer_mapped, render_command.vertices.data(), vertex_buffer_size);
-	std::memcpy(_index_staging_buffer_mapped, render_command.indices.data(), index_buffer_size);
+	std::memcpy(_vertex_staging_buffer_alloc_info.pMappedData, render_command.vertices.data(), vertex_buffer_size);
+	std::memcpy(_index_staging_buffer_alloc_info.pMappedData, render_command.indices.data(), index_buffer_size);
 
 	vk::CommandBufferBeginInfo command_buffer_begin_info = {};
 	{
@@ -1821,7 +1699,7 @@ void render_api::record_command_buffer(
 		command_buffer_begin_info.pInheritanceInfo = nullptr;
 	}
 
-	command_buffer.begin(&command_buffer_begin_info);
+	(void)command_buffer.begin(&command_buffer_begin_info);
 
 	copy_buffer(
 		command_buffer,
@@ -2109,9 +1987,8 @@ void render_api::destroy_image()
 		_descriptor_set.data());
 
 	_logical_device.destroyImageView(_texture_atlas_view);
-	_logical_device.destroyImage(_texture_atlas);
-	_logical_device.freeMemory(_texture_atlas_memory);
 
+	vmaDestroyImage(_vk_allocator, _texture_atlas, _texture_atlas_alloc);
 	_init_texture = false;
 }
 
@@ -2119,61 +1996,106 @@ void render_api::init_vertex_buffer()
 {
 	constexpr vk::DeviceSize buffer_size = sizeof(vertex_t) * MAX_VERTICES;
 
-	// create staging buffer, used to write data from CPU to GPU
-	create_buffer(
-		_physical_device,
-		_logical_device,
-		buffer_size,
-		vk::BufferUsageFlagBits::eTransferSrc,
-		vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
-		_vertex_staging_buffer,
-		_vertex_staging_buffer_memory);
+	VkBufferCreateInfo staging_buffer_create_info = {};
+	{
+		staging_buffer_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		staging_buffer_create_info.size = buffer_size;
 
-	_logical_device.mapMemory(
-		_vertex_staging_buffer_memory,
-		0,
-		sizeof(vertex_t) * MAX_VERTICES,
-		static_cast<vk::MemoryMapFlagBits>(0),
-		&_vertex_staging_buffer_mapped);
+		staging_buffer_create_info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+		staging_buffer_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	}
+
+	VmaAllocationCreateInfo staging_buffer_allocation_info = {};
+	{
+		staging_buffer_allocation_info.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
+		staging_buffer_allocation_info.flags =
+			VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
+			VMA_ALLOCATION_CREATE_MAPPED_BIT;
+	}
+
+	// create staging buffer, used to write data from CPU to GPU
+	vmaCreateBuffer(
+		_vk_allocator,
+		&staging_buffer_create_info,
+		&staging_buffer_allocation_info,
+		&_vertex_staging_buffer,
+		&_vertex_staging_buffer_alloc,
+		&_vertex_staging_buffer_alloc_info);
+
+	VkBufferCreateInfo vertex_buffer_create_info = {};
+	{
+		vertex_buffer_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		vertex_buffer_create_info.size = buffer_size;
+
+		vertex_buffer_create_info.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+		vertex_buffer_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	}
+
+	VmaAllocationCreateInfo vertex_buffer_allocation_info = {};
+	{
+		vertex_buffer_allocation_info.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+	}
 
 	// create actual vertex buffer used by GPU
-	create_buffer(
-		_physical_device,
-		_logical_device,
-		buffer_size,
-		vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer,
-		vk::MemoryPropertyFlagBits::eDeviceLocal,
-		_vertex_buffer,
-		_vertex_buffer_memory);
+	vmaCreateBuffer(
+		_vk_allocator,
+		&vertex_buffer_create_info,
+		&vertex_buffer_allocation_info,
+		&_vertex_buffer,
+		&_vertex_buffer_alloc,
+		nullptr);
 }
 
 void render_api::init_index_buffer()
 {
 	constexpr vk::DeviceSize buffer_size = sizeof(uint32_t) * MAX_INDICES;
 
-	create_buffer(
-		_physical_device,
-		_logical_device,
-		buffer_size,
-		vk::BufferUsageFlagBits::eTransferSrc,
-		vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
-		_index_staging_buffer,
-		_index_staging_buffer_memory);
+	VkBufferCreateInfo staging_buffer_create_info = {};
+	{
+		staging_buffer_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		staging_buffer_create_info.size = buffer_size;
 
-	_logical_device.mapMemory(
-		_index_staging_buffer_memory,
-		0,
-		sizeof(uint32_t) * MAX_INDICES,
-		static_cast<vk::MemoryMapFlagBits>(0),
-		&_index_staging_buffer_mapped);
+		staging_buffer_create_info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+		staging_buffer_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	}
 
-	// create actual index buffer used by GPU
-	create_buffer(
-		_physical_device,
-		_logical_device,
-		buffer_size,
-		vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
-		vk::MemoryPropertyFlagBits::eDeviceLocal,
-		_index_buffer,
-		_index_buffer_memory);
+	VmaAllocationCreateInfo staging_buffer_allocation_info = {};
+	{
+		staging_buffer_allocation_info.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
+		staging_buffer_allocation_info.flags =
+			VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
+			VMA_ALLOCATION_CREATE_MAPPED_BIT;
+	}
+
+	// create staging buffer, used to write data from CPU to GPU
+	vmaCreateBuffer(
+		_vk_allocator,
+		&staging_buffer_create_info,
+		&staging_buffer_allocation_info,
+		&_index_staging_buffer,
+		&_index_staging_buffer_alloc,
+		&_index_staging_buffer_alloc_info);
+
+	VkBufferCreateInfo index_buffer_create_info = {};
+	{
+		index_buffer_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		index_buffer_create_info.size = buffer_size;
+
+		index_buffer_create_info.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+		index_buffer_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	}
+
+	VmaAllocationCreateInfo index_buffer_allocation_info = {};
+	{
+		index_buffer_allocation_info.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+	}
+
+	// create actual ndex buffer used by GPU
+	vmaCreateBuffer(
+		_vk_allocator,
+		&index_buffer_create_info,
+		&index_buffer_allocation_info,
+		&_index_buffer,
+		&_index_buffer_alloc,
+		nullptr);
 }
