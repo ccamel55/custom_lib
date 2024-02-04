@@ -23,8 +23,12 @@ constexpr uint32_t queue_index = 0;
 
 const std::unordered_set<std::string> vulkan_instace_extensions =
 {
-	// requried extensions
 	"VK_KHR_surface",
+
+#ifndef NDEBUG
+	"VK_EXT_debug_utils",
+#endif
+
 #if WIN32
 	"VK_KHR_win32_surface",
 #elif APPLE
@@ -843,7 +847,10 @@ render_api::~render_api()
 	_logical_device.destroyBuffer(_index_buffer);
 	_logical_device.freeMemory(_index_buffer_memory);
 
-	_logical_device.destroyPipeline(_pipeline);
+	_logical_device.destroyPipeline(_normal_pipeline);
+	_logical_device.destroyPipeline(_sdf_pipeline);
+	_logical_device.destroyPipeline(_outline_pipeline);
+
 	_logical_device.destroyPipelineLayout(_pipeline_layout);
 
 	for (size_t i = 0; i < vulkan::max_frames_in_flight; i++)
@@ -980,7 +987,7 @@ void render_api::update_screen_size(const lib::point2Di& window_size)
 	_push_constants.translate.y = -1.f;
 }
 
-void render_api::update_frame_buffer(const render_command& render_command)
+void render_api::draw(const render_command& render_command)
 {
 	if (_stop_rendering)
 	{
@@ -988,16 +995,16 @@ void render_api::update_frame_buffer(const render_command& render_command)
 	}
 
 	// wait for gpu to finish drawing previous frame
-	(void)_logical_device.waitForFences(
+	_logical_device.waitForFences(
 		1,
 		&_in_flight_fences.at(_current_frame),
 		vk::True, UINT64_MAX);
 
-	(void)_logical_device.resetFences(1, &_in_flight_fences.at(_current_frame));
+	_logical_device.resetFences(1, &_in_flight_fences.at(_current_frame));
 
 	// aquire an image from the swap chain
 	uint32_t next_image_index = 0;
-	(void)_logical_device.acquireNextImageKHR(
+	_logical_device.acquireNextImageKHR(
 		_swap_chain,
 		UINT64_MAX,
 		_image_available_semaphores.at(_current_frame),
@@ -1029,7 +1036,7 @@ void render_api::update_frame_buffer(const render_command& render_command)
 		submit_info.pSignalSemaphores = &_render_finished_semaphores.at(_current_frame);
 	}
 
-	(void)_graphics_present_queue.submit(
+	_graphics_present_queue.submit(
 		1,
 		&submit_info,
 		_in_flight_fences.at(_current_frame));
@@ -1048,16 +1055,8 @@ void render_api::update_frame_buffer(const render_command& render_command)
 		present_info.pResults = nullptr;
 	}
 
-	(void)_graphics_present_queue.presentKHR(&present_info);
+	_graphics_present_queue.presentKHR(&present_info);
 	_current_frame = (_current_frame + 1) % vulkan::max_frames_in_flight;
-}
-
-void render_api::draw_frame_buffer()
-{
-	if (_stop_rendering)
-	{
-		return;
-	}
 }
 
 void render_api::init_vulkan(const std::vector<const char*>& extensions, const std::vector<const char*>& layers)
@@ -1389,7 +1388,35 @@ void render_api::init_descriptor_set_layout()
 
 void render_api::init_graphics_pipeline()
 {
-	// setup programmable parts of the pipeline
+	// setup pipeline layout
+	vk::PushConstantRange push_constant_range = {};
+	{
+		push_constant_range.stageFlags = vk::ShaderStageFlagBits::eVertex;
+
+		push_constant_range.offset = 0;
+		push_constant_range.size = sizeof(vulkan::push_constants_t);
+	}
+
+	vk::PipelineLayoutCreateInfo pipeline_layout_create_info = {};
+	{
+		pipeline_layout_create_info.sType = vk::StructureType::ePipelineLayoutCreateInfo;
+
+		pipeline_layout_create_info.setLayoutCount = 1;
+		pipeline_layout_create_info.pSetLayouts = &_descriptor_set_layout;
+
+		pipeline_layout_create_info.pushConstantRangeCount = 1;
+		pipeline_layout_create_info.pPushConstantRanges = &push_constant_range;
+	}
+
+	if (const auto result = _logical_device.createPipelineLayout(
+		&pipeline_layout_create_info,
+		nullptr,
+		&_pipeline_layout);
+		result != vk::Result::eSuccess)
+	{
+		lib_log_e("render_api: failed to create pipeline layout {}", static_cast<int>(result));
+		assert(false);
+	}
 
 	// shader modules can be nuked after creating pipeline
 	const auto vertex_shader = create_shader_module(
@@ -1409,33 +1436,6 @@ void render_api::init_graphics_pipeline()
 	const auto fragment_shader_outline = create_shader_module(_logical_device,
 		vulkan::shaders::outline_shader_frag,
 		vulkan::shaders::outline_shader_frag_length);
-
-	// [0] = vertex
-	// [1] = fragment
-	std::array<vk::PipelineShaderStageCreateInfo, 2> shader_stage_create_infos = {};
-	{
-		{
-			auto& vertex_stage_create_info = shader_stage_create_infos[0];
-			vertex_stage_create_info.sType = vk::StructureType::ePipelineShaderStageCreateInfo;
-			vertex_stage_create_info.stage = vk::ShaderStageFlagBits::eVertex;
-			vertex_stage_create_info.module = vertex_shader;
-
-			// entry point, we can combine multiple shaders into one by specifying a entry point
-			vertex_stage_create_info.pName = "main";
-		}
-
-		{
-			auto& fragment_stage_create_info = shader_stage_create_infos[1];
-			fragment_stage_create_info.sType = vk::StructureType::ePipelineShaderStageCreateInfo;
-			fragment_stage_create_info.stage = vk::ShaderStageFlagBits::eFragment;
-			fragment_stage_create_info.module = fragment_shader_outline;
-
-			// entry point, we can combine multiple shaders into one by specifying a entry point
-			fragment_stage_create_info.pName = "main";
-		}
-	}
-
-	// setup fixed function parts of the pipeline
 
 	// specify vertex data format
 	constexpr auto binding_description = get_vertex_binding_description();
@@ -1558,36 +1558,6 @@ void render_api::init_graphics_pipeline()
 		color_blend_state_create_info.blendConstants[3] = 0.f; // Optional
 	}
 
-	// setup push constants
-	vk::PushConstantRange push_constant_range = {};
-	{
-		push_constant_range.stageFlags = vk::ShaderStageFlagBits::eVertex;
-
-		push_constant_range.offset = 0;
-		push_constant_range.size = sizeof(vulkan::push_constants_t);
-	}
-
-	vk::PipelineLayoutCreateInfo pipeline_layout_create_info = {};
-	{
-		pipeline_layout_create_info.sType = vk::StructureType::ePipelineLayoutCreateInfo;
-
-		pipeline_layout_create_info.setLayoutCount = 1;
-		pipeline_layout_create_info.pSetLayouts = &_descriptor_set_layout;
-
-		pipeline_layout_create_info.pushConstantRangeCount = 1;
-		pipeline_layout_create_info.pPushConstantRanges = &push_constant_range;
-	}
-
-	if (const auto result = _logical_device.createPipelineLayout(
-		&pipeline_layout_create_info,
-		nullptr,
-		&_pipeline_layout);
-		result != vk::Result::eSuccess)
-	{
-		lib_log_e("render_api: failed to create pipeline layout {}", static_cast<int>(result));
-		assert(false);
-	}
-
 	vk::PipelineRenderingCreateInfo pipeline_rendering_create_info = {};
 	{
 		pipeline_rendering_create_info.sType = vk::StructureType::ePipelineRenderingCreateInfo;
@@ -1601,10 +1571,6 @@ void render_api::init_graphics_pipeline()
 	{
 		pipeline_create_info.sType = vk::StructureType::eGraphicsPipelineCreateInfo;
 		pipeline_create_info.pNext = &pipeline_rendering_create_info;
-
-		// frag/vertex shadeers
-		pipeline_create_info.stageCount = shader_stage_create_infos.size();
-		pipeline_create_info.pStages = shader_stage_create_infos.data();
 
 		// fixed functions
 		pipeline_create_info.pVertexInputState = &vertex_input_state_create_info;
@@ -1627,16 +1593,134 @@ void render_api::init_graphics_pipeline()
 		pipeline_create_info.basePipelineIndex = -1; // Optional
 	}
 
-	if (const auto result = _logical_device.createGraphicsPipelines(
-		nullptr,
-		1,
-		&pipeline_create_info,
-		nullptr,
-		&_pipeline);
-		result != vk::Result::eSuccess)
+	// create three pipelines, one for each shader type we need to use
 	{
-		lib_log_e("render_api: failed to create pipeline {}", static_cast<int>(result));
-		assert(false);
+		// [0] = vertex
+		// [1] = fragment
+		std::array<vk::PipelineShaderStageCreateInfo, 2> shader_stage_create_infos = {};
+		{
+			{
+				auto& vertex_stage_create_info = shader_stage_create_infos[0];
+				vertex_stage_create_info.sType = vk::StructureType::ePipelineShaderStageCreateInfo;
+				vertex_stage_create_info.stage = vk::ShaderStageFlagBits::eVertex;
+				vertex_stage_create_info.module = vertex_shader;
+
+				// entry point, we can combine multiple shaders into one by specifying a entry point
+				vertex_stage_create_info.pName = "main";
+			}
+
+			{
+				auto& fragment_stage_create_info = shader_stage_create_infos[1];
+				fragment_stage_create_info.sType = vk::StructureType::ePipelineShaderStageCreateInfo;
+				fragment_stage_create_info.stage = vk::ShaderStageFlagBits::eFragment;
+				fragment_stage_create_info.module = fragment_shader_normal;
+
+				// entry point, we can combine multiple shaders into one by specifying a entry point
+				fragment_stage_create_info.pName = "main";
+			}
+		}
+
+		// frag/vertex shadeers
+		pipeline_create_info.stageCount = shader_stage_create_infos.size();
+		pipeline_create_info.pStages = shader_stage_create_infos.data();
+
+		if (const auto result = _logical_device.createGraphicsPipelines(
+			nullptr,
+			1,
+			&pipeline_create_info,
+			nullptr,
+			&_normal_pipeline);
+			result != vk::Result::eSuccess)
+		{
+			lib_log_e("render_api: failed to create pipeline {}", static_cast<int>(result));
+			assert(false);
+		}
+	}
+
+	{
+		// [0] = vertex
+		// [1] = fragment
+		std::array<vk::PipelineShaderStageCreateInfo, 2> shader_stage_create_infos = {};
+		{
+			{
+				auto& vertex_stage_create_info = shader_stage_create_infos[0];
+				vertex_stage_create_info.sType = vk::StructureType::ePipelineShaderStageCreateInfo;
+				vertex_stage_create_info.stage = vk::ShaderStageFlagBits::eVertex;
+				vertex_stage_create_info.module = vertex_shader;
+
+				// entry point, we can combine multiple shaders into one by specifying a entry point
+				vertex_stage_create_info.pName = "main";
+			}
+
+			{
+				auto& fragment_stage_create_info = shader_stage_create_infos[1];
+				fragment_stage_create_info.sType = vk::StructureType::ePipelineShaderStageCreateInfo;
+				fragment_stage_create_info.stage = vk::ShaderStageFlagBits::eFragment;
+				fragment_stage_create_info.module = fragment_shader_sdf;
+
+				// entry point, we can combine multiple shaders into one by specifying a entry point
+				fragment_stage_create_info.pName = "main";
+			}
+		}
+
+		// frag/vertex shadeers
+		pipeline_create_info.stageCount = shader_stage_create_infos.size();
+		pipeline_create_info.pStages = shader_stage_create_infos.data();
+
+		if (const auto result = _logical_device.createGraphicsPipelines(
+			nullptr,
+			1,
+			&pipeline_create_info,
+			nullptr,
+			&_sdf_pipeline);
+			result != vk::Result::eSuccess)
+		{
+			lib_log_e("render_api: failed to create pipeline {}", static_cast<int>(result));
+			assert(false);
+		}
+	}
+
+	{
+		// [0] = vertex
+		// [1] = fragment
+		std::array<vk::PipelineShaderStageCreateInfo, 2> shader_stage_create_infos = {};
+		{
+			{
+				auto& vertex_stage_create_info = shader_stage_create_infos[0];
+				vertex_stage_create_info.sType = vk::StructureType::ePipelineShaderStageCreateInfo;
+				vertex_stage_create_info.stage = vk::ShaderStageFlagBits::eVertex;
+				vertex_stage_create_info.module = vertex_shader;
+
+				// entry point, we can combine multiple shaders into one by specifying a entry point
+				vertex_stage_create_info.pName = "main";
+			}
+
+			{
+				auto& fragment_stage_create_info = shader_stage_create_infos[1];
+				fragment_stage_create_info.sType = vk::StructureType::ePipelineShaderStageCreateInfo;
+				fragment_stage_create_info.stage = vk::ShaderStageFlagBits::eFragment;
+				fragment_stage_create_info.module = fragment_shader_outline;
+
+				// entry point, we can combine multiple shaders into one by specifying a entry point
+				fragment_stage_create_info.pName = "main";
+			}
+		}
+
+		// frag/vertex shadeers
+		pipeline_create_info.stageCount = shader_stage_create_infos.size();
+		pipeline_create_info.pStages = shader_stage_create_infos.data();
+
+		if (const auto result = _logical_device.createGraphicsPipelines(
+			nullptr,
+			1,
+			&pipeline_create_info,
+			nullptr,
+			&_outline_pipeline);
+			result != vk::Result::eSuccess)
+		{
+			lib_log_e("render_api: failed to create pipeline {}", static_cast<int>(result));
+			assert(false);
+		}
 	}
 
 	_logical_device.destroyShaderModule(vertex_shader);
@@ -1715,7 +1799,7 @@ void render_api::record_command_buffer(
 		command_buffer_begin_info.pInheritanceInfo = nullptr;
 	}
 
-	(void)command_buffer.begin(&command_buffer_begin_info);
+	command_buffer.begin(&command_buffer_begin_info);
 
 	copy_buffer(
 		command_buffer,
@@ -1766,10 +1850,6 @@ void render_api::record_command_buffer(
 		rendering_info.pColorAttachments = &color_attatchment_info;
 	}
 
-	// no secondary cmd buffer so inline
-	command_buffer.beginRendering(&rendering_info);
-	command_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, _pipeline);
-
 	const std::array<vk::Buffer, 1> vertex_buffers = {
 		_vertex_buffer
 	};
@@ -1778,51 +1858,55 @@ void render_api::record_command_buffer(
 		0
 	};
 
-	command_buffer.bindVertexBuffers(0, vertex_buffers, vertex_buffer_offets);
-	command_buffer.bindIndexBuffer(_index_buffer, 0, vk::IndexType::eUint32);
-
-	// set viewport
-	command_buffer.setViewport(0, 1, &_viewport);
-
-	command_buffer.pushConstants(
-		_pipeline_layout,
-		vk::ShaderStageFlagBits::eVertex,
-		0,
-		sizeof(vulkan::push_constants_t),
-		&_push_constants);
-
-	command_buffer.bindDescriptorSets(
-		vk::PipelineBindPoint::eGraphics,
-		_pipeline_layout,
-		0,
-		1,
-		&_descriptor_set.at(current_frame),
-		0,
-		nullptr);
+	// no secondary cmd buffer so inline
+	command_buffer.beginRendering(&rendering_info);
 
 	// draw command buffer
 	for (uint32_t i = 0; i < render_command.batch_count; i++)
 	{
 		const auto& batch = render_command.batches.at(i);
 
-		// switch (batch.shader)
-		// {
-		// case shader_type::normal:
-		// 	_normal_shader.bind();
-		// 	break;
-		// case shader_type::sdf:
-		// 	_sdf_shader.bind();
-		// 	break;
-		// case shader_type::sdf_outline:
-		// 	_sdf_outline_shader.bind();
-		// 	break;
-		// }
+		switch (batch.shader)
+		{
+		case shader_type::normal:
+			command_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, _normal_pipeline);
+			break;
+		case shader_type::sdf:
+			command_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, _sdf_pipeline);
+			break;
+		case shader_type::sdf_outline:
+			command_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, _outline_pipeline);
+			break;
+		}
+
+		command_buffer.bindVertexBuffers(0, vertex_buffers, vertex_buffer_offets);
+		command_buffer.bindIndexBuffer(_index_buffer, 0, vk::IndexType::eUint32);
+
+		// set viewport
+		command_buffer.setViewport(0, 1, &_viewport);
+
+		command_buffer.pushConstants(
+			_pipeline_layout,
+			vk::ShaderStageFlagBits::eVertex,
+			0,
+			sizeof(vulkan::push_constants_t),
+			&_push_constants);
+
+		command_buffer.bindDescriptorSets(
+			vk::PipelineBindPoint::eGraphics,
+			_pipeline_layout,
+			0,
+			1,
+			&_descriptor_set.at(current_frame),
+			0,
+			nullptr);
 
 		vk::Rect2D scissor = {};
 		{
 			scissor.offset = vk::Offset2D(batch.clipped_area.x, batch.clipped_area.y);
 			scissor.extent = vk::Extent2D(batch.clipped_area.z, batch.clipped_area.w);
 		}
+
 		command_buffer.setScissor(0, 1, &scissor);
 		command_buffer.drawIndexed(
 			batch.count,

@@ -200,6 +200,7 @@ window_creation::window_creation(const window_parameters_t& window_parameters)
 	glfwSetWindowPos(_glfw_window_ptr, window_parameters.x_position, window_parameters.y_position);
 	glfwMakeContextCurrent(_glfw_window_ptr);
 
+	glfwSwapInterval(0);
 	glfwSetWindowUserPointer(_glfw_window_ptr, this);
 }
 

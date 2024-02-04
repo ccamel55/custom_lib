@@ -9,19 +9,6 @@
 
 using namespace lib::json_config;
 
-namespace
-{
-bool is_config_name_valid(const std::string& name)
-{
-	if (name.find('.') != std::string::npos)
-	{
-		return false;
-	}
-
-	return true;
-}
-}
-
 config_manager::config_manager(const std::filesystem::path& config_directory, const std::string& file_extension)
 	: _file_extension(file_extension), _config_directory(config_directory)
 {

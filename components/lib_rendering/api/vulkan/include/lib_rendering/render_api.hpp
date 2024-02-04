@@ -48,8 +48,7 @@ public:
 
     void bind_atlas(const uint8_t* data, int width, int height) override;
     void update_screen_size(const lib::point2Di& window_size) override;
-    void update_frame_buffer(const render_command& render_command) override;
-    void draw_frame_buffer() override;
+    void draw(const render_command& render_command) override;
 
 private:
     void init_vulkan(const std::vector<const char*>& extensions, const std::vector<const char*>& layers);
@@ -106,7 +105,10 @@ private:
     vk::DescriptorSetLayout _descriptor_set_layout = {};
     vk::DescriptorPool _descriptor_pool = {};
     vk::PipelineLayout _pipeline_layout = {};
-    vk::Pipeline _pipeline = {};
+
+    vk::Pipeline _normal_pipeline = {};
+    vk::Pipeline _sdf_pipeline = {};
+    vk::Pipeline _outline_pipeline = {};
 
     vk::Image _texture_atlas = {};
     vk::DeviceMemory _texture_atlas_memory = {};
