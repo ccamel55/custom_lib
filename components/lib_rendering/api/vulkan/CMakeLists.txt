@@ -2,6 +2,8 @@
 find_package(Vulkan REQUIRED)
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
+add_subdirectory(dependencies/VulkanMemoryAllocator)
+
 if (NOT ${Vulkan_FOUND})
     message(FATAL_ERROR "Could not find vulkan sdk")
 else ()
@@ -24,6 +26,7 @@ lib_sub_component(
         include
         ${Vulkan_INCLUDE_DIRS}
     LINK_LIBS
+        GPUOpen::VulkanMemoryAllocator
         ${Vulkan_LIBRARIES}
 )
 

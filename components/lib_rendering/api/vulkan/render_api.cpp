@@ -19,7 +19,9 @@ namespace
 {
 // assuming 1.f is highest priority, cant find shit anywhere :(
 constexpr float queue_priority = 1.f;
+
 constexpr uint32_t queue_index = 0;
+constexpr uint32_t vulkan_api_version = VK_MAKE_API_VERSION(0, 1, 3, 0);
 
 const std::unordered_set<std::string> vulkan_instace_extensions =
 {
@@ -773,10 +775,27 @@ render_api::render_api(void* api_context, bool flush_buffers) :
 	init_vulkan(instance_extensions_list, layers_list);
 	init_surface();
 	init_device(layers_list);
-	init_swapcahin();
-	init_image_views();
+
+	// setup vma allocator
+	VmaAllocatorCreateInfo allocation_create_info = {};
+	{
+		allocation_create_info.vulkanApiVersion = vulkan_api_version;
+		allocation_create_info.flags = VmaAllocatorCreateFlagBits::VMA_ALLOCATOR_CREATE_EXTERNALLY_SYNCHRONIZED_BIT;
+
+		allocation_create_info.physicalDevice = _physical_device;
+		allocation_create_info.device = _logical_device;
+		allocation_create_info.instance = _instance;
+
+		allocation_create_info.pHeapSizeLimit = nullptr;
+		allocation_create_info.pVulkanFunctions = nullptr;
+		allocation_create_info.pTypeExternalMemoryHandleTypes = nullptr;
+	}
+
+	vmaCreateAllocator(&allocation_create_info, &_vk_allocator);
 
 	// setup pipeline
+	init_swapcahin();
+	init_image_views();
 	init_descriptor_set_layout();
 	init_graphics_pipeline();
 	init_command_pool();
@@ -861,8 +880,11 @@ render_api::~render_api()
 	}
 
 	_logical_device.destroyCommandPool(_command_pool);
-	_logical_device.destroy();
 
+	// must be nuked before device is nuked
+	vmaDestroyAllocator(_vk_allocator);
+
+	_logical_device.destroy();
 	_instance.destroySurfaceKHR(_window_surface);
 	_instance.destroy();
 }
@@ -1070,7 +1092,7 @@ void render_api::init_vulkan(const std::vector<const char*>& extensions, const s
 		app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
 		app_info.pEngineName = nullptr;
 		app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-		app_info.apiVersion = VK_MAKE_API_VERSION(0, 1, 3, 0);
+		app_info.apiVersion = vulkan_api_version;
 	}
 
 	vk::InstanceCreateInfo create_info{};

@@ -9,6 +9,19 @@
 
 using namespace lib::json_config;
 
+namespace
+{
+bool is_config_name_valid(const std::string& name)
+{
+	if (name.find('.') != std::string::npos)
+	{
+		return false;
+	}
+
+	return true;
+}
+}
+
 config_manager::config_manager(const std::filesystem::path& config_directory, const std::string& file_extension)
 	: _file_extension(file_extension), _config_directory(config_directory)
 {
@@ -34,7 +47,11 @@ config_manager::config_manager(const std::filesystem::path& config_directory, co
 
 void config_manager::remove_config(const std::string& config_name)
 {
-	assert(is_config_name_valid(config_name) == true);
+	if (!is_config_name_valid(config_name))
+	{
+		lib_log_e("config_manager: could not remove config, name '{}' not valid", config_name.c_str());
+		return;
+	}
 
 	for (const auto& sub_config : _configs)
 	{
@@ -55,7 +72,11 @@ void config_manager::remove_config(const std::string& config_name)
 
 void config_manager::save_config(const std::string& config_name)
 {
-	assert(is_config_name_valid(config_name) == true);
+	if (!is_config_name_valid(config_name))
+	{
+		lib_log_e("config_manager: could not save config, name '{}' not valid", config_name.c_str());
+		return;
+	}
 
 	for (const auto& sub_config : _configs)
 	{
@@ -132,7 +153,11 @@ void config_manager::save_config(const std::string& config_name)
 
 void config_manager::load_config(const std::string& config_name) const
 {
-	assert(is_config_name_valid(config_name) == true);
+	if (!is_config_name_valid(config_name))
+	{
+		lib_log_e("config_manager: could not load config, name '{}' not valid", config_name.c_str());
+		return;
+	}
 
 	for (const auto& sub_config : _configs)
 	{
@@ -157,7 +182,7 @@ void config_manager::load_config(const std::string& config_name) const
 		if (json_file.is_discarded())
 		{
 			lib_log_e("config_manager: could open as json, womp womp", full_config_name);
-			assert(false);
+			continue;
 		}
 
 		// deserialize from json

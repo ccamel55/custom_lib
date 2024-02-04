@@ -16,3 +16,6 @@
 [submodule "dependencies/glad"]
 	path = components/lib_rendering/api/opengl3/dependencies/glad
 	url = git@github.com:ccamel55/glad.git
+[submodule "components/lib_rendering/api/vulkan/dependencies/VulkanMemoryAllocator"]
+	path = components/lib_rendering/api/vulkan/dependencies/VulkanMemoryAllocator
+	url = git@github.com:GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git

@@ -15,6 +15,7 @@
 // seems to be a bug but not sure lol
 #define VULKAN_HPP_NO_NODISCARD_WARNINGS
 
+#include <vk_mem_alloc.h>
 #include <vulkan/vulkan.hpp>
 #include <optional>
 
@@ -80,11 +81,14 @@ private:
 private:
     std::optional<uint32_t> _graphics_present_family_index = std::nullopt;
 
+    // instance speicfic stuff
+    // todo: move this into renderer/window creation
     vk::Instance _instance = {};
-    vk::SurfaceKHR _window_surface = {};
-
     vk::PhysicalDevice _physical_device = {};
     vk::Device _logical_device = {};
+    vk::SurfaceKHR _window_surface = {};
+    VmaAllocator _vk_allocator = {};
+
     vk::Queue _graphics_present_queue = {};
     vk::CommandPool _command_pool = {};
     std::array<vk::CommandBuffer, vulkan::max_frames_in_flight> _command_buffers = {};

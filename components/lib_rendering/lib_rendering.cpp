@@ -7,8 +7,6 @@
 #include <core_sdk/logger.hpp>
 #include <core_sdk/types/vector/vector2D.hpp>
 
-#include <cassert>
-
 using namespace lib::rendering;
 
 void renderer::bind_api(void* api_context, bool flush_buffers)
