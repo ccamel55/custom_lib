@@ -1,6 +1,3 @@
-add_subdirectory(Catch2)
 add_subdirectory(cxxopts)
 add_subdirectory(fmt)
-add_subdirectory(glad)
-add_subdirectory(glfw)
 add_subdirectory(json)

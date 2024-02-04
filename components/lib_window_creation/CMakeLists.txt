@@ -1,3 +1,5 @@
+add_subdirectory(dependencies/glfw)
+
 lib_option(
     NAME
         LIB_WINDOW_CREATION
