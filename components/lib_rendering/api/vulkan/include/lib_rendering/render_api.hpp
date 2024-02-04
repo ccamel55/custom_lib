@@ -41,11 +41,16 @@ struct push_constants_t
 };
 }
 
+struct render_api_data_t
+{
+    void* window_handle;
+};
+
 class render_api final : public render_api_base
 {
 public:
     //! \p api_context should equal the window ptr that vulkan will bind it's surface too.
-    render_api(void* api_context, bool flush_buffers);
+    render_api(const render_api_data_t& render_api_data, bool flush_buffers);
     ~render_api() override;
 
     void bind_atlas(const uint8_t* data, int width, int height) override;
@@ -143,6 +148,7 @@ private:
 
     std::array<vk::DescriptorSet, vulkan::max_frames_in_flight> _descriptor_set = {};
 
+    render_api_data_t _render_api_data = {};
     uint32_t _current_frame = 0;
 
     bool _stop_rendering = false;

@@ -161,9 +161,6 @@ bool atlas_generator::build_atlas()
 			static_cast<float>(texture_rect.y + texture_rect.h) / static_cast<float>(_height);
 	}
 
-	_texture_data.clear();
-	_texture_rects.clear();
-
 	return true;
 }
 

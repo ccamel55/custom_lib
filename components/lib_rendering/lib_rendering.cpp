@@ -9,15 +9,9 @@
 
 using namespace lib::rendering;
 
-void renderer::bind_api(void* api_context, bool flush_buffers)
+renderer::renderer(const render_api_data_t& render_api_data, bool flush_buffers)
 {
-	if (_render_api)
-	{
-		lib_log_w("renderer: tried to register new api context with existing context");
-		return;
-	}
-
-	_render_api = std::make_unique<render_api>(api_context, flush_buffers);
+	_render_api = std::make_unique<render_api>(render_api_data, flush_buffers);
 	_opaque_texture_id = _atlas_generator.add_texture(
 		opaque_texture_data,
 		opaque_texture_width,
@@ -25,14 +19,8 @@ void renderer::bind_api(void* api_context, bool flush_buffers)
 		);
 }
 
-void renderer::unbind_api()
+renderer::~renderer()
 {
-	if (!_render_api)
-	{
-		return;
-	}
-
-	// call destructor
 	_render_api.reset();
 	_render_command.reset();
 	_atlas_generator.reset();

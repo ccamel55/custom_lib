@@ -600,12 +600,11 @@ const auto create_image_view = [](
 };
 }
 
-render_api::render_api(void* api_context, bool flush_buffers) :
-	render_api_base(api_context, flush_buffers)
+render_api::render_api(const render_api_data_t& render_api_data, bool flush_buffers)
+	: render_api_base(flush_buffers)
+	, _render_api_data(render_api_data)
 {
 	// api_context must be valid for vulkan
-	assert(api_context);
-
 	const auto supported_instance_extensions = get_supported_extensions(vulkan_instace_extensions);
 	const auto supported_layers = get_supported_layers(validation_layers);
 
@@ -1133,7 +1132,8 @@ void render_api::init_surface()
 	vk::Win32SurfaceCreateInfoKHR surface_create_info = {};
 	{
 		surface_create_info.sType = vk::StructureType::eWin32SurfaceCreateInfoKHR;
-		surface_create_info.hwnd = static_cast<HWND>(_api_context);
+
+		surface_create_info.hwnd = static_cast<HWND>(_render_api_data.window_handle);
 		surface_create_info.hinstance = GetModuleHandle(nullptr);
 	}
 

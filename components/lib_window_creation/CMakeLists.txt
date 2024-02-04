@@ -12,6 +12,7 @@ lib_option(
 lib_component(lib_window_creation
     SOURCES
         lib_window_creation.cpp
+        helpers.cpp
     INCLUDES
         include
     DEPENDS

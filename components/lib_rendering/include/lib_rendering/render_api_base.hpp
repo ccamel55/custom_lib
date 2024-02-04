@@ -26,12 +26,15 @@ inline std::vector<uint8_t> opaque_texture_data =
 	0xff, 0xff, 0xff, 0xff,
 };
 
+// must be implemented by render_api impl class
+struct render_api_data_t;
+
 //! all render API implementations must inherit this class
 class render_api_base
 {
 public:
-	render_api_base(void* api_context, bool flush_buffers)
-		: _api_context(api_context), _flush_buffers(flush_buffers)
+	explicit render_api_base(bool flush_buffers)
+		: _flush_buffers(flush_buffers)
 	{
 	}
 
@@ -47,9 +50,7 @@ public:
 	virtual void draw(const render_command& render_command) = 0;
 
 protected:
-	void* _api_context;
 	bool _flush_buffers;
-
 	lib::point2Di _window_size = {};
 };
 }  // namespace lib::rendering

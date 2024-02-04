@@ -3,6 +3,8 @@
 #include <core_sdk/types/bitflag.hpp>
 
 #include <lib_rendering/render_api_base.hpp>
+#include <lib_rendering/render_api.hpp>
+
 #include <lib_rendering/render_callback_handler.hpp>
 #include <lib_rendering/common/atlas_generator.hpp>
 
@@ -18,12 +20,8 @@ namespace lib::rendering
 class renderer final : render_callback_handler
 {
 public:
-	//! bind our render API to an existing render context
-	//! \a flush_buffers to true if we want to clear currently draw buffer when rendering frame.
-	void bind_api(void* api_context, bool flush_buffers);
-
-	//! remove our render API from an existing context and reset the renderer
-	void unbind_api();
+	explicit renderer(const render_api_data_t& render_api_data, bool flush_buffers);
+	~renderer() override;
 
 	//! build our texture atlas. must be called before any drawing can be done
 	void build_texture();

@@ -4,17 +4,7 @@
 #include <functional>
 
 #include <core_sdk/types/bitflag.hpp>
-
-#ifndef DEF_LIB_RENDERING_off
-#include <lib_rendering/lib_rendering.hpp>
-#endif
-
-#ifndef DEF_LIB_INPUT_off
-#include <lib_input/lib_input.hpp>
-#endif
-
-#define GLFW_INCLUDE_NONE
-#include <GLFW/glfw3.h>
+#include <lib_window_creation/helpers.hpp>
 
 namespace lib::window_creation
 {
