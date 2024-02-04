@@ -10,6 +10,7 @@ namespace lib
 class vector3D : public point3Df
 {
 public:
+	constexpr vector3D() = default;
 	constexpr vector3D(float x, float y, float z)
 	{
 		this->x = x;

@@ -6,35 +6,6 @@ using namespace lib::rendering;
 
 namespace
 {
-constexpr char frame_buffer_vertex_shader[] = R"(
-        #version 410 core
-
-        layout(location = 0) in vec2 position;
-        layout(location = 2) in vec2 uv;
-
-		out vec2 fragment_uv;
-
-        void main()
-		{
-			fragment_uv = uv;
-			gl_Position = vec4(position.xy, 0, 1);
-        }
-    )";
-
-constexpr char frame_buffer_fragment_shader[] = R"(
-		#version 410 core
-
-		uniform sampler2D texture_sample;
-		in vec2 fragment_uv;
-
-		layout (location = 0) out vec4 out_color;
-
-        void main()
-		{
-	        out_color = texture(texture_sample, fragment_uv.st);
-        }
-    )";
-
 constexpr char vertex_shader[] = R"(
         #version 410 core
 
@@ -133,7 +104,7 @@ constexpr char sdf_outline_fragment_shader[] = R"(
     )";
 }  // namespace
 
-render_api::render_api(const void* api_context, bool flush_buffers)
+render_api::render_api(void* api_context, bool flush_buffers)
 	: render_api_base(api_context, flush_buffers)
 {
 	(void)api_context;
@@ -157,7 +128,6 @@ render_api::render_api(const void* api_context, bool flush_buffers)
 	_normal_shader.create(vertex_shader, normal_fragment_shader);
 	_sdf_shader.create(vertex_shader, sdf_fragment_shader);
 	_sdf_outline_shader.create(vertex_shader, sdf_outline_fragment_shader);
-	_frame_buffer_shader.create(frame_buffer_vertex_shader, frame_buffer_fragment_shader);
 
 	_render_state.capture();
 
@@ -203,57 +173,26 @@ render_api::render_api(const void* api_context, bool flush_buffers)
 		glUniform1i(_sdf_outline_shader.get_attribute_location("texture_sample"), 0);
 	}
 
-	// create frame buffer and it's respective draw codes
-	{
-		glGenFramebuffers(1, &_frame_buffer);
-		glGenBuffers(1, &_frame_buffer_vertex_buffer);
-
-		glGenVertexArrays(1, &_frame_buffer_vertex_array);
-		glBindVertexArray(_frame_buffer_vertex_array);
-
-		glBindBuffer(GL_ARRAY_BUFFER, _frame_buffer_vertex_buffer);
-		glBufferData(GL_ARRAY_BUFFER,
-			sizeof(frame_buffer_vertices),
-			frame_buffer_vertices,
-			GL_STATIC_DRAW);
-
-		glEnableVertexAttribArray(0);
-		glVertexAttribPointer(
-			0, 2, GL_FLOAT, GL_FALSE, sizeof(vertex_t), reinterpret_cast<void*>(offsetof(vertex_t, position)));
-
-		// texture position
-		glEnableVertexAttribArray(2);
-		glVertexAttribPointer(
-			2, 2, GL_FLOAT, GL_FALSE, sizeof(vertex_t), reinterpret_cast<void*>(offsetof(vertex_t, texture_position)));
-
-		_frame_buffer_shader.bind();
-		glUniform1i(_frame_buffer_shader.get_attribute_location("texture_sample"), 0);
-
-		create_frame_buffer_texture(default_window_size);
-	}
-
 	_render_state.restore();
+
+	// call once on init with default parameters, this way we guarentee we have something setup
+	update_screen_size(default_window_size);
 }
 
 render_api::~render_api()
 {
-	glDeleteFramebuffers(1, &_frame_buffer);
-
 	glDeleteTextures(1, &_texture_atlas);
-	glDeleteTextures(1, &_frame_buffer_texture);
 
 	glDeleteBuffers(1, &_vertex_buffer);
-	glDeleteBuffers(1, &_frame_buffer_vertex_buffer);
-
 	glDeleteBuffers(1, &_index_buffer);
 
 	glDeleteVertexArrays(1, &_vertex_array);
-	glDeleteVertexArrays(1, &_frame_buffer_vertex_array);
 }
 
 void render_api::bind_atlas(const uint8_t* data, int width, int height)
 {
 	// only use 1 atlas ever
+	// todo: destroy current texture and re init if texture exists
 	assert(_texture_atlas == 0);
 
 	// create texture setup how our texture will be sampled
@@ -320,19 +259,17 @@ void render_api::update_screen_size(const lib::point2Di& window_size)
 	}
 
 	glUseProgram(last_program);
-
-	// update frame buffer texture
-	create_frame_buffer_texture(window_size);
 }
 
-void render_api::update_frame_buffer(const render_command& render_command)
+void render_api::draw(const render_command& render_command)
 {
+	if (_flush_buffers)
+	{
+		glClear(GL_COLOR_BUFFER_BIT);
+	}
+
 	// backup render state
 	_render_state.capture();
-
-	// bind our frame buffer, this means everything we draw will now render to the frame buffer
-	// we also need to clear the buffer since its a new render target
-	glBindFramebuffer(GL_FRAMEBUFFER, _frame_buffer);
 	glClear(GL_COLOR_BUFFER_BIT);
 
 	// set up our own render state
@@ -411,100 +348,4 @@ void render_api::update_frame_buffer(const render_command& render_command)
 
 	// this will restore the old frame buffer if it was set
 	_render_state.restore();
-}
-
-void render_api::draw_frame_buffer()
-{
-	if (_flush_buffers)
-	{
-		glClear(GL_COLOR_BUFFER_BIT);
-	}
-
-	// backup render state
-	_render_state.capture();
-
-	// set up our own render state
-	glEnable(GL_BLEND);
-
-	glDisable(GL_SCISSOR_TEST);
-	glDisable(GL_CULL_FACE);
-	glDisable(GL_DEPTH_TEST);
-	glDisable(GL_STENCIL_TEST);
-
-	glBlendEquation(GL_FUNC_ADD);
-	glBlendFuncSeparate(
-		GL_SRC_ALPHA,
-		GL_ONE_MINUS_SRC_ALPHA,
-		GL_ONE,
-		GL_ONE_MINUS_SRC_ALPHA);
-
-	// use whole screen as viewport, but we scissor regions in each batch
-	glViewport(0, 0, _window_size.x, _window_size.y);
-
-	// bind master texture
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, _frame_buffer_texture);
-
-	_frame_buffer_shader.bind();
-
-	glBindVertexArray(_frame_buffer_vertex_array);
-	glBindBuffer(GL_ARRAY_BUFFER, _frame_buffer_vertex_buffer);
-
-	glDrawArrays(GL_TRIANGLES, 0, frame_buffer_vertex_count);
-
-	// this will restore the old frame buffer if it was set
-	_render_state.restore();
-}
-
-void render_api::create_frame_buffer_texture(const lib::point2Di& window_size)
-{
-	// save previous state
-	GLuint last_texture = 0;
-	GLuint last_frame_buffer = 0;
-
-	glGetIntegerv(GL_ACTIVE_TEXTURE, reinterpret_cast<GLint*>(&last_texture));
-	glGetIntegerv(GL_FRAMEBUFFER_BINDING, reinterpret_cast<GLint*>(&last_frame_buffer));
-
-	if (_frame_buffer_texture)
-	{
-		glDeleteTextures(1, &_frame_buffer_texture);
-	}
-
-	glGenTextures(1, &_frame_buffer_texture);
-	glBindTexture(GL_TEXTURE_2D, _frame_buffer_texture);
-
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-
-	glTexImage2D(
-		GL_TEXTURE_2D,
-		0,
-		GL_RGBA,
-		window_size.x,
-		window_size.y,
-		0,
-		GL_RGBA,
-		GL_UNSIGNED_BYTE,
-		nullptr);
-
-	glBindFramebuffer(GL_FRAMEBUFFER, _frame_buffer);
-	glFramebufferTexture2D(
-		GL_FRAMEBUFFER,
-		GL_COLOR_ATTACHMENT0,
-		GL_TEXTURE_2D,
-		_frame_buffer_texture,
-		0);
-
-	if (const auto status = glCheckFramebufferStatus(GL_FRAMEBUFFER); status != GL_FRAMEBUFFER_COMPLETE)
-	{
-		lib_log_d("render_api: failed to update frame buffer, status: ", status);
-		assert(false);
-	}
-
-	// restore previous state
-	glBindFramebuffer(GL_FRAMEBUFFER, last_frame_buffer);
-	glBindTexture(GL_TEXTURE_2D, last_texture);
 }

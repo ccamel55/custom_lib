@@ -11,7 +11,7 @@
 
 using namespace lib::rendering;
 
-void renderer::bind_api(const void* api_context, bool flush_buffers)
+void renderer::bind_api(void* api_context, bool flush_buffers)
 {
 	if (_render_api)
 	{
@@ -104,16 +104,6 @@ void renderer::draw_frame()
 {
 	const auto frame_start_time = std::chrono::system_clock::now();
 
-	if ((static_cast<float>(std::chrono::duration_cast<std::chrono::microseconds>(
-		frame_start_time - _last_frame_time).count()) / 1000.f) < _desired_frame_interval)
-	{
-		// since we draw to a frame buffer object, we can restore the last draw state rather than re-render everything,
-		// this allows us to limit the fps without having to pause the render thread which might be responsible for
-		// handling other things
-		_render_api->draw_frame_buffer();
-		return;
-	}
-
 	_frame_time = static_cast<float>(std::chrono::duration_cast<std::chrono::microseconds>(
 		frame_start_time - _last_frame_time).count()) / 1000.f;
 
@@ -126,13 +116,11 @@ void renderer::draw_frame()
 	}
 
 	// get our render api to draw our vertices
-	_render_api->update_frame_buffer(_render_command);
+	_render_api->draw(_render_command);
 
 	// flush command, reset states back to default
 	_clipped_area = {0, 0, _window_size.x, _window_size.y};
 	_render_command.reset();
-
-	_render_api->draw_frame_buffer();
 }
 
 float renderer::get_frame_time_ms() const
@@ -151,27 +139,6 @@ void renderer::set_window_size(const lib::point2Di& window_size)
 const lib::point2Di& renderer::get_window_size() const
 {
 	return _window_size;
-}
-
-void renderer::set_fps_limit(uint16_t fps)
-{
-	_fps_limit = fps;
-
-	if (_fps_limit == 0)
-	{
-		_desired_frame_interval = 0;
-	}
-	else
-	{
-		_desired_frame_interval = 1000.f / static_cast<float>(_fps_limit);
-	}
-
-	lib_log_d("renderer: max fps updated: {} (frame interval: {})", _fps_limit, _desired_frame_interval);
-}
-
-uint16_t renderer::get_fps_limit() const
-{
-	return _fps_limit;
 }
 
 void renderer::draw_image(const lib::point2Di& pos,

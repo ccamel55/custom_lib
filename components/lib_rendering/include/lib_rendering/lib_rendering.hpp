@@ -20,7 +20,7 @@ class renderer final : render_callback_handler
 public:
 	//! bind our render API to an existing render context
 	//! \a flush_buffers to true if we want to clear currently draw buffer when rendering frame.
-	void bind_api(const void* api_context, bool flush_buffers);
+	void bind_api(void* api_context, bool flush_buffers);
 
 	//! remove our render API from an existing context and reset the renderer
 	void unbind_api();
@@ -43,11 +43,6 @@ public:
 	//! set the size of the rendering window, this will also update the renderer
 	void set_window_size(const lib::point2Di& window_size);
 	[[nodiscard]] const lib::point2Di& get_window_size() const;
-
-	//! set maximum fps the renderer will redraw it's registered callbacks
-	//! \a fps if 0 will be uncapped.
-	void set_fps_limit(uint16_t fps);
-	[[nodiscard]] uint16_t get_fps_limit() const;
 
 	//! Get the time between renderer frame updates.
 	[[nodiscard]] float get_frame_time_ms() const override;
@@ -119,12 +114,6 @@ protected:
 		bitflag flags) override;
 
 private:
-	//! Desired max fps
-	uint16_t _fps_limit = 0;
-
-	//! Desired frame interval in ms, calculated from fps limit
-	float _desired_frame_interval = 0.f;
-
 	//! atlas generator is used to generate a texture atlas
 	atlas_generator _atlas_generator = {};
 

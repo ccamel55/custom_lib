@@ -1,0 +1,21 @@
+#version 450
+
+layout(push_constant) uniform push_constants_t
+{
+    vec2 scale;
+    vec2 translate;
+} pc;
+
+layout(location = 0) in vec2 in_pos;
+layout(location = 1) in uint in_color;
+layout(location = 2) in vec2 in_uv;
+
+layout(location = 0) out vec4 fragment_color;
+layout(location = 1) out vec2 fragment_uv;
+
+void main() {
+    fragment_color = unpackUnorm4x8(in_color);
+    fragment_uv = in_uv;
+
+    gl_Position = vec4((in_pos * pc.scale) + pc.translate, 0.0, 1.0);
+}
