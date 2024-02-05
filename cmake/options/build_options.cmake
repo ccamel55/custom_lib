@@ -16,9 +16,7 @@ if (CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
     list(APPEND LIB_BUILD_OPTIONS
             -W3
             -GR # disable RTTI
-            -EHsc # disable exceptions
             -fp:fast # fast floating point arithmetic
-            -D_HAS_EXCEPTIONS=0 # tell msvs there are no exceptions
     )
 
     if (CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -44,7 +42,6 @@ else()
     list(APPEND LIB_BUILD_OPTIONS
             -Wall # all warnings
             -fno-rtti # disable rtti
-            -fno-exceptions # disable exceptions
             -ffast-math # enable fast math functions that dont align with IEEE/ANSI standard fully.
             -ftree-vectorize # enabled by -O3 but in case we dont compile in release, enable vectorisation
     )
