@@ -73,16 +73,23 @@ const auto choose_swapchain_format = [](
 };
 
 const auto choose_swapchain_present_mode = [](
-	const std::vector<vk::PresentModeKHR>& present_modes) -> vk::PresentModeKHR
+	const std::vector<vk::PresentModeKHR>& present_modes,
+	const std::vector<vk::PresentModeKHR>& desired_modes) -> vk::PresentModeKHR
 {
-	for (const auto& mode: present_modes)
+	for (const auto desired_mode: desired_modes)
 	{
-		if (mode != vk::PresentModeKHR::eMailbox)
+		if (desired_mode == vk::PresentModeKHR::eFifo)
 		{
 			continue;
 		}
 
-		return mode;
+		for (const auto present_mode: present_modes)
+		{
+			if (present_mode == desired_mode)
+			{
+				return present_mode;
+			}
+		}
 	}
 
 	// FIFO is guarenteed to exist
@@ -420,12 +427,12 @@ render_api::render_api(const std::weak_ptr<render_api_data_t>& render_api_data, 
 
 	vmaCreateAllocator(&allocation_create_info, &_vk_allocator);
 
-	// setup pipeline, call to update_screen_size will init the swapchain, framebuffer and image view
-	update_screen_size(default_window_size);
-
+	init_swapcahin();
+	init_image_views();
 	init_render_pass();
 	init_descriptor_set_layout();
 	init_graphics_pipeline();
+	init_frame_buffer();
 	init_command_pool();
 	init_vertex_buffer();
 	init_index_buffer();
@@ -463,6 +470,9 @@ render_api::render_api(const std::weak_ptr<render_api_data_t>& render_api_data, 
 			assert(false);
 		}
 	}
+
+	// setup pipeline, call to update_screen_size will init the swapchain, framebuffer and image view
+	update_screen_size(default_window_size);
 }
 
 render_api::~render_api()
@@ -477,6 +487,7 @@ render_api::~render_api()
 	api_data->device.destroySampler(_texture_sampler);
 	api_data->device.destroyDescriptorPool(_descriptor_pool);
 	api_data->device.destroyDescriptorSetLayout(_descriptor_set_layout);
+	api_data->device.destroyRenderPass(_render_pass);
 
 	vmaDestroyBuffer(_vk_allocator, _vertex_staging_buffer, _vertex_staging_buffer_alloc);
 	vmaDestroyBuffer(_vk_allocator, _index_staging_buffer, _index_staging_buffer_alloc);
@@ -489,7 +500,6 @@ render_api::~render_api()
 	api_data->device.destroyPipeline(_outline_pipeline);
 
 	api_data->device.destroyPipelineLayout(_pipeline_layout);
-	api_data->device.destroyRenderPass(_render_pass);
 
 	for (size_t i = 0; i < vulkan::max_frames_in_flight; i++)
 	{
@@ -739,7 +749,9 @@ void render_api::init_swapcahin()
 	const auto swap_chain_support = query_swapchain_support(api_data->physical_device, api_data->surface);
 
 	const auto surface_format = choose_swapchain_format(swap_chain_support.formats);
-	const auto present_mode = choose_swapchain_present_mode(swap_chain_support.present_modes);
+	const auto present_mode = choose_swapchain_present_mode(
+		swap_chain_support.present_modes,
+		{vk::PresentModeKHR::eMailbox, vk::PresentModeKHR::eImmediate});
 
 	// we always want to use +1 on minium image count since the driver might be doing other stuff which will
 	// make us wait, slowing down the render process etc.

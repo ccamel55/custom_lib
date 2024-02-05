@@ -56,9 +56,7 @@ public:
 	void focus_window() const;
 
 private:
-#ifndef DEF_LIB_RENDERING_off
 	static void window_size_callback(GLFWwindow* window, int width, int height);
-#endif
 
 #ifndef DEF_LIB_INPUT_off
 	static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
@@ -72,6 +70,7 @@ private:
 	std::function<void()> _render_callback = nullptr;
 
 	std::shared_ptr<lib::rendering::render_api_data_t> _api_data = nullptr;
+	lib::point2Df _scale = {1.f, 1.f};
 
 #ifndef DEF_LIB_RENDERING_off
 	std::shared_ptr<rendering::renderer> _renderer = nullptr;

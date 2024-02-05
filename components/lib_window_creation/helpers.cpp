@@ -172,6 +172,10 @@ const std::unordered_set<std::string> vulkan_instace_extensions =
 const std::unordered_set<std::string> vulkan_device_extensions =
 {
 	"VK_KHR_swapchain",
+	
+#if __APPLE__
+	"VK_KHR_portability_subset"
+#endif
 };
 
 const std::unordered_set<std::string> validation_layers =
@@ -314,7 +318,7 @@ bool helpers::create_vulkan_instance(
 
 #if __APPLE__
 		// apply needs this since vulkan 1.3.216
-		create_info.flags = vk::InstanceCreateFlagBits::eEnumeratePortabilityKHR;
+		instance_create_info.flags = vk::InstanceCreateFlagBits::eEnumeratePortabilityKHR;
 #endif
 	}
 

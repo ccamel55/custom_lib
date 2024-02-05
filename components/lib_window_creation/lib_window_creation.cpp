@@ -67,7 +67,9 @@ window_creation::window_creation(const window_parameters_t& window_parameters)
 	glfwMakeContextCurrent(_glfw_window_ptr);
 
 	glfwSwapInterval(0);
+
 	glfwSetWindowUserPointer(_glfw_window_ptr, this);
+	glfwSetWindowSizeCallback(_glfw_window_ptr, window_size_callback);
 }
 
 window_creation::~window_creation()
@@ -120,6 +122,15 @@ std::weak_ptr<lib::rendering::renderer> window_creation::register_renderer()
 	lib::point2Di window_size = {};
 	glfwGetWindowSize(_glfw_window_ptr, &window_size.x, &window_size.y);
 
+	lib::point2Di frame_buffer_size = {};
+	glfwGetFramebufferSize(_glfw_window_ptr, &frame_buffer_size.x, &frame_buffer_size.y);
+
+	_scale =
+	{
+		static_cast<float>(frame_buffer_size.x) / static_cast<float>(window_size.x),
+		static_cast<float>(frame_buffer_size.y) / static_cast<float>(window_size.y)
+	};
+
 	_api_data = std::make_shared<lib::rendering::render_api_data_t>();
 
 #ifdef DEF_LIB_RENDERING_vulkan
@@ -129,16 +140,25 @@ std::weak_ptr<lib::rendering::renderer> window_creation::register_renderer()
 	_renderer = std::make_shared<rendering::renderer>(_api_data, true);
 	_renderer->set_window_size(window_size);
 
-	glfwSetWindowSizeCallback(_glfw_window_ptr, window_size_callback);
-
 	return _renderer;
 }
 
 void window_creation::window_size_callback(GLFWwindow* window, int width, int height)
 {
 	const auto this_ptr = static_cast<window_creation*>(glfwGetWindowUserPointer(window));
+
+	lib::point2Di frame_buffer_size = {};
+	glfwGetFramebufferSize(window, &frame_buffer_size.x, &frame_buffer_size.y);
+
+	this_ptr->_scale =
+	{
+		static_cast<float>(frame_buffer_size.x) / static_cast<float>(width),
+		static_cast<float>(frame_buffer_size.y) / static_cast<float>(height)
+	};
+
 	this_ptr->_renderer->set_window_size({width, height});
 }
+
 #else
 void window_creation::register_render_callback(std::function<void()> render_callback)
 {
@@ -198,14 +218,19 @@ void window_creation::scroll_callback(GLFWwindow* window, double offset_x, doubl
 
 void window_creation::cursor_position_callback(GLFWwindow* window, double pos_x, double pos_y)
 {
+	const auto this_ptr = static_cast<window_creation*>(glfwGetWindowUserPointer(window));
+
 	// _input_handler_ptr will always be valid here
 	const lib::input::input_t input = {
 		.type = input::mouse,
 		.key = lib::input::key_button::mouse_move,
-		.state = lib::point2Di{ static_cast<int>(pos_x), static_cast<int>(pos_y)}
+		.state = lib::point2Di
+		{
+			static_cast<int>(static_cast<float>(pos_x) * this_ptr->_scale.x),
+			static_cast<int>(static_cast<float>(pos_y) * this_ptr->_scale.y)
+		}
 	};
 
-	const auto this_ptr = static_cast<window_creation*>(glfwGetWindowUserPointer(window));
 	this_ptr->_input_handler->add_input(input);
 }
 
