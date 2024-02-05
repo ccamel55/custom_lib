@@ -149,7 +149,7 @@ lib::input::key_button helpers::glfw_to_mouse_key(int button)
 constexpr float queue_priority = 1.f;
 
 constexpr uint32_t queue_index = 0;
-constexpr uint32_t vulkan_api_version = VK_MAKE_API_VERSION(0, 1, 3, 0);
+constexpr uint32_t vulkan_api_version = VK_MAKE_API_VERSION(0, 1, 2, 0);
 
 const std::unordered_set<std::string> vulkan_instace_extensions =
 {
@@ -172,7 +172,6 @@ const std::unordered_set<std::string> vulkan_instace_extensions =
 const std::unordered_set<std::string> vulkan_device_extensions =
 {
 	"VK_KHR_swapchain",
-	"VK_KHR_dynamic_rendering"
 };
 
 const std::unordered_set<std::string> validation_layers =
@@ -419,16 +418,9 @@ bool helpers::create_vulkan_instance(
 		// we dont use any device features right now so leave empty
 	}
 
-	vk::PhysicalDeviceDynamicRenderingFeatures dynamic_rendering_features = {};
-	{
-		dynamic_rendering_features.sType = vk::StructureType::ePhysicalDeviceDynamicRenderingFeatures;
-		dynamic_rendering_features.dynamicRendering = true;
-	}
-
 	vk::DeviceCreateInfo device_create_info = {};
 	{
 		device_create_info.sType = vk::StructureType::eDeviceCreateInfo;
-		device_create_info.pNext = &dynamic_rendering_features;
 
 		device_create_info.pQueueCreateInfos = device_queue_create_infos.data();
 		device_create_info.queueCreateInfoCount = device_queue_create_infos.size();

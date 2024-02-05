@@ -50,7 +50,7 @@ struct render_api_data_t
     vk::PhysicalDevice physical_device = {};
     vk::Device device = {};
 
-    uint32_t vulkan_api_version = VK_MAKE_API_VERSION(0, 1, 3, 0);
+    uint32_t vulkan_api_version = 0;
     uint32_t present_family_index = 0;
 };
 
@@ -79,6 +79,8 @@ private:
     void init_descriptor_set();
     void init_texture_view();
     void init_texture_sampler();
+    void init_render_pass();
+    void init_frame_buffer();
 
     void destroy_swapchain();
     void destroy_image();
@@ -99,9 +101,12 @@ private:
     vk::CommandPool _command_pool = {};
     std::array<vk::CommandBuffer, vulkan::max_frames_in_flight> _command_buffers = {};
 
+    vk::RenderPass _render_pass = {};
     vk::SwapchainKHR _swap_chain = {};
+
     std::vector<vk::Image> _swapchain_images = {};
     std::vector<vk::ImageView> _swapchain_image_views = {};
+    std::vector<vk::Framebuffer> _swapchain_frame_buffers = {};
 
     // states of current swapchain, so we can use later
     vk::Format _swapchian_format = {};
@@ -111,7 +116,6 @@ private:
     vk::Viewport _viewport = {};
     vulkan::push_constants_t _push_constants = {};
 
-    vk::RenderPass _render_pass = {};
     vk::DescriptorSetLayout _descriptor_set_layout = {};
     vk::DescriptorPool _descriptor_pool = {};
     vk::PipelineLayout _pipeline_layout = {};

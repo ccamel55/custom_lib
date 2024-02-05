@@ -20,10 +20,7 @@ namespace
 enum class image_transition_type
 {
 	undefined_to_transfer_dst_optimal,
-	undefined_to_color_attatchment_optimal,
-
 	transfer_dst_optimal_to_shader_read_only_optimal,
-	color_attatchment_optimal_to_present_src,
 
 	num_transition_types,
 };
@@ -331,18 +328,6 @@ const auto transition_image_layout = [](
 			destination_stage = vk::PipelineStageFlagBits::eTransfer;
 
 			break;
-		case image_transition_type::undefined_to_color_attatchment_optimal:
-
-			barrier.oldLayout = vk::ImageLayout::eUndefined;
-			barrier.newLayout = vk::ImageLayout::eColorAttachmentOptimal;
-
-			barrier.srcAccessMask = static_cast<vk::AccessFlags>(0);
-			barrier.dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;
-
-			source_stage = vk::PipelineStageFlagBits::eTopOfPipe;
-			destination_stage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-
-			break;
 		case image_transition_type::transfer_dst_optimal_to_shader_read_only_optimal:
 
 			barrier.oldLayout = vk::ImageLayout::eTransferDstOptimal;
@@ -353,18 +338,6 @@ const auto transition_image_layout = [](
 
 			source_stage = vk::PipelineStageFlagBits::eTransfer;
 			destination_stage = vk::PipelineStageFlagBits::eFragmentShader;
-
-			break;
-		case image_transition_type::color_attatchment_optimal_to_present_src:
-
-			barrier.oldLayout = vk::ImageLayout::eColorAttachmentOptimal;
-			barrier.newLayout = vk::ImageLayout::ePresentSrcKHR;
-
-			barrier.srcAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;
-			barrier.dstAccessMask = static_cast<vk::AccessFlags>(0);
-
-			source_stage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-			destination_stage = vk::PipelineStageFlagBits::eBottomOfPipe;
 
 			break;
 		case image_transition_type::num_transition_types:
@@ -447,9 +420,10 @@ render_api::render_api(const std::weak_ptr<render_api_data_t>& render_api_data, 
 
 	vmaCreateAllocator(&allocation_create_info, &_vk_allocator);
 
-	// setup pipeline
-	init_swapcahin();
-	init_image_views();
+	// setup pipeline, call to update_screen_size will init the swapchain, framebuffer and image view
+	update_screen_size(default_window_size);
+
+	init_render_pass();
 	init_descriptor_set_layout();
 	init_graphics_pipeline();
 	init_command_pool();
@@ -489,9 +463,6 @@ render_api::render_api(const std::weak_ptr<render_api_data_t>& render_api_data, 
 			assert(false);
 		}
 	}
-
-	// call at least once to ensure that we have everything setup for some resoltion once
-	update_screen_size(default_window_size);
 }
 
 render_api::~render_api()
@@ -518,6 +489,7 @@ render_api::~render_api()
 	api_data->device.destroyPipeline(_outline_pipeline);
 
 	api_data->device.destroyPipelineLayout(_pipeline_layout);
+	api_data->device.destroyRenderPass(_render_pass);
 
 	for (size_t i = 0; i < vulkan::max_frames_in_flight; i++)
 	{
@@ -666,6 +638,7 @@ void render_api::update_screen_size(const lib::point2Di& window_size)
 
 	init_swapcahin();
 	init_image_views();
+	init_frame_buffer();
 
 	_viewport.x = 0.f;
 	_viewport.y = 0.f;
@@ -1074,19 +1047,10 @@ void render_api::init_graphics_pipeline()
 		color_blend_state_create_info.blendConstants[3] = 0.f; // Optional
 	}
 
-	vk::PipelineRenderingCreateInfo pipeline_rendering_create_info = {};
-	{
-		pipeline_rendering_create_info.sType = vk::StructureType::ePipelineRenderingCreateInfo;
-
-		pipeline_rendering_create_info.colorAttachmentCount = 1;
-		pipeline_rendering_create_info.pColorAttachmentFormats = &_swapchian_format;
-	}
-
 	// create the actual graphics pipeline
 	vk::GraphicsPipelineCreateInfo pipeline_create_info = {};
 	{
 		pipeline_create_info.sType = vk::StructureType::eGraphicsPipelineCreateInfo;
-		pipeline_create_info.pNext = &pipeline_rendering_create_info;
 
 		// fixed functions
 		pipeline_create_info.pVertexInputState = &vertex_input_state_create_info;
@@ -1101,7 +1065,7 @@ void render_api::init_graphics_pipeline()
 		// other descriptions of the render pipeline
 		pipeline_create_info.layout = _pipeline_layout;
 
-		pipeline_create_info.renderPass = nullptr;
+		pipeline_create_info.renderPass = _render_pass;
 		pipeline_create_info.subpass = 0;
 
 		// this is also our first graphics pipeline so we don't want to reference anything
@@ -1333,41 +1297,24 @@ void render_api::record_command_buffer(
 		_index_buffer,
 		index_buffer_size);
 
-	transition_image_layout(
-		command_buffer,
-		_swapchain_images.at(image_index),
-		image_transition_type::undefined_to_color_attatchment_optimal);
-
 	vk::ClearValue clear_color = {};
 	{
 		// clear color value
 		clear_color.color = vk::ClearColorValue(0.f, 0.f, 0.f, 0.f);
 	}
 
-	vk::RenderingAttachmentInfo color_attatchment_info = {};
+	vk::RenderPassBeginInfo render_pass_begin_info = {};
 	{
-		color_attatchment_info.sType = vk::StructureType::eRenderingAttachmentInfo;
+		render_pass_begin_info.sType = vk::StructureType::eRenderPassBeginInfo;
 
-		color_attatchment_info.imageView = _swapchain_image_views.at(image_index);
-		color_attatchment_info.imageLayout = vk::ImageLayout::eColorAttachmentOptimal;
+		render_pass_begin_info.renderPass = _render_pass;
+		render_pass_begin_info.framebuffer = _swapchain_frame_buffers.at(image_index);
 
-		color_attatchment_info.loadOp = vk::AttachmentLoadOp::eClear;
-		color_attatchment_info.storeOp = vk::AttachmentStoreOp::eStore;
+		render_pass_begin_info.renderArea.offset = vk::Offset2D(0, 0);
+		render_pass_begin_info.renderArea.extent = _swapchain_extent;
 
-		color_attatchment_info.clearValue = clear_color;
-	}
-
-	vk::RenderingInfo rendering_info = {};
-	{
-		rendering_info.sType = vk::StructureType::eRenderingInfo;
-
-		rendering_info.renderArea.offset = vk::Offset2D(0, 0);
-		rendering_info.renderArea.extent = _swapchain_extent;
-
-		rendering_info.layerCount = 1;
-
-		rendering_info.colorAttachmentCount = 1;
-		rendering_info.pColorAttachments = &color_attatchment_info;
+		render_pass_begin_info.clearValueCount = 1;
+		render_pass_begin_info.pClearValues = &clear_color;
 	}
 
 	const std::array<vk::Buffer, 1> vertex_buffers = {
@@ -1379,7 +1326,7 @@ void render_api::record_command_buffer(
 	};
 
 	// no secondary cmd buffer so inline
-	command_buffer.beginRendering(&rendering_info);
+	command_buffer.beginRenderPass(&render_pass_begin_info, vk::SubpassContents::eInline);
 
 	// draw command buffer
 	for (uint32_t i = 0; i < render_command.batch_count; i++)
@@ -1437,13 +1384,7 @@ void render_api::record_command_buffer(
 	}
 
 	// finish recording the command buffer
-	command_buffer.endRendering();
-
-	transition_image_layout(
-		command_buffer,
-		_swapchain_images.at(image_index),
-		image_transition_type::color_attatchment_optimal_to_present_src);
-
+	command_buffer.endRenderPass();
 	command_buffer.end();
 }
 
@@ -1601,10 +1542,20 @@ void render_api::destroy_swapchain()
 {
 	const auto api_data = _render_api_data.lock();
 
+	std::ranges::for_each(_swapchain_frame_buffers.begin(), _swapchain_frame_buffers.end(),
+	[&](const auto& frame_buffer)
+	{
+		api_data->device.destroyFramebuffer(frame_buffer);
+	});
+
 	std::ranges::for_each(_swapchain_image_views.begin(), _swapchain_image_views.end(),
-		[&](const auto& image_view) {
+		[&](const auto& image_view)
+	{
 		api_data->device.destroyImageView(image_view);
 	});
+
+	_swapchain_frame_buffers.clear();
+	_swapchain_image_views.clear();
 
 	api_data->device.destroySwapchainKHR(_swap_chain);
 }
@@ -1730,4 +1681,121 @@ void render_api::init_index_buffer()
 		&_index_buffer,
 		&_index_buffer_alloc,
 		nullptr);
+}
+
+void render_api::init_render_pass()
+{
+	const auto api_data = _render_api_data.lock();
+
+	vk::AttachmentDescription color_attatchment = {};
+	{
+		color_attatchment.format = _swapchian_format;
+		color_attatchment.samples = vk::SampleCountFlagBits::e1;
+
+		color_attatchment.loadOp = vk::AttachmentLoadOp::eClear;
+		color_attatchment.storeOp = vk::AttachmentStoreOp::eStore;
+
+		// we dont do nothing with the stencil buffer, just set to what ever
+		color_attatchment.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+		color_attatchment.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+
+		// don't care about image layout, present it to swap chain
+		color_attatchment.initialLayout = vk::ImageLayout::eUndefined;
+		color_attatchment.finalLayout = vk::ImageLayout::ePresentSrcKHR;
+	}
+
+	// we only have 1 sub pass since we don't do any fancy post processing crap in our renderer
+	vk::AttachmentReference color_attatchment_reference = {};
+	{
+		// refereces layout location, eg: layout(location = 0) out vec4 outColor
+		color_attatchment_reference.attachment = 0;
+		color_attatchment_reference.layout = vk::ImageLayout::eColorAttachmentOptimal;
+	}
+
+	vk::SubpassDescription subpass_description = {};
+	{
+		subpass_description.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
+
+		subpass_description.colorAttachmentCount = 1;
+		subpass_description.pColorAttachments = &color_attatchment_reference;
+	}
+
+	std::array<vk::SubpassDependency, 1> subpass_dependencies = {};
+	{
+		{
+			auto& subpass_dependency = subpass_dependencies[0];
+
+			subpass_dependency.srcSubpass = vk::SubpassExternal;
+			subpass_dependency.dstSubpass = 0;
+
+			subpass_dependency.srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+			subpass_dependency.srcAccessMask = static_cast<vk::AccessFlags>(0);
+
+			subpass_dependency.dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+			subpass_dependency.dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;
+		}
+	}
+
+	vk::RenderPassCreateInfo render_pass_create_info = {};
+	{
+		render_pass_create_info.sType = vk::StructureType::eRenderPassCreateInfo;
+
+		render_pass_create_info.attachmentCount = 1;
+		render_pass_create_info.pAttachments = &color_attatchment;
+
+		// only one subpass
+		render_pass_create_info.subpassCount = 1;
+		render_pass_create_info.pSubpasses = &subpass_description;
+
+		render_pass_create_info.dependencyCount = subpass_dependencies.size();
+		render_pass_create_info.pDependencies = subpass_dependencies.data();
+	}
+
+	if (const auto result = api_data->device.createRenderPass(
+		&render_pass_create_info, nullptr, &_render_pass);
+		result != vk::Result::eSuccess)
+	{
+		lib_log_e("render_api: failed to create render pass {}", static_cast<int>(result));
+		assert(false);
+	}
+}
+
+void render_api::init_frame_buffer()
+{
+	const auto api_data = _render_api_data.lock();
+
+	// create frame buffer for each image view
+	_swapchain_frame_buffers.resize(_swapchain_image_views.size());
+
+	for (size_t i = 0; i < _swapchain_image_views.size(); i++)
+	{
+		const std::array<vk::ImageView, 1> attatchments =
+		{
+			_swapchain_image_views.at(i)
+		};
+
+		vk::FramebufferCreateInfo framebuffer_create_info = {};
+		{
+			framebuffer_create_info.sType = vk::StructureType::eFramebufferCreateInfo;
+			framebuffer_create_info.renderPass = _render_pass;
+
+			framebuffer_create_info.attachmentCount = attatchments.size();
+			framebuffer_create_info.pAttachments = attatchments.data();
+
+			framebuffer_create_info.width = _swapchain_extent.width;
+			framebuffer_create_info.height = _swapchain_extent.height;
+
+			framebuffer_create_info.layers = 1;
+		}
+
+		if (const auto result = api_data->device.createFramebuffer(
+			&framebuffer_create_info,
+			nullptr,
+			&_swapchain_frame_buffers.at(i));
+			result != vk::Result::eSuccess)
+		{
+			lib_log_e("render_api: failed to create frame buffer {}", static_cast<int>(result));
+			assert(false);
+		}
+	}
 }
