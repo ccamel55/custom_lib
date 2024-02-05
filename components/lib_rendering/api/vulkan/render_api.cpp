@@ -10,53 +10,13 @@
 #include <lib_rendering/shaders/sdf_shader_frag.hpp>
 #include <lib_rendering/shaders/outline_shader_frag.hpp>
 
-#include <unordered_set>
 #include <ranges>
-#include <map>
-#include <optional>
 #include <filesystem>
 
 using namespace lib::rendering;
 
 namespace
 {
-// assuming 1.f is highest priority, cant find shit anywhere :(
-constexpr float queue_priority = 1.f;
-
-constexpr uint32_t queue_index = 0;
-constexpr uint32_t vulkan_api_version = VK_MAKE_API_VERSION(0, 1, 3, 0);
-
-const std::unordered_set<std::string> vulkan_instace_extensions =
-{
-	"VK_KHR_surface",
-
-#ifndef NDEBUG
-	"VK_EXT_debug_utils",
-#endif
-
-#if WIN32
-	"VK_KHR_win32_surface",
-#elif APPLE
-	"VK_MVK_macos_surface",
-	"VK_EXT_metal_surface",
-	// apply needs this since vulkan 1.3.216
-	"VK_KHR_portability_enumeration",
-#endif
-};
-
-const std::unordered_set<std::string> vulkan_device_extensions =
-{
-	"VK_KHR_swapchain",
-	"VK_KHR_dynamic_rendering"
-};
-
-const std::unordered_set<std::string> validation_layers =
-{
-#ifndef NDEBUG
-	"VK_LAYER_KHRONOS_validation"
-#endif
-};
-
 enum class image_transition_type
 {
 	undefined_to_transfer_dst_optimal,
@@ -66,142 +26,6 @@ enum class image_transition_type
 	color_attatchment_optimal_to_present_src,
 
 	num_transition_types,
-};
-
-const auto get_supported_extensions = [](const std::unordered_set<std::string>& extensions_set) {
-	// has to std::string otherwise we pass a ptr to a string that is
-	// nuke after this function leaves scope, ffs
-	std::vector<std::string> extensions = {};
-
-	uint32_t extension_count = 0;
-	vk::enumerateInstanceExtensionProperties(nullptr, &extension_count, nullptr);
-
-	std::vector<vk::ExtensionProperties> extension_properties(extension_count);
-	vk::enumerateInstanceExtensionProperties(
-		nullptr,
-		&extension_count,
-		extension_properties.data());
-
-	std::ranges::for_each(
-		extension_properties.begin(),
-		extension_properties.end(),
-		[&](const auto& properties) {
-			if (const auto extensionName = std::string(properties.extensionName);
-				extensions_set.contains(extensionName))
-			{
-				lib_log_d("render_api: added vulkan instance extension: {}", extensionName);
-				extensions.emplace_back(extensionName);
-			}
-		});
-
-	return extensions;
-};
-
-const auto get_supported_device_extensions = [](
-	const vk::PhysicalDevice& device,
-	const std::unordered_set<std::string>& extensions_set) {
-	// has to std::string otherwise we pass a ptr to a string that is
-	// nuke after this function leaves scope, ffs
-	std::vector<std::string> extensions = {};
-
-	uint32_t extension_count = 0;
-	device.enumerateDeviceExtensionProperties(nullptr, &extension_count, nullptr);
-
-	std::vector<vk::ExtensionProperties> extension_properties(extension_count);
-	device.enumerateDeviceExtensionProperties(
-		nullptr,
-		&extension_count,
-		extension_properties.data());
-
-	std::ranges::for_each(
-		extension_properties.begin(),
-		extension_properties.end(),
-		[&](const auto& properties) {
-			if (const auto extensionName = std::string(properties.extensionName);
-				extensions_set.contains(extensionName))
-			{
-				lib_log_d("render_api: added vulkan device extension: {}", extensionName);
-				extensions.emplace_back(extensionName);
-			}
-		});
-
-	return extensions;
-};
-
-const auto get_supported_layers = [](const std::unordered_set<std::string>& layers_set) {
-	// has to std::string otherwise we pass a ptr to a string that is
-	// nuke after this function leaves scope, ffs
-	std::vector<std::string> layers = {};
-
-	uint32_t layer_count = 0;
-	vk::enumerateInstanceLayerProperties(&layer_count, nullptr);
-
-	std::vector<vk::LayerProperties> layer_properties(layer_count);
-	vk::enumerateInstanceLayerProperties(&layer_count, layer_properties.data());
-
-	std::ranges::for_each(
-		layer_properties.begin(),
-		layer_properties.end(),
-		[&](const auto& properties) {
-			if (const auto layerName = std::string(properties.layerName);
-				layers_set.contains(layerName))
-			{
-				lib_log_d("render_api: added vulkan layer: {}", layerName);
-				layers.emplace_back(layerName);
-			}
-		});
-
-	return layers;
-};
-
-const auto get_candidate_devices = [](const vk::Instance& instance) -> std::multimap<uint32_t, vk::PhysicalDevice>
-{
-	uint32_t device_count = 0;
-	instance.enumeratePhysicalDevices(&device_count, nullptr);
-
-	std::vector<vk::PhysicalDevice> device_list(device_count);
-	instance.enumeratePhysicalDevices(&device_count, device_list.data());
-
-	std::multimap<uint32_t, vk::PhysicalDevice> candidate_devices = {};
-	std::ranges::for_each(
-		device_list.begin(),
-		device_list.end(),
-		[&](const auto& device) {
-			vk::PhysicalDeviceFeatures device_features = {};
-			device.getFeatures(&device_features);
-
-			if (device_features.geometryShader == 0)
-			{
-				return;
-			}
-
-			// select "highest scoring" graphics cards
-			vk::PhysicalDeviceProperties device_properties = {};
-			device.getProperties(&device_properties);
-
-			// arbituary "ranking" of dedicated devices
-			auto device_score = device_properties.limits.maxImageDimension2D;
-
-			if (device_properties.deviceType == vk::PhysicalDeviceType::eDiscreteGpu)
-			{
-				device_score += 1000;
-			}
-
-			candidate_devices.insert({device_score, device});
-		});
-
-	return candidate_devices;
-};
-
-const auto query_queue_family_properties = [](const vk::PhysicalDevice& device) -> std::vector<vk::QueueFamilyProperties>
-{
-	uint32_t queue_count = 0;
-	device.getQueueFamilyProperties(&queue_count, nullptr);
-
-	std::vector<vk::QueueFamilyProperties> queue_families(queue_count);
-	device.getQueueFamilyProperties(&queue_count, queue_families.data());
-
-	return queue_families;
 };
 
 const auto query_swapchain_support = [](
@@ -600,43 +424,21 @@ const auto create_image_view = [](
 };
 }
 
-render_api::render_api(const render_api_data_t& render_api_data, bool flush_buffers)
+render_api::render_api(const std::weak_ptr<render_api_data_t>& render_api_data, bool flush_buffers)
 	: render_api_base(flush_buffers)
 	, _render_api_data(render_api_data)
 {
-	// api_context must be valid for vulkan
-	const auto supported_instance_extensions = get_supported_extensions(vulkan_instace_extensions);
-	const auto supported_layers = get_supported_layers(validation_layers);
-
-	// convert back into const char*, should be scoped for this function
-	std::vector<const char*> instance_extensions_list = {};
-	std::vector<const char*> layers_list = {};
-
-	std::ranges::for_each(supported_instance_extensions.begin(), supported_instance_extensions.end(),
-		[&](const auto& entry) {
-		instance_extensions_list.push_back(entry.c_str());
-	});
-
-	std::ranges::for_each(supported_layers.begin(), supported_layers.end(),
-		[&](const auto& entry) {
-		layers_list.push_back(entry.c_str());
-	});
-
-	// setup vulkan for drawing
-	// todo: move this into rendere/window creation
-	init_vulkan(instance_extensions_list, layers_list);
-	init_surface();
-	init_device(layers_list);
+	const auto api_data = _render_api_data.lock();
 
 	// setup vma allocator
 	VmaAllocatorCreateInfo allocation_create_info = {};
 	{
-		allocation_create_info.vulkanApiVersion = vulkan_api_version;
+		allocation_create_info.vulkanApiVersion = api_data->vulkan_api_version;
 		allocation_create_info.flags = VMA_ALLOCATOR_CREATE_EXTERNALLY_SYNCHRONIZED_BIT;
 
-		allocation_create_info.physicalDevice = _physical_device;
-		allocation_create_info.device = _logical_device;
-		allocation_create_info.instance = _instance;
+		allocation_create_info.physicalDevice = api_data->physical_device;
+		allocation_create_info.device = api_data->device;
+		allocation_create_info.instance = api_data->instance;
 
 		allocation_create_info.pHeapSizeLimit = nullptr;
 		allocation_create_info.pVulkanFunctions = nullptr;
@@ -670,15 +472,15 @@ render_api::render_api(const render_api_data_t& render_api_data, bool flush_buff
 
 	for (size_t i = 0; i < vulkan::max_frames_in_flight; i++)
 	{
-		if (_logical_device.createSemaphore(
+		if (api_data->device.createSemaphore(
 			&semaphore_create_info,
 			nullptr,
 			&_image_available_semaphores.at(i)) != vk::Result::eSuccess ||
-		_logical_device.createSemaphore(
+		api_data->device.createSemaphore(
 			&semaphore_create_info,
 			nullptr,
 			&_render_finished_semaphores.at(i)) != vk::Result::eSuccess ||
-		_logical_device.createFence(
+		api_data->device.createFence(
 			&fence_create_info,
 			nullptr,
 			&_in_flight_fences.at(i)) != vk::Result::eSuccess)
@@ -694,14 +496,16 @@ render_api::render_api(const render_api_data_t& render_api_data, bool flush_buff
 
 render_api::~render_api()
 {
-	_logical_device.waitIdle();
+	const auto api_data = _render_api_data.lock();
+
+	api_data->device.waitIdle();
 
 	destroy_swapchain();
 	destroy_image();
 
-	_logical_device.destroySampler(_texture_sampler);
-	_logical_device.destroyDescriptorPool(_descriptor_pool);
-	_logical_device.destroyDescriptorSetLayout(_descriptor_set_layout);
+	api_data->device.destroySampler(_texture_sampler);
+	api_data->device.destroyDescriptorPool(_descriptor_pool);
+	api_data->device.destroyDescriptorSetLayout(_descriptor_set_layout);
 
 	vmaDestroyBuffer(_vk_allocator, _vertex_staging_buffer, _vertex_staging_buffer_alloc);
 	vmaDestroyBuffer(_vk_allocator, _index_staging_buffer, _index_staging_buffer_alloc);
@@ -709,36 +513,31 @@ render_api::~render_api()
 	vmaDestroyBuffer(_vk_allocator, _vertex_buffer, _vertex_buffer_alloc);
 	vmaDestroyBuffer(_vk_allocator, _index_buffer, _index_buffer_alloc);
 
-	_logical_device.destroyPipeline(_normal_pipeline);
-	_logical_device.destroyPipeline(_sdf_pipeline);
-	_logical_device.destroyPipeline(_outline_pipeline);
+	api_data->device.destroyPipeline(_normal_pipeline);
+	api_data->device.destroyPipeline(_sdf_pipeline);
+	api_data->device.destroyPipeline(_outline_pipeline);
 
-	_logical_device.destroyPipelineLayout(_pipeline_layout);
+	api_data->device.destroyPipelineLayout(_pipeline_layout);
 
 	for (size_t i = 0; i < vulkan::max_frames_in_flight; i++)
 	{
-		_logical_device.destroySemaphore(_image_available_semaphores.at(i));
-		_logical_device.destroySemaphore(_render_finished_semaphores.at(i));
-		_logical_device.destroyFence(_in_flight_fences.at(i));
+		api_data->device.destroySemaphore(_image_available_semaphores.at(i));
+		api_data->device.destroySemaphore(_render_finished_semaphores.at(i));
+		api_data->device.destroyFence(_in_flight_fences.at(i));
 	}
 
-	_logical_device.destroyCommandPool(_command_pool);
-
+	api_data->device.destroyCommandPool(_command_pool);
 	vmaDestroyAllocator(_vk_allocator);
-
-	// must be nuked before device is nuked
-	// todo: move this into rendere/window creation
-	_logical_device.destroy();
-	_instance.destroySurfaceKHR(_window_surface);
-	_instance.destroy();
 }
 
 void render_api::bind_atlas(const uint8_t* data, int width, int height)
 {
+	const auto api_data = _render_api_data.lock();
+
 	// remove pre existing texture atlas if needed
 	if (_init_texture)
 	{
-		_logical_device.waitIdle();
+		api_data->device.waitIdle();
 		destroy_image();
 	}
 
@@ -815,9 +614,7 @@ void render_api::bind_atlas(const uint8_t* data, int width, int height)
 		nullptr
 		);
 
-	const auto command_buffer = begin_command_buffer(
-		_logical_device,
-		_command_pool);
+	const auto command_buffer = begin_command_buffer(api_data->device, _command_pool);
 
 	transition_image_layout(
 		command_buffer,
@@ -837,9 +634,9 @@ void render_api::bind_atlas(const uint8_t* data, int width, int height)
 		image_transition_type::transfer_dst_optimal_to_shader_read_only_optimal);
 
 	end_and_submit_command_buffer(
-		_logical_device,
+		api_data->device,
 		_command_pool,
-		_graphics_present_queue,
+		api_data->queue,
 		command_buffer);
 
 	vmaDestroyBuffer(_vk_allocator, staging_buffer, staging_buffer_alloc);
@@ -854,6 +651,8 @@ void render_api::bind_atlas(const uint8_t* data, int width, int height)
 
 void render_api::update_screen_size(const lib::point2Di& window_size)
 {
+	const auto api_data = _render_api_data.lock();
+
 	_window_size = window_size;
 	_stop_rendering = (_window_size.x == 0 || _window_size.y == 0);
 
@@ -862,7 +661,7 @@ void render_api::update_screen_size(const lib::point2Di& window_size)
 		return;
 	}
 
-	_logical_device.waitIdle();
+	api_data->device.waitIdle();
 	destroy_swapchain();
 
 	init_swapcahin();
@@ -888,22 +687,24 @@ void render_api::update_screen_size(const lib::point2Di& window_size)
 
 void render_api::draw(const render_command& render_command)
 {
+	const auto api_data = _render_api_data.lock();
+
 	if (_stop_rendering)
 	{
 		return;
 	}
 
 	// wait for gpu to finish drawing previous frame
-	_logical_device.waitForFences(
+	api_data->device.waitForFences(
 		1,
 		&_in_flight_fences.at(_current_frame),
 		vk::True, UINT64_MAX);
 
-	_logical_device.resetFences(1, &_in_flight_fences.at(_current_frame));
+	api_data->device.resetFences(1, &_in_flight_fences.at(_current_frame));
 
 	// aquire an image from the swap chain
 	uint32_t next_image_index = 0;
-	_logical_device.acquireNextImageKHR(
+	api_data->device.acquireNextImageKHR(
 		_swap_chain,
 		UINT64_MAX,
 		_image_available_semaphores.at(_current_frame),
@@ -935,7 +736,7 @@ void render_api::draw(const render_command& render_command)
 		submit_info.pSignalSemaphores = &_render_finished_semaphores.at(_current_frame);
 	}
 
-	_graphics_present_queue.submit(
+	api_data->queue.submit(
 		1,
 		&submit_info,
 		_in_flight_fences.at(_current_frame));
@@ -954,205 +755,15 @@ void render_api::draw(const render_command& render_command)
 		present_info.pResults = nullptr;
 	}
 
-	(void)_graphics_present_queue.presentKHR(&present_info);
+	(void)api_data->queue.presentKHR(&present_info);
 	_current_frame = (_current_frame + 1) % vulkan::max_frames_in_flight;
-}
-
-void render_api::init_vulkan(const std::vector<const char*>& extensions, const std::vector<const char*>& layers)
-{
-	lib_log_d("render_api: init vulkan instance");
-
-	vk::ApplicationInfo app_info = {};
-	{
-		app_info.sType = vk::StructureType::eApplicationInfo;
-		app_info.pApplicationName = nullptr;
-		app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-		app_info.pEngineName = nullptr;
-		app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-		app_info.apiVersion = vulkan_api_version;
-	}
-
-	vk::InstanceCreateInfo create_info{};
-	{
-		create_info.sType = vk::StructureType::eInstanceCreateInfo;
-		create_info.pApplicationInfo = &app_info;
-
-		create_info.enabledExtensionCount = extensions.size();
-		create_info.ppEnabledExtensionNames = extensions.data();
-
-		create_info.enabledLayerCount = layers.size();
-		create_info.ppEnabledLayerNames = layers.data();
-
-#if APPLE
-		// apply needs this since vulkan 1.3.216
-		create_info.flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
-#endif
-	}
-
-	if (const auto result = vk::createInstance(
-		&create_info,
-		nullptr,
-		&_instance); result != vk::Result::eSuccess)
-	{
-		lib_log_e("render_api: failed to create vulkan instance {}", static_cast<int>(result));
-		assert(false);
-	}
-}
-
-void render_api::init_device(const std::vector<const char*>& layers)
-{
-	const auto candidate_devices = get_candidate_devices(_instance);
-
-	// last is first, ordered on lowest to highest
-	if (candidate_devices.empty())
-	{
-		lib_log_e("render_api: no supported vulkan devices");
-		assert(false);
-	}
-
-	// try each device, starting from "best" to worst
-	for (const auto& device : std::views::values(candidate_devices))
-	{
-		// check if extensions we want are supported by the device
-		const auto supported_device_extensions = get_supported_device_extensions(
-			device,
-			vulkan_device_extensions);
-
-		if (supported_device_extensions.size() != vulkan_device_extensions.size())
-		{
-			continue;
-		}
-
-		// check if our swapchain can support at least one image,
-		// note: important this is done after checking extensions support
-		const auto swapchain_support_properties = query_swapchain_support(device, _window_surface);
-
-		// for now, we only care if we have at least one supported format and present mode
-		if (swapchain_support_properties.formats.empty() || swapchain_support_properties.present_modes.empty())
-		{
-			continue;
-		}
-
-		const auto queue_families = query_queue_family_properties(device);
-
-		// find queue family that supports both presenting and graphics bits
-		// note: this can be two seperate queues but we look for one that does both, which should result in
-		// better performance
-		for (size_t i = 0; i < queue_families.size(); i++)
-		{
-			vk::Bool32 present_support = false;
-			device.getSurfaceSupportKHR(i, _window_surface, &present_support);
-
-			if ((queue_families.at(i).queueFlags & vk::QueueFlagBits::eGraphics) && present_support)
-			{
-				_physical_device = device;
-				_graphics_present_family_index = i;
-
-				break;
-			}
-		}
-
-		if (_graphics_present_family_index.has_value())
-		{
-			break;
-		}
-	}
-
-	lib_log_d("render_api: found physical device");
-
-	// find device extenions
-	const auto supported_device_extensions = get_supported_device_extensions(
-		_physical_device,
-		vulkan_device_extensions);
-
-	std::vector<const char*> devide_extensions_list = {};
-	std::ranges::for_each(supported_device_extensions.begin(), supported_device_extensions.end(),
-		[&](const auto& entry) {
-		devide_extensions_list.push_back(entry.c_str());
-	});
-
-	// setup queues we need
-	std::array<vk::DeviceQueueCreateInfo, 1> device_queue_create_infos = {};
-	{
-		{
-			auto& graphic_present_queue_create_info = device_queue_create_infos[0];
-
-			graphic_present_queue_create_info.sType = vk::StructureType::eDeviceQueueCreateInfo;
-			graphic_present_queue_create_info.queueFamilyIndex = _graphics_present_family_index.value();
-			graphic_present_queue_create_info.queueCount = 1;
-			graphic_present_queue_create_info.pQueuePriorities = &queue_priority;
-		}
-	}
-
-	vk::PhysicalDeviceFeatures device_features = {};
-	{
-		// we dont use any device features right now so leave empty
-	}
-
-	vk::PhysicalDeviceDynamicRenderingFeatures dynamic_rendering_features = {};
-	{
-		dynamic_rendering_features.sType = vk::StructureType::ePhysicalDeviceDynamicRenderingFeatures;
-		dynamic_rendering_features.dynamicRendering = true;
-	}
-
-	vk::DeviceCreateInfo create_info = {};
-	{
-		create_info.sType = vk::StructureType::eDeviceCreateInfo;
-		create_info.pNext = &dynamic_rendering_features;
-
-		create_info.pQueueCreateInfos = device_queue_create_infos.data();
-		create_info.queueCreateInfoCount = device_queue_create_infos.size();
-		create_info.pEnabledFeatures = &device_features;
-
-		create_info.enabledExtensionCount = devide_extensions_list.size();
-		create_info.ppEnabledExtensionNames = devide_extensions_list.data();
-
-		create_info.enabledLayerCount = layers.size();
-		create_info.ppEnabledLayerNames = layers.data();
-	}
-
-	if (const auto result = _physical_device.createDevice(&create_info, nullptr, &_logical_device);
-		result != vk::Result::eSuccess)
-	{
-		lib_log_e("render_api: failed to create logical device {}", static_cast<int>(result));
-		assert(false);
-	}
-
-	lib_log_d("render_api: created logical device");
-
-	_logical_device.getQueue(
-		_graphics_present_family_index.value(),
-		queue_index,
-		&_graphics_present_queue);
-}
-
-void render_api::init_surface()
-{
-#if WIN32
-	vk::Win32SurfaceCreateInfoKHR surface_create_info = {};
-	{
-		surface_create_info.sType = vk::StructureType::eWin32SurfaceCreateInfoKHR;
-
-		surface_create_info.hwnd = static_cast<HWND>(_render_api_data.window_handle);
-		surface_create_info.hinstance = GetModuleHandle(nullptr);
-	}
-
-	if (const auto result =_instance.createWin32SurfaceKHR(&surface_create_info, nullptr, &_window_surface);
-		result != vk::Result::eSuccess)
-	{
-		lib_log_e("render_api: failed to create surface {}", static_cast<int>(result));
-		assert(false);
-	}
-
-#elif APPLE
-	// todo, find wtf apple uses with GLFW, I assume metal??
-#error "Add vulkan apple implementation"
-#endif
 }
 
 void render_api::init_swapcahin()
 {
-	const auto swap_chain_support = query_swapchain_support(_physical_device, _window_surface);
+	const auto api_data = _render_api_data.lock();
+
+	const auto swap_chain_support = query_swapchain_support(api_data->physical_device, api_data->surface);
 
 	const auto surface_format = choose_swapchain_format(swap_chain_support.formats);
 	const auto present_mode = choose_swapchain_present_mode(swap_chain_support.present_modes);
@@ -1174,7 +785,7 @@ void render_api::init_swapcahin()
 	vk::SwapchainCreateInfoKHR swapchain_create_info = {};
 	{
 		swapchain_create_info.sType = vk::StructureType::eSwapchainCreateInfoKHR;
-		swapchain_create_info.surface = _window_surface;
+		swapchain_create_info.surface = api_data->surface;
 
 		swapchain_create_info.minImageCount = image_count;
 		swapchain_create_info.imageFormat = surface_format.format;
@@ -1207,7 +818,7 @@ void render_api::init_swapcahin()
 		swapchain_create_info.oldSwapchain = nullptr;
 	}
 
-	if (const auto result = _logical_device.createSwapchainKHR(
+	if (const auto result = api_data->device.createSwapchainKHR(
 		&swapchain_create_info,
 		nullptr,
 		&_swap_chain);
@@ -1221,10 +832,10 @@ void render_api::init_swapcahin()
 
 	// get swap chain images
 	image_count = 0;
-    _logical_device.getSwapchainImagesKHR(_swap_chain, &image_count, nullptr);
+    api_data->device.getSwapchainImagesKHR(_swap_chain, &image_count, nullptr);
 
 	_swapchain_images.resize(image_count);
-	_logical_device.getSwapchainImagesKHR(_swap_chain, &image_count, _swapchain_images.data());
+	api_data->device.getSwapchainImagesKHR(_swap_chain, &image_count, _swapchain_images.data());
 
 	// save states for use late
 	_swapchian_format = surface_format.format;
@@ -1233,12 +844,13 @@ void render_api::init_swapcahin()
 
 void render_api::init_image_views()
 {
+	const auto api_data = _render_api_data.lock();
 	_swapchain_image_views.resize(_swapchain_images.size());
 
 	for (size_t i = 0; i < _swapchain_images.size(); i++)
 	{
 		_swapchain_image_views.at(i) = create_image_view(
-			_logical_device,
+			api_data->device,
 			_swapchain_images.at(i),
 			_swapchian_format);
 	}
@@ -1248,6 +860,8 @@ void render_api::init_image_views()
 
 void render_api::init_descriptor_set_layout()
 {
+	const auto api_data = _render_api_data.lock();
+
 	std::array<vk::DescriptorSetLayoutBinding, 1> layout_bindings = {};
 	{
 		// sampler layout
@@ -1274,7 +888,7 @@ void render_api::init_descriptor_set_layout()
 		create_info.pBindings = layout_bindings.data();
 	}
 
-	if (const auto result = _logical_device.createDescriptorSetLayout(
+	if (const auto result = api_data->device.createDescriptorSetLayout(
 		&create_info,
 		nullptr,
 		&_descriptor_set_layout);
@@ -1288,6 +902,8 @@ void render_api::init_descriptor_set_layout()
 
 void render_api::init_graphics_pipeline()
 {
+	const auto api_data = _render_api_data.lock();
+
 	// setup pipeline layout
 	vk::PushConstantRange push_constant_range = {};
 	{
@@ -1308,7 +924,7 @@ void render_api::init_graphics_pipeline()
 		pipeline_layout_create_info.pPushConstantRanges = &push_constant_range;
 	}
 
-	if (const auto result = _logical_device.createPipelineLayout(
+	if (const auto result = api_data->device.createPipelineLayout(
 		&pipeline_layout_create_info,
 		nullptr,
 		&_pipeline_layout);
@@ -1320,20 +936,20 @@ void render_api::init_graphics_pipeline()
 
 	// shader modules can be nuked after creating pipeline
 	const auto vertex_shader = create_shader_module(
-		_logical_device,
+		api_data->device,
 		vulkan::shaders::basic_shader_vert,
 		vulkan::shaders::basic_shader_vert_length);
 
-	const auto fragment_shader_normal = create_shader_module(_logical_device,
+	const auto fragment_shader_normal = create_shader_module(api_data->device,
 		vulkan::shaders::normal_shader_frag,
 		vulkan::shaders::normal_shader_frag_length);
 
 	// unused for now ok?
-	const auto fragment_shader_sdf = create_shader_module(_logical_device,
+	const auto fragment_shader_sdf = create_shader_module(api_data->device,
 		vulkan::shaders::sdf_shader_frag,
 		vulkan::shaders::sdf_shader_frag_length);
 
-	const auto fragment_shader_outline = create_shader_module(_logical_device,
+	const auto fragment_shader_outline = create_shader_module(api_data->device,
 		vulkan::shaders::outline_shader_frag,
 		vulkan::shaders::outline_shader_frag_length);
 
@@ -1524,7 +1140,7 @@ void render_api::init_graphics_pipeline()
 		pipeline_create_info.stageCount = shader_stage_create_infos.size();
 		pipeline_create_info.pStages = shader_stage_create_infos.data();
 
-		if (const auto result = _logical_device.createGraphicsPipelines(
+		if (const auto result = api_data->device.createGraphicsPipelines(
 			nullptr,
 			1,
 			&pipeline_create_info,
@@ -1567,7 +1183,7 @@ void render_api::init_graphics_pipeline()
 		pipeline_create_info.stageCount = shader_stage_create_infos.size();
 		pipeline_create_info.pStages = shader_stage_create_infos.data();
 
-		if (const auto result = _logical_device.createGraphicsPipelines(
+		if (const auto result = api_data->device.createGraphicsPipelines(
 			nullptr,
 			1,
 			&pipeline_create_info,
@@ -1610,7 +1226,7 @@ void render_api::init_graphics_pipeline()
 		pipeline_create_info.stageCount = shader_stage_create_infos.size();
 		pipeline_create_info.pStages = shader_stage_create_infos.data();
 
-		if (const auto result = _logical_device.createGraphicsPipelines(
+		if (const auto result = api_data->device.createGraphicsPipelines(
 			nullptr,
 			1,
 			&pipeline_create_info,
@@ -1623,16 +1239,18 @@ void render_api::init_graphics_pipeline()
 		}
 	}
 
-	_logical_device.destroyShaderModule(vertex_shader);
-	_logical_device.destroyShaderModule(fragment_shader_normal);
-	_logical_device.destroyShaderModule(fragment_shader_sdf);
-	_logical_device.destroyShaderModule(fragment_shader_outline);
+	api_data->device.destroyShaderModule(vertex_shader);
+	api_data->device.destroyShaderModule(fragment_shader_normal);
+	api_data->device.destroyShaderModule(fragment_shader_sdf);
+	api_data->device.destroyShaderModule(fragment_shader_outline);
 
 	lib_log_d("render_api: created graphics pipeline");
 }
 
 void render_api::init_command_pool()
 {
+	const auto api_data = _render_api_data.lock();
+
 	vk::CommandPoolCreateInfo command_pool_create_info = {};
 	{
 		command_pool_create_info.sType = vk::StructureType::eCommandPoolCreateInfo;
@@ -1640,10 +1258,10 @@ void render_api::init_command_pool()
 			vk::CommandPoolCreateFlagBits::eResetCommandBuffer |
 			vk::CommandPoolCreateFlagBits::eTransient;
 
-		command_pool_create_info.queueFamilyIndex = _graphics_present_family_index.value();
+		command_pool_create_info.queueFamilyIndex = api_data->present_family_index;
 	}
 
-	if (const auto result = _logical_device.createCommandPool(
+	if (const auto result = api_data->device.createCommandPool(
 		&command_pool_create_info,
 		nullptr,
 		&_command_pool);
@@ -1658,6 +1276,8 @@ void render_api::init_command_pool()
 
 void render_api::init_command_buffer()
 {
+	const auto api_data = _render_api_data.lock();
+
 	vk::CommandBufferAllocateInfo command_buffer_allocate_info = {};
 	{
 		command_buffer_allocate_info.sType = vk::StructureType::eCommandBufferAllocateInfo;
@@ -1666,7 +1286,7 @@ void render_api::init_command_buffer()
 		command_buffer_allocate_info.commandBufferCount = vulkan::max_frames_in_flight;
 	}
 
-	if (const auto result = _logical_device.allocateCommandBuffers(
+	if (const auto result = api_data->device.allocateCommandBuffers(
 		&command_buffer_allocate_info,
 		_command_buffers.data());
 		result != vk::Result::eSuccess)
@@ -1829,6 +1449,8 @@ void render_api::record_command_buffer(
 
 void render_api::init_descriptor_pool()
 {
+	const auto api_data = _render_api_data.lock();
+
 	std::array<vk::DescriptorPoolSize, 1> pool_sizes = {};
 	{
 		// sampler pool size
@@ -1851,7 +1473,7 @@ void render_api::init_descriptor_pool()
 		create_info.maxSets = vulkan::max_frames_in_flight;
 	}
 
-	if (const auto result = _logical_device.createDescriptorPool(
+	if (const auto result = api_data->device.createDescriptorPool(
 		&create_info,
 		nullptr,
 		&_descriptor_pool);
@@ -1864,6 +1486,8 @@ void render_api::init_descriptor_pool()
 
 void render_api::init_descriptor_set()
 {
+	const auto api_data = _render_api_data.lock();
+
 	std::array<vk::DescriptorSetLayout, vulkan::max_frames_in_flight> layouts = {};
 	std::ranges::fill(layouts.begin(), layouts.end(), _descriptor_set_layout);
 
@@ -1876,7 +1500,7 @@ void render_api::init_descriptor_set()
 		allocate_info.pSetLayouts = layouts.data();
 	}
 
-	if (const auto result = _logical_device.allocateDescriptorSets(
+	if (const auto result = api_data->device.allocateDescriptorSets(
 		&allocate_info,
 		_descriptor_set.data());
 		result != vk::Result::eSuccess)
@@ -1913,7 +1537,7 @@ void render_api::init_descriptor_set()
 			}
 		}
 
-		_logical_device.updateDescriptorSets(
+		api_data->device.updateDescriptorSets(
 			descriptor_writes.size(), descriptor_writes.data(),
 			0, nullptr);
 	}
@@ -1921,16 +1545,20 @@ void render_api::init_descriptor_set()
 
 void render_api::init_texture_view()
 {
+	const auto api_data = _render_api_data.lock();
+
 	_texture_atlas_view = create_image_view(
-		_logical_device,
+		api_data->device,
 		_texture_atlas,
 		vk::Format::eR8G8B8A8Unorm);
 }
 
 void render_api::init_texture_sampler()
 {
+	const auto api_data = _render_api_data.lock();
+
 	vk::PhysicalDeviceProperties device_properties = {};
-	_physical_device.getProperties(&device_properties);
+	api_data->physical_device.getProperties(&device_properties);
 
 	vk::SamplerCreateInfo create_info = {};
 	{
@@ -1958,7 +1586,7 @@ void render_api::init_texture_sampler()
 		create_info.maxLod = 0.0f;
 	}
 
-	if (const auto result = _logical_device.createSampler(
+	if (const auto result = api_data->device.createSampler(
 		&create_info,
 		nullptr,
 		&_texture_sampler);
@@ -1971,22 +1599,26 @@ void render_api::init_texture_sampler()
 
 void render_api::destroy_swapchain()
 {
+	const auto api_data = _render_api_data.lock();
+
 	std::ranges::for_each(_swapchain_image_views.begin(), _swapchain_image_views.end(),
 		[&](const auto& image_view) {
-		_logical_device.destroyImageView(image_view);
+		api_data->device.destroyImageView(image_view);
 	});
 
-	_logical_device.destroySwapchainKHR(_swap_chain);
+	api_data->device.destroySwapchainKHR(_swap_chain);
 }
 
 void render_api::destroy_image()
 {
-	_logical_device.freeDescriptorSets(
+	const auto api_data = _render_api_data.lock();
+
+	api_data->device.freeDescriptorSets(
 		_descriptor_pool,
 		_descriptor_set.size(),
 		_descriptor_set.data());
 
-	_logical_device.destroyImageView(_texture_atlas_view);
+	api_data->device.destroyImageView(_texture_atlas_view);
 
 	vmaDestroyImage(_vk_allocator, _texture_atlas, _texture_atlas_alloc);
 	_init_texture = false;

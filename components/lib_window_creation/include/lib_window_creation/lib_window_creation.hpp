@@ -71,6 +71,8 @@ private:
 	GLFWwindow* _glfw_window_ptr = nullptr;
 	std::function<void()> _render_callback = nullptr;
 
+	std::shared_ptr<lib::rendering::render_api_data_t> _api_data = nullptr;
+
 #ifndef DEF_LIB_RENDERING_off
 	std::shared_ptr<rendering::renderer> _renderer = nullptr;
 #endif

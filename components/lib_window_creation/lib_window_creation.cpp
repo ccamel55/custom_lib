@@ -1,11 +1,5 @@
 #include <lib_window_creation/lib_window_creation.hpp>
-
 #include <cassert>
-
-#if WIN32
-#define GLFW_EXPOSE_NATIVE_WIN32
-#include <GLFW/glfw3native.h>
-#endif
 
 using namespace lib::window_creation;
 
@@ -78,6 +72,12 @@ window_creation::window_creation(const window_parameters_t& window_parameters)
 
 window_creation::~window_creation()
 {
+	_renderer.reset();
+
+#ifdef DEF_LIB_RENDERING_vulkan
+	helpers::destroy_vulkan_instance(*_api_data);
+#endif
+
 	glfwTerminate();
 }
 
@@ -120,15 +120,13 @@ std::weak_ptr<lib::rendering::renderer> window_creation::register_renderer()
 	lib::point2Di window_size = {};
 	glfwGetWindowSize(_glfw_window_ptr, &window_size.x, &window_size.y);
 
-	rendering::render_api_data_t render_api_data = {};
-	{
-#ifdef WIN32
-		render_api_data.window_handle = glfwGetWin32Window(_glfw_window_ptr);
-#endif
-	}
+	_api_data = std::make_shared<lib::rendering::render_api_data_t>();
 
-	// initialize renderer using glfw stuff
-	_renderer = std::make_shared<rendering::renderer>(render_api_data, true);
+#ifdef DEF_LIB_RENDERING_vulkan
+	helpers::create_vulkan_instance(_glfw_window_ptr, *_api_data);
+#endif
+
+	_renderer = std::make_shared<rendering::renderer>(_api_data, true);
 	_renderer->set_window_size(window_size);
 
 	glfwSetWindowSizeCallback(_glfw_window_ptr, window_size_callback);

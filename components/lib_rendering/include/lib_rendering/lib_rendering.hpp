@@ -20,7 +20,7 @@ namespace lib::rendering
 class renderer final : render_callback_handler
 {
 public:
-	explicit renderer(const render_api_data_t& render_api_data, bool flush_buffers);
+	explicit renderer(const std::weak_ptr<render_api_data_t>& render_api_data, bool flush_buffers);
 	~renderer() override;
 
 	//! build our texture atlas. must be called before any drawing can be done

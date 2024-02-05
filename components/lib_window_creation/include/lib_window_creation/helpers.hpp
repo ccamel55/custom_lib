@@ -17,4 +17,13 @@ namespace lib::window_creation::helpers
 lib::input::key_button glfw_to_input_key(int key);
 lib::input::key_button glfw_to_mouse_key(int button);
 #endif
+
+#ifdef DEF_LIB_RENDERING_vulkan
+    bool create_vulkan_instance(
+        GLFWwindow* window,
+        lib::rendering::render_api_data_t& api_data);
+
+    bool destroy_vulkan_instance(lib::rendering::render_api_data_t& api_data);
+#endif
+
 };

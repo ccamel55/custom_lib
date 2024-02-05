@@ -104,7 +104,7 @@ constexpr char sdf_outline_fragment_shader[] = R"(
     )";
 }  // namespace
 
-render_api::render_api(const render_api_data_t& render_api_data, bool flush_buffers)
+render_api::render_api(const std::weak_ptr<render_api_data_t>& render_api_data, bool flush_buffers)
 	: render_api_base(flush_buffers)
 {
 	(void)render_api_data;

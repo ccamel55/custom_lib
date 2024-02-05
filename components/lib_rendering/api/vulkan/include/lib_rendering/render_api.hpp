@@ -43,14 +43,22 @@ struct push_constants_t
 
 struct render_api_data_t
 {
-    void* window_handle;
+    vk::Instance instance = {};
+    vk::SurfaceKHR surface = {};
+    vk::Queue queue = {};
+
+    vk::PhysicalDevice physical_device = {};
+    vk::Device device = {};
+
+    uint32_t vulkan_api_version = VK_MAKE_API_VERSION(0, 1, 3, 0);
+    uint32_t present_family_index = 0;
 };
 
 class render_api final : public render_api_base
 {
 public:
     //! \p api_context should equal the window ptr that vulkan will bind it's surface too.
-    render_api(const render_api_data_t& render_api_data, bool flush_buffers);
+    render_api(const std::weak_ptr<render_api_data_t>& render_api_data, bool flush_buffers);
     ~render_api() override;
 
     void bind_atlas(const uint8_t* data, int width, int height) override;
@@ -58,9 +66,6 @@ public:
     void draw(const render_command& render_command) override;
 
 private:
-    void init_vulkan(const std::vector<const char*>& extensions, const std::vector<const char*>& layers);
-    void init_device(const std::vector<const char*>& layers);
-    void init_surface();
     void init_swapcahin();
     void init_image_views();
 
@@ -85,16 +90,12 @@ private:
         const render_command& render_command) const;
 
 private:
-    std::optional<uint32_t> _graphics_present_family_index = std::nullopt;
+    std::weak_ptr<render_api_data_t> _render_api_data = {};
+    uint32_t _current_frame = 0;
 
-    // instance speicfic stuff
-    // todo: move this into renderer/window creation
-    vk::Instance _instance = {};
-    vk::PhysicalDevice _physical_device = {};
-    vk::Device _logical_device = {};
-    vk::SurfaceKHR _window_surface = {};
+    bool _stop_rendering = false;
+    bool _init_texture = false;
 
-    vk::Queue _graphics_present_queue = {};
     vk::CommandPool _command_pool = {};
     std::array<vk::CommandBuffer, vulkan::max_frames_in_flight> _command_buffers = {};
 
@@ -147,11 +148,5 @@ private:
     std::array<vk::Fence, vulkan::max_frames_in_flight> _in_flight_fences = {};
 
     std::array<vk::DescriptorSet, vulkan::max_frames_in_flight> _descriptor_set = {};
-
-    render_api_data_t _render_api_data = {};
-    uint32_t _current_frame = 0;
-
-    bool _stop_rendering = false;
-    bool _init_texture = false;
 };
 }  // namespace lib::rendering

@@ -1,5 +1,9 @@
 #include <lib_window_creation/helpers.hpp>
 
+#include <unordered_set>
+#include <map>
+#include <ranges>
+
 using namespace lib::window_creation;
 
 #ifndef DEF_LIB_INPUT_off
@@ -125,5 +129,340 @@ lib::input::key_button helpers::glfw_to_mouse_key(int button)
 		case GLFW_MOUSE_BUTTON_MIDDLE: return lib::input::key_button::mousemiddle;
 		default: return lib::input::key_button::none;
     }
+}
+#endif
+
+#ifdef DEF_LIB_RENDERING_vulkan
+#include <vulkan/vulkan.hpp>
+
+#if WIN32
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include <GLFW/glfw3native.h>
+#endif
+
+#if __APPLE__
+#define GLFW_EXPOSE_NATIVE_COCOA
+#include <GLFW/glfw3native.h>
+#endif
+
+// assuming 1.f is highest priority, cant find shit anywhere :(
+constexpr float queue_priority = 1.f;
+
+constexpr uint32_t queue_index = 0;
+constexpr uint32_t vulkan_api_version = VK_MAKE_API_VERSION(0, 1, 3, 0);
+
+const std::unordered_set<std::string> vulkan_instace_extensions =
+{
+	"VK_KHR_surface",
+
+#ifndef NDEBUG
+	"VK_EXT_debug_utils",
+#endif
+
+#if WIN32
+	"VK_KHR_win32_surface",
+#elif __APPLE__
+	"VK_MVK_macos_surface",
+	"VK_EXT_metal_surface",
+	// apply needs this since vulkan 1.3.216
+	"VK_KHR_portability_enumeration",
+#endif
+};
+
+const std::unordered_set<std::string> vulkan_device_extensions =
+{
+	"VK_KHR_swapchain",
+	"VK_KHR_dynamic_rendering"
+};
+
+const std::unordered_set<std::string> validation_layers =
+{
+#ifndef NDEBUG
+	"VK_LAYER_KHRONOS_validation"
+#endif
+};
+
+const auto get_supported_extensions = [](const std::unordered_set<std::string>& extensions_set) {
+	// has to std::string otherwise we pass a ptr to a string that is
+	// nuke after this function leaves scope, ffs
+	std::vector<std::string> extensions = {};
+
+	uint32_t extension_count = 0;
+	vk::enumerateInstanceExtensionProperties(nullptr, &extension_count, nullptr);
+
+	std::vector<vk::ExtensionProperties> extension_properties(extension_count);
+	vk::enumerateInstanceExtensionProperties(
+		nullptr,
+		&extension_count,
+		extension_properties.data());
+
+	std::ranges::for_each(
+		extension_properties.begin(),
+		extension_properties.end(),
+		[&](const auto& properties) {
+			if (const auto extensionName = std::string(properties.extensionName);
+				extensions_set.contains(extensionName))
+			{
+				lib_log_d("render_api: added vulkan instance extension: {}", extensionName);
+				extensions.emplace_back(extensionName);
+			}
+		});
+
+	return extensions;
+};
+
+const auto get_supported_device_extensions = [](
+	const vk::PhysicalDevice& device,
+	const std::unordered_set<std::string>& extensions_set) {
+	// has to std::string otherwise we pass a ptr to a string that is
+	// nuke after this function leaves scope, ffs
+	std::vector<std::string> extensions = {};
+
+	uint32_t extension_count = 0;
+	device.enumerateDeviceExtensionProperties(nullptr, &extension_count, nullptr);
+
+	std::vector<vk::ExtensionProperties> extension_properties(extension_count);
+	device.enumerateDeviceExtensionProperties(
+		nullptr,
+		&extension_count,
+		extension_properties.data());
+
+	std::ranges::for_each(
+		extension_properties.begin(),
+		extension_properties.end(),
+		[&](const auto& properties) {
+			if (const auto extensionName = std::string(properties.extensionName);
+				extensions_set.contains(extensionName))
+			{
+				lib_log_d("render_api: added vulkan device extension: {}", extensionName);
+				extensions.emplace_back(extensionName);
+			}
+		});
+
+	return extensions;
+};
+
+const auto get_supported_layers = [](const std::unordered_set<std::string>& layers_set) {
+	// has to std::string otherwise we pass a ptr to a string that is
+	// nuke after this function leaves scope, ffs
+	std::vector<std::string> layers = {};
+
+	uint32_t layer_count = 0;
+	vk::enumerateInstanceLayerProperties(&layer_count, nullptr);
+
+	std::vector<vk::LayerProperties> layer_properties(layer_count);
+	vk::enumerateInstanceLayerProperties(&layer_count, layer_properties.data());
+
+	std::ranges::for_each(
+		layer_properties.begin(),
+		layer_properties.end(),
+		[&](const auto& properties) {
+			if (const auto layerName = std::string(properties.layerName);
+				layers_set.contains(layerName))
+			{
+				lib_log_d("render_api: added vulkan layer: {}", layerName);
+				layers.emplace_back(layerName);
+			}
+		});
+
+	return layers;
+};
+
+bool helpers::create_vulkan_instance(
+	GLFWwindow* window,
+	lib::rendering::render_api_data_t& api_data)
+{
+	api_data.vulkan_api_version = vulkan_api_version;
+
+	// api_context must be valid for vulkan
+	const auto supported_instance_extensions = get_supported_extensions(vulkan_instace_extensions);
+	const auto supported_layers = get_supported_layers(validation_layers);
+
+	// convert back into const char*, should be scoped for this function
+	std::vector<const char*> instance_extensions_list = {};
+	std::vector<const char*> layers_list = {};
+
+	std::ranges::for_each(supported_instance_extensions.begin(), supported_instance_extensions.end(),
+		[&](const auto& entry) {
+		instance_extensions_list.push_back(entry.c_str());
+	});
+
+	std::ranges::for_each(supported_layers.begin(), supported_layers.end(),
+		[&](const auto& entry) {
+		layers_list.push_back(entry.c_str());
+	});
+
+	vk::ApplicationInfo app_info = {};
+	{
+		app_info.sType = vk::StructureType::eApplicationInfo;
+		app_info.pApplicationName = nullptr;
+		app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+		app_info.pEngineName = nullptr;
+		app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
+		app_info.apiVersion = vulkan_api_version;
+	}
+
+	vk::InstanceCreateInfo instance_create_info = {};
+	{
+		instance_create_info.sType = vk::StructureType::eInstanceCreateInfo;
+		instance_create_info.pApplicationInfo = &app_info;
+
+		instance_create_info.enabledExtensionCount = instance_extensions_list.size();
+		instance_create_info.ppEnabledExtensionNames = instance_extensions_list.data();
+
+		instance_create_info.enabledLayerCount = layers_list.size();
+		instance_create_info.ppEnabledLayerNames = layers_list.data();
+
+#if __APPLE__
+		// apply needs this since vulkan 1.3.216
+		create_info.flags = vk::InstanceCreateFlagBits::eEnumeratePortabilityKHR;
+#endif
+	}
+
+	if (const auto result = vk::createInstance(
+		&instance_create_info, nullptr, &api_data.instance); result != vk::Result::eSuccess)
+	{
+		lib_log_e("window_creation: failed to create vulkan instance {}", static_cast<int>(result));
+		return false;
+	}
+
+	/**										Create surface											 */
+
+	VkSurfaceKHR tmp_surface = nullptr;
+	if (const auto result = glfwCreateWindowSurface(api_data.instance, window, nullptr, &tmp_surface);
+		result != VK_SUCCESS)
+	{
+		lib_log_e("render_api: failed to create surface {}", static_cast<int>(result));
+		return false;
+	}
+
+	// make from VkSurfaceKHR
+	api_data.surface = vk::SurfaceKHR(tmp_surface);
+
+	/**										Create device											 */
+
+	uint32_t device_count = 0;
+	api_data.instance.enumeratePhysicalDevices(&device_count, nullptr);
+
+	std::vector<vk::PhysicalDevice> device_list(device_count);
+	api_data.instance.enumeratePhysicalDevices(&device_count, device_list.data());
+
+	if (device_list.empty())
+	{
+		lib_log_e("window_creation: no supported devices found");
+		return false;
+	}
+
+	for (const auto& device: device_list)
+	{
+		vk::PhysicalDeviceProperties properties = {};
+		device.getProperties(&properties);
+
+		if (properties.deviceType == vk::PhysicalDeviceType::eDiscreteGpu)
+		{
+			api_data.physical_device = device;
+			break;
+		}
+	}
+
+	if (!api_data.physical_device)
+	{
+		lib_log_w("window_creation: no descrete GPU found, using first returned GPU");
+		api_data.physical_device = device_list.at(0);
+	}
+
+	// find graphics queue family
+	uint32_t queue_count = 0;
+	api_data.physical_device.getQueueFamilyProperties(&queue_count, nullptr);
+
+	std::vector<vk::QueueFamilyProperties> queue_families(queue_count);
+	api_data.physical_device.getQueueFamilyProperties(&queue_count, queue_families.data());
+
+	for (uint32_t i = 0; i < queue_count; i++)
+	{
+		vk::Bool32 present_support = false;
+		api_data.physical_device.getSurfaceSupportKHR(i, api_data.surface, &present_support);
+
+		if ((queue_families.at(i).queueFlags & vk::QueueFlagBits::eGraphics) && present_support)
+		{
+			api_data.present_family_index = i;
+			break;
+		}
+	}
+
+	// find device extenions
+	const auto supported_device_extensions = get_supported_device_extensions(
+		api_data.physical_device,
+		vulkan_device_extensions);
+
+	std::vector<const char*> devide_extensions_list = {};
+	std::ranges::for_each(supported_device_extensions.begin(), supported_device_extensions.end(),
+		[&](const auto& entry) {
+		devide_extensions_list.push_back(entry.c_str());
+	});
+
+	// setup queues we need
+	std::array<vk::DeviceQueueCreateInfo, 1> device_queue_create_infos = {};
+	{
+		{
+			auto& graphic_present_queue_create_info = device_queue_create_infos[0];
+
+			graphic_present_queue_create_info.sType = vk::StructureType::eDeviceQueueCreateInfo;
+			graphic_present_queue_create_info.queueFamilyIndex = api_data.present_family_index;
+			graphic_present_queue_create_info.queueCount = 1;
+			graphic_present_queue_create_info.pQueuePriorities = &queue_priority;
+		}
+	}
+
+	vk::PhysicalDeviceFeatures device_features = {};
+	{
+		// we dont use any device features right now so leave empty
+	}
+
+	vk::PhysicalDeviceDynamicRenderingFeatures dynamic_rendering_features = {};
+	{
+		dynamic_rendering_features.sType = vk::StructureType::ePhysicalDeviceDynamicRenderingFeatures;
+		dynamic_rendering_features.dynamicRendering = true;
+	}
+
+	vk::DeviceCreateInfo device_create_info = {};
+	{
+		device_create_info.sType = vk::StructureType::eDeviceCreateInfo;
+		device_create_info.pNext = &dynamic_rendering_features;
+
+		device_create_info.pQueueCreateInfos = device_queue_create_infos.data();
+		device_create_info.queueCreateInfoCount = device_queue_create_infos.size();
+		device_create_info.pEnabledFeatures = &device_features;
+
+		device_create_info.enabledExtensionCount = devide_extensions_list.size();
+		device_create_info.ppEnabledExtensionNames = devide_extensions_list.data();
+
+		device_create_info.enabledLayerCount = layers_list.size();
+		device_create_info.ppEnabledLayerNames = layers_list.data();
+	}
+
+	if (const auto result = api_data.physical_device.createDevice(
+		&device_create_info, nullptr, &api_data.device);
+		result != vk::Result::eSuccess)
+	{
+		lib_log_e("render_api: failed to create logical device {}", static_cast<int>(result));
+		return false;
+	}
+
+	api_data.device.getQueue(api_data.present_family_index, queue_index, &api_data.queue);
+	return true;
+}
+
+bool helpers::destroy_vulkan_instance(lib::rendering::render_api_data_t& api_data)
+{
+	if (api_data.device && api_data.surface && api_data.queue)
+	{
+		api_data.device.destroy();
+
+		api_data.instance.destroySurfaceKHR(api_data.surface);
+		api_data.instance.destroy();
+	}
+
+	return true;
 }
 #endif

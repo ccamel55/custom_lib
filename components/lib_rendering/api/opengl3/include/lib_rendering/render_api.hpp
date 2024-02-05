@@ -8,13 +8,12 @@ namespace lib::rendering
 {
 struct render_api_data_t
 {
-
 };
 
 class render_api final : public render_api_base
 {
 public:
-	render_api(const render_api_data_t& render_api_data, bool flush_buffers);
+	render_api(const std::weak_ptr<render_api_data_t>& render_api_data, bool flush_buffers);
 	~render_api() override;
 
 	void bind_atlas(const uint8_t* data, int width, int height) override;

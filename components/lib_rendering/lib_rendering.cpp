@@ -9,7 +9,7 @@
 
 using namespace lib::rendering;
 
-renderer::renderer(const render_api_data_t& render_api_data, bool flush_buffers)
+renderer::renderer(const std::weak_ptr<render_api_data_t>& render_api_data, bool flush_buffers)
 {
 	_render_api = std::make_unique<render_api>(render_api_data, flush_buffers);
 	_opaque_texture_id = _atlas_generator.add_texture(
