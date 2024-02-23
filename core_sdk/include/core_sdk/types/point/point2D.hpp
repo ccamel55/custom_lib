@@ -126,6 +126,11 @@ public:
         return x != in.x || y != in.y;
     }
 
+	[[nodiscard]] float dot(const _point2D& in) const
+	{
+		return (x * in.x + y * in.y);
+	}
+
 public:
 	t x = static_cast<t>(0);
 	t y = static_cast<t>(0);

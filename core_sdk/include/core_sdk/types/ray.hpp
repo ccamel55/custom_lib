@@ -11,23 +11,23 @@ public:
 
     //! Construct a ray.
     //! \param origin Origin or the ray.
-    //! \param direction direction of the ray.
-    constexpr ray(const point3Df& origin, const vector3D& direction)
-        : origin(origin), direction(direction)
+    //! \param normalized_direction direction of the ray.
+    //! \param scalar the unit length of the ray.
+    constexpr ray(const point3Df& origin, const vector3D& normalized_direction, float scalar)
+        : origin(origin), direction(normalized_direction), scalar(scalar)
     {
     }
 
-    //! Scale the direction of a ray.
-    //! \param scalar is the new unit length of the ray.
-    void rescale(float scalar)
+    //! Returns the point in 3d space that the ray represents
+    [[nodiscard]] point3Df get_point() const
     {
-        // first normalize back to 1, then scale by scalar
-        direction = direction.normalised() * scalar;
+        return origin + (direction * scalar);
     }
 
 public:
     point3Df origin = {};
     vector3D direction = {};
+    float scalar = {};
 
 };
 }

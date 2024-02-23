@@ -141,6 +141,11 @@ public:
 		return *this;
 	}
 
+	[[nodiscard]] float dot(const _point3D& in) const
+	{
+		return (x * in.x + y * in.y + z * in.z);
+	}
+
 public:
 	t x = static_cast<t>(0);
 	t y = static_cast<t>(0);

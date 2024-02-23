@@ -31,11 +31,6 @@ public:
 		return (fabsf(this->x - vec_equal.x) < error_margin && fabsf(this->y - vec_equal.y) < error_margin);
 	}
 
-	[[nodiscard]] float dot(const vector2D& in) const
-	{
-		return (x * in.x + y * in.y);
-	}
-
 	[[nodiscard]] float length_sqr() const
 	{
 		return dot(*this);

@@ -34,11 +34,6 @@ public:
 			   fabsf(this->z - vec_equal.z) < error_margin;
 	}
 
-	[[nodiscard]] float dot(const vector3D& in) const
-	{
-		return (x * in.x + y * in.y + z * in.z);
-	}
-
 	[[nodiscard]] float length_sqr() const
 	{
 		return dot(*this);
@@ -72,6 +67,15 @@ public:
 	[[nodiscard]] vector3D normalised() const
 	{
 		return *this / length_sqr();
+	}
+
+	//! Left handed co-oridnate system cross product.
+	[[nodiscard]] vector3D cross(const vector3D& in) const
+	{
+		return {
+			y * in.z - z * in.y,
+			z * in.x - x * in.z,
+			x * in.y - y * in.x};
 	}
 };
 }  // namespace lib
