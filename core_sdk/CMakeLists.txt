@@ -7,19 +7,11 @@ lib_option(
         0 1 2 3 4
 )
 
-lib_option(
-	NAME
-		LIB_MATH_USE_DOUBLE_PRECISION
-	DESCRIPTION
-		"Use double precision for math functions."
-	VALID_ARGS
-		off on
-)
-
 lib_component(lib_core
     SOURCES
         core_sdk.cpp
         math/math.cpp
+		math/intersection.cpp
     INCLUDES
         include
     LINK_LIBS
