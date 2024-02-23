@@ -27,57 +27,51 @@ public:
 	}
 
 	[[nodiscard]] bool is_equal(
-		const vector3D& vec_equal, const float error_margin = std::numeric_limits<float>::epsilon()) const
+		const vector3D& vec_equal,
+		const float error_margin = std::numeric_limits<float>::epsilon()) const
 	{
 		return fabsf(this->x - vec_equal.x) < error_margin && fabsf(this->y - vec_equal.y) < error_margin &&
 			   fabsf(this->z - vec_equal.z) < error_margin;
 	}
 
-	[[nodiscard]] float length() const
+	[[nodiscard]] float dot(const vector3D& in) const
 	{
-		return std::sqrt(x * x + y * y + z * z);
-	}
-
-	[[nodiscard]] float length2D() const
-	{
-		return std::sqrt(x * x + y * y);
+		return (x * in.x + y * in.y + z * in.z);
 	}
 
 	[[nodiscard]] float length_sqr() const
 	{
-		return (x * x + y * y + z * z);
+		return dot(*this);
 	}
 
-	[[nodiscard]] float length2D_sqr() const
+	[[nodiscard]] float length_xy_sqr() const
 	{
 		return (x * x + y * y);
 	}
 
-	[[nodiscard]] vector3D normalize() const
+	[[nodiscard]] float length_xz_sqr() const
 	{
-		auto out = *this;
-		const auto length = out.length();
-
-		if (length != 0.f)
-		{
-			out = out / length;
-		}
-		else
-		{
-			out.x = out.y = out.z = 0;
-		}
-
-		return out;
+		return (x * x + z * z);
 	}
 
-	[[nodiscard]] float dist(const vector3D& in) const
+	[[nodiscard]] float length() const
 	{
-		return vector3D(x - in.x, y - in.y, z - in.z).length();
+		return std::sqrt(length_sqr());
 	}
 
-	[[nodiscard]] float dot(const vector3D& in) const
+	[[nodiscard]] float length_xy() const
 	{
-		return (x * in.x + y * in.y + z * in.z);
+		return std::sqrt(length_xy_sqr());
+	}
+
+	[[nodiscard]] float length_xz() const
+	{
+		return std::sqrt(length_xz_sqr());
+	}
+
+	[[nodiscard]] vector3D normalised() const
+	{
+		return *this / length_sqr();
 	}
 };
 }  // namespace lib

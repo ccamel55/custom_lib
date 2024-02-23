@@ -1,6 +1,9 @@
 #pragma once
 
+#include <core_sdk/math/constants.hpp>
+
 namespace lib::math
 {
-// todo: add math approximation option to explicitly use faster approximation functions rather than accurate maths
+    floating_point degree_to_radian(floating_point degree);
+    floating_point radian_to_degree(floating_point radian);
 }

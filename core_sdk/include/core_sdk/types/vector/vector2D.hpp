@@ -25,34 +25,30 @@ public:
 	}
 
 	[[nodiscard]] bool is_equal(
-		const _point2D& vec_equal, const float error_margin = std::numeric_limits<float>::epsilon()) const
+		const _point2D& vec_equal,
+		const float error_margin = std::numeric_limits<float>::epsilon()) const
 	{
 		return (fabsf(this->x - vec_equal.x) < error_margin && fabsf(this->y - vec_equal.y) < error_margin);
 	}
 
-	[[nodiscard]] float length() const
+	[[nodiscard]] float dot(const vector2D& in) const
 	{
-		return std::sqrt(x * x + y * y);
+		return (x * in.x + y * in.y);
 	}
 
 	[[nodiscard]] float length_sqr() const
 	{
-		return (x * x + y * y);
+		return dot(*this);
+	}
+
+	[[nodiscard]] float length() const
+	{
+		return std::sqrt(length_sqr());
 	}
 
 	[[nodiscard]] vector2D normalised() const
 	{
-		// normalise vector so that magnitude is 1
-		const auto x_x_y_y = (this->x * this->x) + (this->y * this->y);
-
-		if (x_x_y_y <= 0.f)
-		{
-			return *this;
-		}
-
-		const auto inverse_sqrt = (1.f / std::sqrtf(x_x_y_y));
-
-		return {this->x * inverse_sqrt, this->y * inverse_sqrt};
+		return *this / length_sqr();
 	}
 };
 }  // namespace lib
