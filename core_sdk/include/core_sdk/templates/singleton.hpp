@@ -1,9 +1,12 @@
 #pragma once
 
+#include <core_sdk/templates/no_copy.hpp>
+
 namespace lib
 {
 //! Classes that inherit singleton can only be accessed using the singleton \c get function.
-template <class t> class singleton
+template <class t>
+class singleton : public no_copy
 {
 public:
 	static t& get()
@@ -12,13 +15,6 @@ public:
 		static t singleton_instance;
 		return singleton_instance;
 	}
-
-	// Prevent copying the singleton.
-	singleton(const singleton&) = delete;
-	singleton(const singleton&&) = delete;
-
-	void operator=(const singleton&) = delete;
-	void operator=(const singleton&&) = delete;
 
 protected:
 	// Ensure constructor and destructor is only callable from the singleton.

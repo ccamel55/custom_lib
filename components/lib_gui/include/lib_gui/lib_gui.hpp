@@ -5,7 +5,7 @@
 #include <cassert>
 
 #include <core_sdk/logger.hpp>
-#include <core_sdk/singleton.hpp>
+#include <core_sdk/templates/singleton.hpp>
 
 #include <lib_gui/utils.hpp>
 
