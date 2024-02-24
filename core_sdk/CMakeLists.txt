@@ -15,6 +15,14 @@ lib_component(lib_core
     INCLUDES
         include
     LINK_LIBS
+		cxxopts
         fmt::fmt
-        cxxopts
+		glm::glm
+)
+
+# GLM preprocessors
+target_compile_definitions(glm PRIVATE
+	GLM_FORCE_CXX17
+	GLM_FORCE_INLINE
+	GLM_FORCE_INTRINSICS
 )
