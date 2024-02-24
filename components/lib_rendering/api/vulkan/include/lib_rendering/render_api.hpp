@@ -17,6 +17,8 @@
 #include <vk_mem_alloc.h>
 #include <vulkan/vulkan.hpp>
 
+#include <glm/mat4x4.hpp>
+
 namespace lib::rendering
 {
 namespace vulkan
@@ -31,10 +33,15 @@ struct swapchain_support_details_t
 };
 
 // note: careful because vulkan expects shit to be aligned in a certain way depending on type
+struct uniform_buffer_object_t
+{
+    glm::mat4 projection_matrix = {1.f};
+    glm::mat4 view_matrix = {1.f};
+};
+
 struct push_constants_t
 {
-    lib::vector2D scale = {};
-    lib::vector2D translate = {};
+    glm::mat4 model_matrix = {1.f};
 };
 }
 
@@ -78,6 +85,7 @@ private:
     void init_texture_sampler();
     void init_render_pass();
     void init_frame_buffer();
+    void init_uniform_buffer();
 
     void destroy_swapchain();
     void destroy_image();
@@ -111,7 +119,7 @@ private:
 
     // render class crap
     vk::Viewport _viewport = {};
-    vulkan::push_constants_t _push_constants = {};
+    vulkan::uniform_buffer_object_t _unifrom_buffer_object = {};
 
     vk::DescriptorSetLayout _descriptor_set_layout = {};
     vk::DescriptorPool _descriptor_pool = {};
@@ -128,6 +136,10 @@ private:
 
     VkImage _texture_atlas = {};
     VmaAllocation _texture_atlas_alloc = nullptr;
+
+    std::array<VkBuffer, vulkan::max_frames_in_flight> _uniform_buffer = {};
+    std::array<VmaAllocation, vulkan::max_frames_in_flight> _unifrom_buffer_alloc = {};
+    std::array<VmaAllocationInfo, vulkan::max_frames_in_flight> _unifrom_buffer_alloc_info = {};
 
     VkBuffer _vertex_buffer = {};
     VmaAllocation _vertex_buffer_alloc = nullptr;

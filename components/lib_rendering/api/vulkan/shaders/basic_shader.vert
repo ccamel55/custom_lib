@@ -1,9 +1,14 @@
 #version 450
 
+layout(binding = 0) uniform uniform_buffer_object_t
+{
+    mat4 projection_matrix;
+    mat4 view_matrix;
+} ubo;
+
 layout(push_constant) uniform push_constants_t
 {
-    vec2 scale;
-    vec2 translate;
+    mat4 model_matrix;
 } pc;
 
 layout(location = 0) in vec2 in_pos;
@@ -17,5 +22,5 @@ void main() {
     fragment_color = unpackUnorm4x8(in_color);
     fragment_uv = in_uv;
 
-    gl_Position = vec4((in_pos * pc.scale) + pc.translate, 0.0, 1.0);
+    gl_Position = ubo.projection_matrix * ubo.view_matrix * pc.model_matrix * vec4(in_pos, 0.0, 1.0);
 }

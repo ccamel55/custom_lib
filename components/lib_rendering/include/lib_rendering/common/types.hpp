@@ -4,6 +4,8 @@
 #include <core_sdk/types/point/point2D.hpp>
 #include <core_sdk/types/point/point4D.hpp>
 
+#include <glm/mat4x4.hpp>
+
 #include <array>
 #include <vector>
 
@@ -51,8 +53,8 @@ enum class shader_type: uint8_t
 
 struct batch_t
 {
-	constexpr batch_t() = default;
-	constexpr explicit batch_t(const lib::point4Di& clipped_area) : clipped_area(clipped_area)
+	batch_t() = default;
+	explicit batch_t(const lib::point4Di& clipped_area) : clipped_area(clipped_area)
 	{
 	}
 
@@ -67,6 +69,9 @@ struct batch_t
 
 	// what shader we should be using
 	shader_type shader = shader_type::normal;
+
+	// default to identity matrix
+	glm::mat4 model_matrix = {1.f};
 };
 
 struct texture_properties_t

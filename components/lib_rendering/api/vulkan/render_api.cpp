@@ -10,6 +10,8 @@
 #include <lib_rendering/shaders/sdf_shader_frag.hpp>
 #include <lib_rendering/shaders/outline_shader_frag.hpp>
 
+#include <glm/gtc/matrix_transform.hpp>
+
 #include <ranges>
 #include <filesystem>
 
@@ -436,6 +438,7 @@ render_api::render_api(const std::weak_ptr<render_api_data_t>& render_api_data, 
 	init_command_pool();
 	init_vertex_buffer();
 	init_index_buffer();
+	init_uniform_buffer();
 	init_descriptor_pool();
 	init_command_buffer();
 
@@ -483,6 +486,11 @@ render_api::~render_api()
 
 	destroy_swapchain();
 	destroy_image();
+
+	for (size_t i = 0; i < vulkan::max_frames_in_flight; i++)
+	{
+		vmaDestroyBuffer(_vk_allocator, _uniform_buffer.at(i), _unifrom_buffer_alloc.at(i));
+	}
 
 	api_data->device.destroySampler(_texture_sampler);
 	api_data->device.destroyDescriptorPool(_descriptor_pool);
@@ -657,15 +665,18 @@ void render_api::update_screen_size(const lib::point2Di& window_size)
 	_viewport.height = static_cast<float>(_swapchain_extent.height);
 
 	_viewport.minDepth = 0.f;
-	_viewport.maxDepth = 0.f;
+	_viewport.maxDepth = 1.f;
 
-	// thank you imgui, I love you
-	_push_constants.scale.x = 2.f / static_cast<float>(_swapchain_extent.width);
-	_push_constants.scale.y = 2.f / static_cast<float>(_swapchain_extent.height);
+	// update projection and view matrix, model matrix can be instance speicifc
+	_unifrom_buffer_object.projection_matrix = glm::ortho(
+		0.f,
+		static_cast<float>(window_size.x),
+		// vulkan has y axis flipped, hence why bottom and top are swapped here :P
+		0.f,
+		static_cast<float>(window_size.y));
 
-	// consider changing if you want to offset the "projection matrix"
-	_push_constants.translate.x = -1.f;
-	_push_constants.translate.y = -1.f;
+	// load identity matrix for now, we can fuck with this later
+	_unifrom_buffer_object.view_matrix = glm::mat4(1.f);
 }
 
 void render_api::draw(const render_command& render_command)
@@ -847,14 +858,29 @@ void render_api::init_descriptor_set_layout()
 {
 	const auto api_data = _render_api_data.lock();
 
-	std::array<vk::DescriptorSetLayoutBinding, 1> layout_bindings = {};
+	std::array<vk::DescriptorSetLayoutBinding, 2> layout_bindings = {};
 	{
-		// sampler layout
+		// ubo layout
 		{
 			auto& layout_binding = layout_bindings.at(0);
 
 			// binding slot 0
 			layout_binding.binding = 0;
+
+			layout_binding.descriptorType = vk::DescriptorType::eUniformBuffer;
+			layout_binding.descriptorCount = 1;
+
+			// only apply for vertex shaders
+			layout_binding.stageFlags = vk::ShaderStageFlagBits::eVertex;
+			layout_binding.pImmutableSamplers = nullptr;
+		}
+
+		// sampler layout
+		{
+			auto& layout_binding = layout_bindings.at(1);
+
+			// binding slot 0
+			layout_binding.binding = 1;
 
 			layout_binding.descriptorType = vk::DescriptorType::eCombinedImageSampler;
 			layout_binding.descriptorCount = 1;
@@ -1283,9 +1309,13 @@ void render_api::record_command_buffer(
 	const auto vertex_buffer_size = sizeof(vertex_t) * render_command.vertex_count;
 	const auto index_buffer_size = sizeof(uint32_t) * render_command.index_count;
 
-	// copy data into vertex and index buffer
+	// copy data into vertex, index and uniform buffer
 	std::memcpy(_vertex_staging_buffer_alloc_info.pMappedData, render_command.vertices.data(), vertex_buffer_size);
 	std::memcpy(_index_staging_buffer_alloc_info.pMappedData, render_command.indices.data(), index_buffer_size);
+	std::memcpy(
+		_unifrom_buffer_alloc_info.at(current_frame).pMappedData,
+		&_unifrom_buffer_object,
+		sizeof(vulkan::uniform_buffer_object_t));
 
 	vk::CommandBufferBeginInfo command_buffer_begin_info = {};
 	{
@@ -1364,12 +1394,15 @@ void render_api::record_command_buffer(
 		// set viewport
 		command_buffer.setViewport(0, 1, &_viewport);
 
+		vulkan::push_constants_t push_constants = {};
+		push_constants.model_matrix = batch.model_matrix;
+
 		command_buffer.pushConstants(
 			_pipeline_layout,
 			vk::ShaderStageFlagBits::eVertex,
 			0,
 			sizeof(vulkan::push_constants_t),
-			&_push_constants);
+			&push_constants);
 
 		command_buffer.bindDescriptorSets(
 			vk::PipelineBindPoint::eGraphics,
@@ -1404,11 +1437,19 @@ void render_api::init_descriptor_pool()
 {
 	const auto api_data = _render_api_data.lock();
 
-	std::array<vk::DescriptorPoolSize, 1> pool_sizes = {};
+	std::array<vk::DescriptorPoolSize, 2> pool_sizes = {};
 	{
-		// sampler pool size
+		// uniform buffer object pool size
 		{
 			auto& pool_size = pool_sizes.at(0);
+
+			pool_size.type = vk::DescriptorType::eUniformBuffer;
+			pool_size.descriptorCount = vulkan::max_frames_in_flight;
+		}
+
+		// sampler pool size
+		{
+			auto& pool_size = pool_sizes.at(1);
 
 			pool_size.type = vk::DescriptorType::eCombinedImageSampler;
 			pool_size.descriptorCount = vulkan::max_frames_in_flight;
@@ -1465,6 +1506,14 @@ void render_api::init_descriptor_set()
 	// populate each descriptor set
 	for (size_t i = 0; i < vulkan::max_frames_in_flight; i++)
 	{
+		// uniform buffer object descriptor
+		vk::DescriptorBufferInfo buffer_info = {};
+		{
+			buffer_info.buffer = _uniform_buffer.at(i);
+			buffer_info.offset = 0;
+			buffer_info.range = sizeof(vulkan::uniform_buffer_object_t);
+		}
+
 		// smapler descriptor buffer
 		vk::DescriptorImageInfo image_info = {};
 		{
@@ -1474,18 +1523,35 @@ void render_api::init_descriptor_set()
 			image_info.sampler = _texture_sampler;
 		}
 
-		std::array<vk::WriteDescriptorSet, 1> descriptor_writes = {};
+		std::array<vk::WriteDescriptorSet, 2> descriptor_writes = {};
 		{
-			// sampler write
+			// ubo write
 			{
 				auto& descriptor_write = descriptor_writes.at(0);
 
+				descriptor_write.sType = vk::StructureType::eWriteDescriptorSet;
 				descriptor_write.dstSet = _descriptor_set.at(i);
 				descriptor_write.dstBinding = 0;
 				descriptor_write.dstArrayElement = 0;
 
+				descriptor_write.descriptorType = vk::DescriptorType::eUniformBuffer;
+				descriptor_write.descriptorCount = 1;
+				descriptor_write.pBufferInfo = &buffer_info;
+				descriptor_write.pImageInfo = nullptr;
+			}
+
+			// sampler write
+			{
+				auto& descriptor_write = descriptor_writes.at(1);
+
+				descriptor_write.sType = vk::StructureType::eWriteDescriptorSet;
+				descriptor_write.dstSet = _descriptor_set.at(i);
+				descriptor_write.dstBinding = 1;
+				descriptor_write.dstArrayElement = 0;
+
 				descriptor_write.descriptorType = vk::DescriptorType::eCombinedImageSampler;
 				descriptor_write.descriptorCount = 1;
+				descriptor_write.pBufferInfo = nullptr;
 				descriptor_write.pImageInfo = &image_info;
 			}
 		}
@@ -1809,5 +1875,37 @@ void render_api::init_frame_buffer()
 			lib_log_e("render_api: failed to create frame buffer {}", static_cast<int>(result));
 			assert(false);
 		}
+	}
+}
+
+void render_api::init_uniform_buffer()
+{
+	VkBufferCreateInfo uniform_buffer_create_info = {};
+	{
+		uniform_buffer_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		uniform_buffer_create_info.size = sizeof(vulkan::uniform_buffer_object_t);
+
+		uniform_buffer_create_info.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+		uniform_buffer_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	}
+
+	VmaAllocationCreateInfo uniform_buffer_allocation_info= {};
+	{
+		uniform_buffer_allocation_info.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
+		uniform_buffer_allocation_info.flags =
+			VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
+			VMA_ALLOCATION_CREATE_MAPPED_BIT;
+	}
+
+	for (size_t i = 0; i < vulkan::max_frames_in_flight; i++)
+	{
+		// create uniform buffer for each "frame"
+		vmaCreateBuffer(
+			_vk_allocator,
+			&uniform_buffer_create_info,
+			&uniform_buffer_allocation_info,
+			&_uniform_buffer.at(i),
+			&_unifrom_buffer_alloc.at(i),
+			&_unifrom_buffer_alloc_info.at(i));
 	}
 }
