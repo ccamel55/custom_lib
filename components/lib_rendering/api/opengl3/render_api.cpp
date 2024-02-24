@@ -1,5 +1,10 @@
 #include <lib_rendering/render_api.hpp>
 
+#include <lib_rendering/shaders/basic_shader_vert.hpp>
+#include <lib_rendering/shaders/normal_shader_frag.hpp>
+#include <lib_rendering/shaders/sdf_shader_frag.hpp>
+#include <lib_rendering/shaders/outline_shader_frag.hpp>
+
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -7,106 +12,6 @@
 
 // this file is a fucking mess, but it works and it works efficiently so eat poo
 using namespace lib::rendering;
-
-namespace
-{
-constexpr char vertex_shader[] = R"(
-        #version 410 core
-
-		uniform mat4 projection_matrix;
-
-        layout(location = 0) in vec2 position;
-        layout(location = 1) in vec4 color;
-        layout(location = 2) in vec2 uv;
-
-        out vec4 fragment_color;
-		out vec2 fragment_uv;
-
-        void main()
-		{
-            fragment_color = color;
-			fragment_uv = uv;
-
-			gl_Position = projection_matrix * vec4(position.xy, 0, 1);
-        }
-    )";
-
-constexpr char normal_fragment_shader[] = R"(
-        #version 410 core
-
-		uniform sampler2D texture_sample;
-
-        in vec4 fragment_color;
-		in vec2 fragment_uv;
-
-		layout (location = 0) out vec4 out_color;
-
-        void main()
-		{
-			vec4 sampled_texture = texture(texture_sample, fragment_uv.st);
-	        out_color = sampled_texture * fragment_color;
-        }
-    )";
-
-constexpr char sdf_fragment_shader[] = R"(
-        #version 410 core
-
-		// best sharpness = 0.25 / (spread * scale)
-		// = 0.25 / (4 * 1)
-		const float smoothing = 1.0 / 16.0;
-
-		uniform sampler2D texture_sample;
-
-        in vec4 fragment_color;
-		in vec2 fragment_uv;
-
-		layout (location = 0) out vec4 out_color;
-
-        void main()
-		{
-			vec4 sampled_texture = texture(texture_sample, fragment_uv.st);
-			float outline_factor = smoothstep(0.5 - smoothing, 0.5 + smoothing, sampled_texture.a);
-
-			vec4 sdf_texture = vec4(sampled_texture.rgb, outline_factor);
-	        out_color = sdf_texture * fragment_color;
-        }
-    )";
-
-constexpr char sdf_outline_fragment_shader[] = R"(
-        #version 410 core
-
-		// best sharpness = 0.25 / (spread * scale)
-		// = 0.25 / (4 * 1)
-		const float smoothing = 1.0 / 16.0;
-
-		// Between 0 and 0.5, 0 = thick outline, 0.5 = no outline
-		const float outline_distance = 0.4;
-
-		// outline will always be black for now, can change later
-		const vec4 outline_color = vec4(0.0, 0.0, 0.0, 1.0);
-
-		uniform sampler2D texture_sample;
-
-        in vec4 fragment_color;
-		in vec2 fragment_uv;
-
-		layout (location = 0) out vec4 out_color;
-
-        void main()
-		{
-			vec4 sampled_texture = texture(texture_sample, fragment_uv.st);
-
-			float distance = sampled_texture.a;
-			float outline_factor = smoothstep(0.5 - smoothing, 0.5 + smoothing, distance);
-
-			vec4 color = mix(outline_color, sampled_texture, outline_factor);
-			float alpha = smoothstep(outline_distance - smoothing, outline_distance + smoothing, distance);
-
-			vec4 sdf_texture = vec4(color.rgb, alpha);
-	        out_color = sdf_texture * fragment_color;
-        }
-    )";
-}  // namespace
 
 render_api::render_api(const std::weak_ptr<render_api_data_t>& render_api_data, bool flush_buffers)
 	: render_api_base(flush_buffers)
@@ -129,9 +34,17 @@ render_api::render_api(const std::weak_ptr<render_api_data_t>& render_api_data, 
 	lib_log_d("renderer:: opengl version {}.{}", major, minor);
 
 	// setup shaders
-	_normal_shader.create(vertex_shader, normal_fragment_shader);
-	_sdf_shader.create(vertex_shader, sdf_fragment_shader);
-	_sdf_outline_shader.create(vertex_shader, sdf_outline_fragment_shader);
+	_normal_shader.create(
+		gl3::shaders::basic_shader_vert,
+		gl3::shaders::normal_shader_frag);
+
+	_sdf_shader.create(
+		gl3::shaders::basic_shader_vert,
+		gl3::shaders::sdf_shader_frag);
+
+	_sdf_outline_shader.create(
+		gl3::shaders::basic_shader_vert,
+		gl3::shaders::outline_shader_frag);
 
 	_render_state.capture();
 

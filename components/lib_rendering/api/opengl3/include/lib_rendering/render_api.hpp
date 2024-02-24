@@ -23,9 +23,9 @@ public:
 private:
 	gl3::render_state _render_state = {};
 
-	gl3::shaders _normal_shader = {};
-	gl3::shaders _sdf_shader = {};
-	gl3::shaders _sdf_outline_shader = {};
+	gl3::shader_module _normal_shader = {};
+	gl3::shader_module _sdf_shader = {};
+	gl3::shader_module _sdf_outline_shader = {};
 
 	GLuint _vertex_array = 0;
 	GLuint _vertex_buffer = 0;

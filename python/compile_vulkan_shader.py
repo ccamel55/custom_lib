@@ -12,6 +12,12 @@ output_file_extension = "hpp"
 def bin_to_array(data, namespace, var_name) -> str:
     out = list()
 
+    # print warning message
+    out.append("/* \n"
+               "    This file has been generated automatically by compile_vulkan_shader.py\n"
+               "    Do not modify this file directly.\n"
+               "*/")
+
     # define namespace
     out.append("#pragma once")
     out.append("")
@@ -40,19 +46,19 @@ def bin_to_array(data, namespace, var_name) -> str:
 def main():
     parsed_arguments = argparse.ArgumentParser()
 
-    parsed_arguments.add_argument("-i", "--shader_in",
-                                  help="Input shader directory.", required=True)
+    parsed_arguments.add_argument("-i", "--input_directory",
+                                  help="Input directory.", required=True)
 
-    parsed_arguments.add_argument("-o", "--header_out",
-                                  help="Output shader directory.", required=True)
+    parsed_arguments.add_argument("-o", "--output_directory",
+                                  help="Output directory.", required=True)
 
     parsed_arguments.add_argument("-n", "--namespace",
-                                  help="Namespace the generated array belongs to", required=True)
+                                  help="Namespace the generated string belongs to", required=True)
 
     args = parsed_arguments.parse_args()
 
-    input_dir = args.shader_in
-    output_dir = args.header_out
+    input_dir = args.input_directory
+    output_dir = args.output_directory
 
     if not os.path.isdir(input_dir):
         print(f'Input {input_dir} is not a directory', file=sys.stderr)
@@ -76,6 +82,9 @@ def main():
 
         compiled_shader_path = f'{output_dir}/{generated_file_name}.spv'
         parsed_shader_path = f'{output_dir}/{generated_file_name}.{output_file_extension}'
+
+        if os.path.exists(parsed_shader_path):
+            os.remove(parsed_shader_path)
 
         # compile each fragment/vertex shader
         compile_shader_arg = ["glslc", f'{input_dir}/{file}', "-o", compiled_shader_path]

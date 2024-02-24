@@ -37,7 +37,7 @@ const auto compile_shader = [](const char* shader_src, GLuint shader_type) -> GL
 };
 }  // namespace
 
-void shaders::create(const char* vertex_shader, const char* fragment_shader)
+void shader_module::create(const char* vertex_shader, const char* fragment_shader)
 {
 	if (_shader_program_id != 0)
 	{
@@ -63,17 +63,17 @@ void shaders::create(const char* vertex_shader, const char* fragment_shader)
 	glDeleteShader(fragment_shader_id);
 }
 
-shaders::~shaders()
+shader_module::~shader_module()
 {
 	glDeleteProgram(_shader_program_id);
 }
 
-void shaders::bind() const
+void shader_module::bind() const
 {
 	glUseProgram(_shader_program_id);
 }
 
-GLint shaders::get_attribute_location(const char* attribute) const
+GLint shader_module::get_attribute_location(const char* attribute) const
 {
 	return glGetUniformLocation(_shader_program_id, attribute);
 }

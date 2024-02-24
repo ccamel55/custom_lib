@@ -1,14 +1,13 @@
 #pragma once
 
-#include "glad/glad.hpp"
-#include <string>
+#include <glad/glad.hpp>
 
 namespace lib::rendering::gl3
 {
-class shaders
+class shader_module
 {
 public:
-	~shaders();
+	~shader_module();
 
 	void create(const char* vertex_shader, const char* fragment_shader);
 	void bind() const;

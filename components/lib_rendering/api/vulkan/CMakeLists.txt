@@ -39,7 +39,7 @@ lib_sub_component(
 add_custom_target(
     compile_shaders ALL
     COMMAND
-        ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/python/compile_vulkan_shaders.py
+        ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/python/compile_vulkan_shader.py
         -i ${CMAKE_CURRENT_LIST_DIR}/shaders
         -o ${CMAKE_CURRENT_LIST_DIR}/include/lib_rendering/shaders
         -n lib::rendering::vulkan::shaders
