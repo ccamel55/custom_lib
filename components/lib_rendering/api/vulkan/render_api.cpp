@@ -1017,8 +1017,9 @@ void render_api::init_graphics_pipeline()
 		rasterization_state_create_info.polygonMode = vk::PolygonMode::eFill;
 		rasterization_state_create_info.lineWidth = 1.f;
 
-		// disable culling
-		rasterization_state_create_info.cullMode = vk::CullModeFlagBits::eNone;
+		// enable backface culling, front face is clockwise
+		// only show front, front faces are represented by clock wise rotation,
+		rasterization_state_create_info.cullMode = vk::CullModeFlagBits::eBack;
 		rasterization_state_create_info.frontFace = vk::FrontFace::eClockwise;
 
 		// disable depth bias, we don't gaf about depth values now since we dont do anything with them
