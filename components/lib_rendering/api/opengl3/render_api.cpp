@@ -1,4 +1,8 @@
 #include <lib_rendering/render_api.hpp>
+
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+
 #include <cassert>
 
 // this file is a fucking mess, but it works and it works efficiently so eat poo
@@ -214,17 +218,12 @@ void render_api::update_screen_size(const lib::point2Di& window_size)
 	// save a copy of window size for us to use later
 	_window_size = window_size;
 
-	// update our projection matrix :P im lazy so we using IMGUi's matrix
-	const auto w = static_cast<float>(window_size.x);
-	const auto h = static_cast<float>(window_size.y);
-
 	// orthographic projection matrix, very swag i know
-	const float projection_matrix[4][4] = {
-		{2.f / w,	0.f,		0.f,	0.f},
-		{0.f,		-2.f / h,	0.f,	0.f},
-		{0.f,		0.f,		-1.f,	0.f},
-		{-1.f,	1.f,		0.f,	1.f},
-	};
+	const auto projection_matrix = glm::ortho(
+		0.f,
+		static_cast<float>(window_size.x),
+		static_cast<float>(window_size.y),
+		0.f);
 
 	// bind uniforms n shit to our shader
 	GLuint last_program = 0;
