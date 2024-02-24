@@ -7,8 +7,7 @@
 #if WIN32
 #define VK_USE_PLATFORM_WIN32_KHR
 #elif APPLE
-// todo, find wtf apple uses with GLFW, I assume metal??
-#error "Add vulkan apple implementation"
+#define VK_USE_PLATFORM_MACOS_MVK
 #endif
 
 // disable no discard, asserts sometimes fuck up parameters on release?
@@ -17,8 +16,6 @@
 
 #include <vk_mem_alloc.h>
 #include <vulkan/vulkan.hpp>
-
-#include <optional>
 
 namespace lib::rendering
 {

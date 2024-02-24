@@ -15,6 +15,7 @@ lib_component(lib_core
     INCLUDES
         include
     LINK_LIBS
+		cxxopts
         fmt::fmt
-        cxxopts
+		glm::glm
 )

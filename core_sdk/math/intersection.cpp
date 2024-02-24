@@ -1,5 +1,8 @@
 #include <core_sdk/math/intersection.hpp>
 
+#include <glm/glm.hpp>
+#include <glm/gtx/norm.hpp>
+
 using namespace lib::math;
 
 bool lib::math::does_intersect_plane(
@@ -8,7 +11,7 @@ bool lib::math::does_intersect_plane(
     const vector3D& plane_normal)
 {
     // check the diretion of the
-    const auto ray_normal_dot = ray.direction.dot(plane_normal);
+    const auto ray_normal_dot = glm::dot(ray.direction, plane_normal);
 
     if (ray_normal_dot <= std::numeric_limits<float>::epsilon())
     {
@@ -16,7 +19,7 @@ bool lib::math::does_intersect_plane(
     }
 
     // distance the ray must travel to intersect the plane
-    const auto t = ((plane_origin - ray.origin).dot(plane_normal)) / ray_normal_dot;
+    const auto t = glm::dot(plane_origin - ray.origin, plane_normal) / ray_normal_dot;
     return t <= ray.scalar;
 }
 
@@ -68,8 +71,8 @@ bool lib::math::does_interset_traingle(
 
     // then find the perpindicular angle between our ray and one of these angles and find the distance from to the
     // last corner
-    const auto p_vec = ray.direction.cross(v1);
-    const auto determinant = v0.dot(p_vec);
+    const auto p_vec = glm::cross(ray.direction, v1);
+    const auto determinant = glm::dot(v0, p_vec);
 
     if (determinant <= std::numeric_limits<float>::epsilon())
     {
@@ -79,22 +82,22 @@ bool lib::math::does_interset_traingle(
     const auto determinant_inverse = 1.f / determinant;
 
     const auto t_vec = vector3D(ray.origin - a);
-    const auto u = t_vec.dot(p_vec) * determinant_inverse;
+    const auto u = glm::dot(t_vec, p_vec) * determinant_inverse;
 
     if (u < 0.f || u > 1.f)
     {
         return false;
     }
 
-    const auto q_vec  = t_vec.cross(v0);
-    const auto v = ray.direction.dot(q_vec) * determinant_inverse;
+    const auto q_vec  = glm::cross(t_vec, v0);
+    const auto v = glm::dot(ray.direction, q_vec) * determinant_inverse;
 
     if (v < 0.f || u + v > 1.f)
     {
         return false;
     }
 
-    const auto t = v1.dot(q_vec) * determinant_inverse;
+    const auto t = glm::dot(v1, q_vec) * determinant_inverse;
     return t <= ray.scalar;
 }
 
@@ -106,7 +109,7 @@ bool lib::math::does_intersect_disk(
 {
     // perform a ray plane intersection test, then derive if a ray lives inside a circle by solving for the radius
     // of the intersection point relative to the plane's origin
-    const auto ray_normal_dot = ray.direction.dot(plane_normal);
+    const auto ray_normal_dot = glm::dot(ray.direction, plane_normal);
 
     if (ray_normal_dot <= std::numeric_limits<float>::epsilon())
     {
@@ -114,10 +117,10 @@ bool lib::math::does_intersect_disk(
     }
 
     // distance the ray must travel to intersect the plane
-    const auto t = ((plane_origin - ray.origin).dot(plane_normal)) / ray_normal_dot;
+    const auto t = glm::dot(plane_origin - ray.origin, plane_normal) / ray_normal_dot;
     const auto p = ray.origin + (ray.direction * t);
 
-    return vector3D(p - plane_origin).length_sqr() <= radius * radius;
+    return glm::length2(p - plane_origin) <= radius * radius;
 }
 
 bool lib::math::does_intersect_sphere(
@@ -126,12 +129,12 @@ bool lib::math::does_intersect_sphere(
     float radius)
 {
     // t is the distance between the sphere origin and the ray.
-    const auto t = (sphere_origin - ray.origin).dot(ray.direction);
+    const auto t = glm::dot(sphere_origin - ray.origin, ray.direction);
     const auto p = ray.origin + (ray.direction * t);
 
     // to find t1 and t2 (first and second intersection points) we need to find x and y in x^2 + y^2 = r^2.
     // x = +- sqrt(r^2  - y^2), y = (s - ray.point).length
-    const auto y = vector3D(sphere_origin - p).length_sqr();
+    const auto y = glm::length2(sphere_origin - p);
     const auto r2 = radius * radius;
 
     // if we are to far from the radius then BYE BYE
@@ -164,11 +167,11 @@ bool lib::math::does_intersect_capsule(
         const auto v = k2 - k1;
         const auto w = s1 - k1;
 
-        const float a = u.dot(u);
-        const float b = u.dot(v);
-        const float c = v.dot(v);
-        const float d = u.dot(w);
-        const float e = v.dot(w);
+        const float a = glm::dot(u, u);
+        const float b = glm::dot(u, v);
+        const float c = glm::dot(v, v);
+        const float d = glm::dot(u, w);
+        const float e = glm::dot(v, w);
 
         const float D = a * c - b * b;
         float sN, sD = D;
@@ -240,10 +243,10 @@ bool lib::math::does_intersect_capsule(
         const auto sc = (abs(sN) < std::numeric_limits<float>::epsilon() ? 0.f : sN / sD);
         const auto tc = (abs(tN) < std::numeric_limits<float>::epsilon() ? 0.f : tN / tD);
 
-        return vector3D(w + (u * sc) - (v * tc)).length();
+        return glm::length2(w + (u * sc) - (v * tc));
     };
 
-    return distance_segment_to_segment(ray.origin, ray.get_point(), a, b) < radius;
+    return distance_segment_to_segment(ray.origin, ray.get_point(), a, b) < radius * radius;
 }
 
 

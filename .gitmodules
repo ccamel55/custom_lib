@@ -19,3 +19,6 @@
 [submodule "components/lib_rendering/api/vulkan/dependencies/VulkanMemoryAllocator"]
 	path = components/lib_rendering/api/vulkan/dependencies/VulkanMemoryAllocator
 	url = git@github.com:GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
+[submodule "dependencies/glm"]
+	path = dependencies/glm
+	url = git@github.com:g-truc/glm.git

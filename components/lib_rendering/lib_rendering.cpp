@@ -7,6 +7,8 @@
 #include <core_sdk/logger.hpp>
 #include <core_sdk/types/vector/vector2D.hpp>
 
+#include "glm/ext/quaternion_geometric.hpp"
+
 using namespace lib::rendering;
 
 renderer::renderer(const std::weak_ptr<render_api_data_t>& render_api_data, bool flush_buffers)
@@ -174,9 +176,9 @@ void renderer::draw_image(const lib::point2Di& pos,
 void renderer::draw_line(const lib::point2Di& p1, const lib::point2Di& p2, const lib::color& color, float thickness)
 {
 	// get direction of line and scale to thickness
-	auto dir = lib::vector2D(
+	auto dir = glm::normalize(lib::vector2D(
 		static_cast<float>(p2.x - p1.x),
-		static_cast<float>(p2.y - p1.y)).normalised();
+		static_cast<float>(p2.y - p1.y)));
 
 	dir *= (thickness * 0.5f);
 

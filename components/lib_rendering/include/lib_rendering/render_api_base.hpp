@@ -7,7 +7,7 @@
 namespace lib::rendering
 {
 // defaults
-inline constexpr lib::point2Di default_window_size = lib::point2Di{1280, 720};
+inline const static lib::point2Di default_window_size = lib::point2Di{1280, 720};
 inline constexpr uint8_t texture_pixel_size = 4;
 
 static_assert(sizeof(uint32_t) == texture_pixel_size);

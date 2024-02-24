@@ -1,7 +1,6 @@
 #include <lib_window_creation/helpers.hpp>
 
 #include <unordered_set>
-#include <map>
 #include <ranges>
 
 using namespace lib::window_creation;
