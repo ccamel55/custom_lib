@@ -77,3 +77,9 @@ GLint shader_module::get_attribute_location(const char* attribute) const
 {
 	return glGetUniformLocation(_shader_program_id, attribute);
 }
+
+void shader_module::bind_uniform_block(GLuint binding, const char* block_name) const
+{
+	const auto uniform_block_index = glGetUniformBlockIndex(_shader_program_id, block_name);
+	glUniformBlockBinding(_shader_program_id, uniform_block_index, binding);
+}

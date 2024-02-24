@@ -8,7 +8,8 @@ void render_state::capture()
 	glGetIntegerv(GL_CURRENT_PROGRAM, reinterpret_cast<GLint*>(&_last_program));
 	glGetIntegerv(GL_TEXTURE_BINDING_2D, reinterpret_cast<GLint*>(&_last_texture));
 	glGetIntegerv(GL_ARRAY_BUFFER_BINDING, reinterpret_cast<GLint*>(&_last_array_buffer));
-	glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER, reinterpret_cast<GLint*>(&_last_index_buffer));
+	glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, reinterpret_cast<GLint*>(&_last_index_buffer));
+	glGetIntegerv(GL_UNIFORM_BUFFER_BINDING, reinterpret_cast<GLint*>(&_last_uniform_buffer));
 	glGetIntegerv(GL_VERTEX_ARRAY_BINDING, reinterpret_cast<GLint*>(&_last_vertex_array_object));
 	glGetIntegerv(GL_FRAMEBUFFER_BINDING, reinterpret_cast<GLint*>(&_last_frame_buffer));
 
@@ -39,6 +40,7 @@ void render_state::restore() const
 	glBindVertexArray(_last_vertex_array_object);
 	glBindBuffer(GL_ARRAY_BUFFER, _last_array_buffer);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _last_index_buffer);
+	glBindBuffer(GL_UNIFORM_BUFFER, _last_uniform_buffer);
 	glBindFramebuffer(GL_FRAMEBUFFER, _last_frame_buffer);
 
 	glBlendEquationSeparate(_last_blend_equation_rgb, _last_blend_equation_alpha);

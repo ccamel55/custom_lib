@@ -13,6 +13,7 @@ public:
 	void bind() const;
 
 	GLint get_attribute_location(const char* attribute) const;
+	void bind_uniform_block(GLuint binding, const char* block_name) const;
 
 private:
 	GLuint _shader_program_id = 0;

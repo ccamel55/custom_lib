@@ -7,7 +7,7 @@
 #include <core_sdk/logger.hpp>
 #include <core_sdk/types/vector/vector2D.hpp>
 
-#include "glm/ext/quaternion_geometric.hpp"
+#include <glm/ext/quaternion_geometric.hpp>
 
 using namespace lib::rendering;
 

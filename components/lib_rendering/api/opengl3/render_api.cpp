@@ -51,6 +51,7 @@ render_api::render_api(const std::weak_ptr<render_api_data_t>& render_api_data, 
 	// generate buffers
 	glGenBuffers(1, &_vertex_buffer);
 	glGenBuffers(1, &_index_buffer);
+	glGenBuffers(1, &_uniform_buffer);
 
 	// bind attributes to our vertex array object
 	glGenVertexArrays(1, &_vertex_array);
@@ -58,9 +59,11 @@ render_api::render_api(const std::weak_ptr<render_api_data_t>& render_api_data, 
 	{
 		glBindBuffer(GL_ARRAY_BUFFER, _vertex_buffer);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _index_buffer);
+		glBindBuffer(GL_UNIFORM_BUFFER, _uniform_buffer);
 
 		glBufferData(GL_ARRAY_BUFFER, MAX_VERTICES * sizeof(vertex_t), nullptr, GL_DYNAMIC_DRAW);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, MAX_INDICES * sizeof(uint32_t), nullptr, GL_DYNAMIC_DRAW);
+		glBufferData(GL_UNIFORM_BUFFER, sizeof(gl3::uniform_buffer_object_t), nullptr, GL_DYNAMIC_DRAW);
 
 		// position
 		glEnableVertexAttribArray(0);
@@ -81,12 +84,15 @@ render_api::render_api(const std::weak_ptr<render_api_data_t>& render_api_data, 
 	// bind texture sampler
 	{
 		_normal_shader.bind();
+		_normal_shader.bind_uniform_block(0, "uniform_buffer_object_t");
 		glUniform1i(_normal_shader.get_attribute_location("texture_sample"), 0);
 
 		_sdf_shader.bind();
+		_sdf_shader.bind_uniform_block(0, "uniform_buffer_object_t");
 		glUniform1i(_sdf_shader.get_attribute_location("texture_sample"), 0);
 
 		_sdf_outline_shader.bind();
+		_sdf_outline_shader.bind_uniform_block(0, "uniform_buffer_object_t");
 		glUniform1i(_sdf_outline_shader.get_attribute_location("texture_sample"), 0);
 	}
 
@@ -102,6 +108,7 @@ render_api::~render_api()
 
 	glDeleteBuffers(1, &_vertex_buffer);
 	glDeleteBuffers(1, &_index_buffer);
+	glDeleteBuffers(1, &_uniform_buffer);
 
 	glDeleteVertexArrays(1, &_vertex_array);
 }
@@ -131,46 +138,15 @@ void render_api::update_screen_size(const lib::point2Di& window_size)
 	// save a copy of window size for us to use later
 	_window_size = window_size;
 
-	// orthographic projection matrix, very swag i know
-	const auto projection_matrix = glm::ortho(
+	// update projection and view matrix, model matrix can be instance speicifc
+	_uniform_buffer_object.projection_matrix = glm::ortho(
 		0.f,
 		static_cast<float>(window_size.x),
 		static_cast<float>(window_size.y),
 		0.f);
 
-	// bind uniforms n shit to our shader
-	GLuint last_program = 0;
-	glGetIntegerv(GL_CURRENT_PROGRAM, reinterpret_cast<GLint*>(&last_program));
-
-	// update all three shaders
-	{
-		_normal_shader.bind();
-		glUniformMatrix4fv(
-			_normal_shader.get_attribute_location("projection_matrix"),
-			1,
-			GL_FALSE,
-			&projection_matrix[0][0]);
-	}
-
-	{
-		_sdf_shader.bind();
-		glUniformMatrix4fv(
-			_sdf_shader.get_attribute_location("projection_matrix"),
-			1,
-			GL_FALSE,
-			&projection_matrix[0][0]);
-	}
-
-	{
-		_sdf_outline_shader.bind();
-		glUniformMatrix4fv(
-			_sdf_outline_shader.get_attribute_location("projection_matrix"),
-			1,
-			GL_FALSE,
-			&projection_matrix[0][0]);
-	}
-
-	glUseProgram(last_program);
+	// load identity matrix for now, we can fuck with this later
+	_uniform_buffer_object.view_matrix = glm::mat4(1.f);
 }
 
 void render_api::draw(const render_command& render_command)
@@ -210,6 +186,7 @@ void render_api::draw(const render_command& render_command)
 
 	glBindBuffer(GL_ARRAY_BUFFER, _vertex_buffer);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _index_buffer);
+	glBindBuffer(GL_UNIFORM_BUFFER, _uniform_buffer);
 
 	glBufferSubData(
 		GL_ARRAY_BUFFER,
@@ -223,12 +200,20 @@ void render_api::draw(const render_command& render_command)
 		static_cast<GLsizeiptr>(render_command.index_count * sizeof(uint32_t)),
 		render_command.indices.data());
 
+	glBindBufferRange(
+		GL_UNIFORM_BUFFER,
+		0,
+		_uniform_buffer,
+		0,
+		sizeof(gl3::uniform_buffer_object_t));
+
 	// bind our atlas, every texture should live on the atlas
 	glBindTexture(GL_TEXTURE_2D, _texture_atlas);
 
 	for (uint32_t i = 0; i < render_command.batch_count; i++)
 	{
 		const auto& batch = render_command.batches.at(i);
+		_uniform_buffer_object.model_matrix = batch.model_matrix;
 
 		switch (batch.shader)
 		{
@@ -242,6 +227,12 @@ void render_api::draw(const render_command& render_command)
 			_sdf_outline_shader.bind();
 			break;
 		}
+
+		glBufferSubData(
+			GL_UNIFORM_BUFFER,
+			0,
+			sizeof(gl3::uniform_buffer_object_t),
+			&_uniform_buffer_object);
 
 		// x and y represent the bottom left corner, we give x and y as the top right corner
 		glScissor(
