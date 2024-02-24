@@ -163,10 +163,14 @@ void render_api::draw(const render_command& render_command)
 	// set up our own render state
 	glEnable(GL_BLEND);
 	glEnable(GL_SCISSOR_TEST);
+	glEnable(GL_CULL_FACE);
 
-	glDisable(GL_CULL_FACE);
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_STENCIL_TEST);
+
+	// only show front, front faces are represented by clock wise rotation,
+	glCullFace(GL_BACK);
+	glFrontFace(GL_CW);
 
 	glBlendEquation(GL_FUNC_ADD);
 	glBlendFuncSeparate(

@@ -13,6 +13,9 @@ void render_state::capture()
 	glGetIntegerv(GL_VERTEX_ARRAY_BINDING, reinterpret_cast<GLint*>(&_last_vertex_array_object));
 	glGetIntegerv(GL_FRAMEBUFFER_BINDING, reinterpret_cast<GLint*>(&_last_frame_buffer));
 
+	glGetIntegerv(GL_CULL_FACE_MODE, reinterpret_cast<GLint*>(&_last_cull_face));
+	glGetIntegerv(GL_FRONT_FACE, reinterpret_cast<GLint*>(&_last_front_face));
+
 	glGetIntegerv(GL_VIEWPORT, _last_viewport);
 	glGetIntegerv(GL_SCISSOR_BOX, _last_scissor_box);
 
@@ -42,6 +45,9 @@ void render_state::restore() const
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _last_index_buffer);
 	glBindBuffer(GL_UNIFORM_BUFFER, _last_uniform_buffer);
 	glBindFramebuffer(GL_FRAMEBUFFER, _last_frame_buffer);
+
+	glCullFace(_last_cull_face);
+	glFrontFace(_last_front_face);
 
 	glBlendEquationSeparate(_last_blend_equation_rgb, _last_blend_equation_alpha);
 	glBlendFuncSeparate(_last_blend_src_rgb, _last_blend_dst_rgb, _last_blend_src_alpha, _last_blend_dst_alpha);
