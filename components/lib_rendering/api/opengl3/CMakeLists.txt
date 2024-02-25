@@ -1,5 +1,3 @@
-add_subdirectory(dependencies/glad)
-
 lib_sub_component(
     PARENT
         lib_rendering
