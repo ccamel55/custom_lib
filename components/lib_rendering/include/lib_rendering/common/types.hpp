@@ -55,6 +55,18 @@ enum class shader_type: uint8_t
 	sdf_outline,
 };
 
+//! Order of these matricies is important, do not change without also chaning representation in render api.
+struct uniform_buffer_object_t
+{
+	glm::mat4 projection_matrix = {1.f};
+	glm::mat4 view_matrix = {1.f};
+	glm::mat4 model_matrix = {1.f};
+};
+
+static_assert(offsetof(uniform_buffer_object_t, projection_matrix) == 0);
+static_assert(offsetof(uniform_buffer_object_t, view_matrix) == sizeof(glm::mat4));
+static_assert(offsetof(uniform_buffer_object_t, model_matrix) == sizeof(glm::mat4) * 2);
+
 struct batch_t
 {
 	batch_t() = default;
@@ -73,9 +85,6 @@ struct batch_t
 
 	// what shader we should be using
 	shader_type shader = shader_type::normal;
-
-	// default to identity matrix
-	glm::mat4 model_matrix = {1.f};
 };
 
 struct texture_properties_t

@@ -24,7 +24,6 @@ renderer::renderer(const std::weak_ptr<render_api_data_t>& render_api_data, bool
 renderer::~renderer()
 {
 	_render_api.reset();
-	_render_command.reset();
 	_atlas_generator.reset();
 }
 
@@ -97,6 +96,10 @@ void renderer::draw_frame()
 
 	_last_frame_time = frame_start_time;
 
+	// flush command, reset states back to default
+	_render_command.start_new(_window_size);
+	_clipped_area = {0, 0, _window_size.x, _window_size.y};
+
 	// popluate the draw command
 	for (const auto& callback : _render_callbacks)
 	{
@@ -105,10 +108,6 @@ void renderer::draw_frame()
 
 	// get our render api to draw our vertices
 	_render_api->draw(_render_command);
-
-	// flush command, reset states back to default
-	_clipped_area = {0, 0, _window_size.x, _window_size.y};
-	_render_command.reset();
 }
 
 float renderer::get_frame_time_ms() const

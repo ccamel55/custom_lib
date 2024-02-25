@@ -25,23 +25,16 @@ namespace vulkan
 {
 constexpr uint8_t max_frames_in_flight = 2;
 
+constexpr uint16_t ubo_data_size_bytes = sizeof(glm::mat4) * 2;
+constexpr uint16_t push_constant_data_size_bytes = sizeof(glm::mat4);
+
+static_assert(ubo_data_size_bytes + push_constant_data_size_bytes == sizeof(uniform_buffer_object_t));
+
 struct swapchain_support_details_t
 {
     vk::SurfaceCapabilitiesKHR capabilities = {};
     std::vector<vk::SurfaceFormatKHR> formats = {};
     std::vector<vk::PresentModeKHR> present_modes = {};
-};
-
-// note: careful because vulkan expects shit to be aligned in a certain way depending on type
-struct uniform_buffer_object_t
-{
-    glm::mat4 projection_matrix = {1.f};
-    glm::mat4 view_matrix = {1.f};
-};
-
-struct push_constants_t
-{
-    glm::mat4 model_matrix = {1.f};
 };
 }
 
@@ -119,7 +112,6 @@ private:
 
     // render class crap
     vk::Viewport _viewport = {};
-    vulkan::uniform_buffer_object_t _unifrom_buffer_object = {};
 
     vk::DescriptorSetLayout _descriptor_set_layout = {};
     vk::DescriptorPool _descriptor_pool = {};

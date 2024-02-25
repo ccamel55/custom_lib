@@ -12,8 +12,9 @@ class render_command
 	friend class render_api;
 
 public:
-	//! called at the start or end of each frame to reset internal counters
-	void reset();
+	//! called before starting a new render command, this will clear previous data and setup
+	//! the ubo to render to our screen
+	void start_new(const lib::point2Di& screen_size);
 
 	//! 1) called first
 	//! add currently written vertices and indices to a render batch
@@ -29,6 +30,12 @@ public:
 	std::array<uint32_t, MAX_INDICES>::iterator insert_indices(uint32_t size);
 
 private:
+	//todo: refactor how batches etc are handled, move this out of here
+	// - support multiple render commands,
+	// - render_api allocates memory for vertices and indicies etc, this class will write to them directly
+	// - we should be able to modify projection and view matrix seperate from render command
+	uniform_buffer_object_t ubo = {};
+
 	uint32_t vertex_count = 0;
 	std::array<vertex_t, MAX_VERTICES> vertices = {};
 
