@@ -137,10 +137,10 @@ void renderer::draw_image(const lib::point2Di& pos,
 	const auto vertex_index = _render_command.prepare_batch(_clipped_area, shader_type::normal);
 	const auto vertex_iterator = _render_command.insert_vertices(4);
 
-	vertex_iterator[0].position = {pos.x, pos.y};
-	vertex_iterator[1].position = {pos.x + size.x, pos.y};
-	vertex_iterator[2].position = {pos.x + size.x, pos.y + size.y};
-	vertex_iterator[3].position = {pos.x, pos.y + size.y};
+	vertex_iterator[0].position = {pos.x, pos.y, DEFAULT_2D_Z_DEPTH};
+	vertex_iterator[1].position = {pos.x + size.x, pos.y, DEFAULT_2D_Z_DEPTH};
+	vertex_iterator[2].position = {pos.x + size.x, pos.y + size.y, DEFAULT_2D_Z_DEPTH};
+	vertex_iterator[3].position = {pos.x, pos.y + size.y, DEFAULT_2D_Z_DEPTH};
 
 	const auto& texture_properties = _atlas_generator.get_texture_properties(texture_id);
 
@@ -185,10 +185,10 @@ void renderer::draw_line(const lib::point2Di& p1, const lib::point2Di& p2, const
 	const auto vertex_index = _render_command.prepare_batch(_clipped_area, shader_type::normal);
 	const auto vertex_iterator = _render_command.insert_vertices(4);
 
-	vertex_iterator[0].position = {static_cast<float>(p1.x) + dir.y, static_cast<float>(p1.y) - dir.x};
-	vertex_iterator[1].position = {static_cast<float>(p2.x) + dir.y, static_cast<float>(p2.y) - dir.x};
-	vertex_iterator[2].position = {static_cast<float>(p2.x) - dir.y, static_cast<float>(p2.y) + dir.x};
-	vertex_iterator[3].position = {static_cast<float>(p1.x) - dir.y, static_cast<float>(p1.y) + dir.x};
+	vertex_iterator[0].position = {static_cast<float>(p1.x) + dir.y, static_cast<float>(p1.y) - dir.x, DEFAULT_2D_Z_DEPTH};
+	vertex_iterator[1].position = {static_cast<float>(p2.x) + dir.y, static_cast<float>(p2.y) - dir.x, DEFAULT_2D_Z_DEPTH};
+	vertex_iterator[2].position = {static_cast<float>(p2.x) - dir.y, static_cast<float>(p2.y) + dir.x, DEFAULT_2D_Z_DEPTH};
+	vertex_iterator[3].position = {static_cast<float>(p1.x) - dir.y, static_cast<float>(p1.y) + dir.x, DEFAULT_2D_Z_DEPTH};
 
 	const auto& texture_properties = _atlas_generator.get_texture_properties(_opaque_texture_id);
 
@@ -235,9 +235,9 @@ void renderer::draw_triangle_filled(const lib::point2Di& p1,
 	const auto vertex_index = _render_command.prepare_batch(_clipped_area, shader_type::normal);
 	const auto vertex_iterator = _render_command.insert_vertices(3);
 
-	vertex_iterator[0].position = {static_cast<float>(p1.x), static_cast<float>(p1.y)};
-	vertex_iterator[1].position = {static_cast<float>(p2.x), static_cast<float>(p2.y)};
-	vertex_iterator[2].position = {static_cast<float>(p3.x), static_cast<float>(p3.y)};
+	vertex_iterator[0].position = {static_cast<float>(p1.x), static_cast<float>(p1.y), DEFAULT_2D_Z_DEPTH};
+	vertex_iterator[1].position = {static_cast<float>(p2.x), static_cast<float>(p2.y), DEFAULT_2D_Z_DEPTH};
+	vertex_iterator[2].position = {static_cast<float>(p3.x), static_cast<float>(p3.y), DEFAULT_2D_Z_DEPTH};
 
 	const auto& texture_properties = _atlas_generator.get_texture_properties(_opaque_texture_id);
 
@@ -301,10 +301,10 @@ void renderer::draw_rect_gradient_filled(const lib::point2Di& pos,
 	const auto vertex_index = _render_command.prepare_batch(_clipped_area, shader_type::normal);
 	const auto vertex_iterator = _render_command.insert_vertices(4);
 
-	vertex_iterator[0].position = {pos.x, pos.y};
-	vertex_iterator[1].position = {pos.x + size.x, pos.y};
-	vertex_iterator[2].position = {pos.x + size.x, pos.y + size.y};
-	vertex_iterator[3].position = {pos.x, pos.y + size.y};
+	vertex_iterator[0].position = {pos.x, pos.y, DEFAULT_2D_Z_DEPTH};
+	vertex_iterator[1].position = {pos.x + size.x, pos.y, DEFAULT_2D_Z_DEPTH};
+	vertex_iterator[2].position = {pos.x + size.x, pos.y + size.y, DEFAULT_2D_Z_DEPTH};
+	vertex_iterator[3].position = {pos.x, pos.y + size.y, DEFAULT_2D_Z_DEPTH};
 
 	const auto& texture_properties = _atlas_generator.get_texture_properties(_opaque_texture_id);
 
@@ -398,10 +398,10 @@ void renderer::draw_font(const lib::point2Di& pos,
 			const auto char_pos = current_pos + font_property.offset;
 			const auto size = texture_property.size_pixel;
 
-			vertex_iterator[0].position = {char_pos.x, char_pos.y};
-			vertex_iterator[1].position = {char_pos.x + size.x, char_pos.y};
-			vertex_iterator[2].position = {char_pos.x + size.x, char_pos.y + size.y};
-			vertex_iterator[3].position = {char_pos.x, char_pos.y + size.y};
+			vertex_iterator[0].position = {char_pos.x, char_pos.y, DEFAULT_2D_Z_DEPTH};
+			vertex_iterator[1].position = {char_pos.x + size.x, char_pos.y, DEFAULT_2D_Z_DEPTH};
+			vertex_iterator[2].position = {char_pos.x + size.x, char_pos.y + size.y, DEFAULT_2D_Z_DEPTH};
+			vertex_iterator[3].position = {char_pos.x, char_pos.y + size.y, DEFAULT_2D_Z_DEPTH};
 
 			vertex_iterator[0].texture_position = texture_property.start_normalised;
 			vertex_iterator[2].texture_position = texture_property.end_normalised;

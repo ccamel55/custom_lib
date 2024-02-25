@@ -173,7 +173,7 @@ const auto get_vertex_attribute_descriptions = []() -> std::array<vk::VertexInpu
 
 			pos_description.binding = 0;
 			pos_description.location = 0;
-			pos_description.format = vk::Format::eR32G32Sfloat;
+			pos_description.format = vk::Format::eR32G32B32Sfloat;
 			pos_description.offset = offsetof(vertex_t, position);
 		}
 

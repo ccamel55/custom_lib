@@ -2,6 +2,7 @@
 
 #include <core_sdk/types/color.hpp>
 #include <core_sdk/types/point/point2D.hpp>
+#include <core_sdk/types/point/point3D.hpp>
 #include <core_sdk/types/point/point4D.hpp>
 
 #include <glm/mat4x4.hpp>
@@ -17,11 +18,14 @@ constexpr uint32_t MAX_VERTICES = 419430;
 //! defines the maximum number of indices we can draw at a time
 constexpr uint32_t MAX_INDICES = MAX_VERTICES * 3;
 
+//! Z depth of 2d items
+constexpr float DEFAULT_2D_Z_DEPTH = 0.f;
+
 //! layout of each point, we only draw using triangles
 struct vertex_t
 {
 	constexpr vertex_t() = default;
-	constexpr vertex_t(const lib::point2Df& position,
+	constexpr vertex_t(const lib::point3Df& position,
 			 const lib::color& color,
 			 const lib::point2Df& texture_position)
 		: position(position), color(color), texture_position(texture_position)
@@ -29,7 +33,7 @@ struct vertex_t
 	}
 
 	// 2 x float
-	lib::point2Df position = {};
+	lib::point3Df position = {};
 
 	// 4 x unsigned byte
 	lib::color color = {};
@@ -39,7 +43,7 @@ struct vertex_t
 };
 
 // ensure nothing funky happens on different architectures
-static_assert(sizeof(vertex_t) == 20);
+static_assert(sizeof(vertex_t) == 24);
 
 //! texture ID used to identify a texture and get it's properties
 using texture_id = uint32_t;

@@ -68,17 +68,32 @@ render_api::render_api(const std::weak_ptr<render_api_data_t>& render_api_data, 
 		// position
 		glEnableVertexAttribArray(0);
 		glVertexAttribPointer(
-			0, 2, GL_FLOAT, GL_FALSE, sizeof(vertex_t), reinterpret_cast<void*>(offsetof(vertex_t, position)));
+			0,
+			3,
+			GL_FLOAT,
+			GL_FALSE,
+			sizeof(vertex_t),
+			reinterpret_cast<void*>(offsetof(vertex_t, position)));
 
 		// color
 		glEnableVertexAttribArray(1);
 		glVertexAttribPointer(
-				1, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(vertex_t), reinterpret_cast<void*>(offsetof(vertex_t, color)));
+				1,
+				4,
+				GL_UNSIGNED_BYTE,
+				GL_TRUE,
+				sizeof(vertex_t),
+				reinterpret_cast<void*>(offsetof(vertex_t, color)));
 
 		// texture position
 		glEnableVertexAttribArray(2);
 		glVertexAttribPointer(
-			2, 2, GL_FLOAT, GL_FALSE, sizeof(vertex_t), reinterpret_cast<void*>(offsetof(vertex_t, texture_position)));
+			2,
+			2,
+			GL_FLOAT,
+			GL_FALSE,
+			sizeof(vertex_t),
+			reinterpret_cast<void*>(offsetof(vertex_t, texture_position)));
 	}
 
 	// bind texture sampler
