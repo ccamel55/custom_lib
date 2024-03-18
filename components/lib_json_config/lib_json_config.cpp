@@ -1,6 +1,6 @@
 #include <fmt/ostream.h>
 
-#include <core_sdk/logger.hpp>
+#include <core_sdk/logger/logger.hpp>
 #include <core_sdk/macros/string_macros.hpp>
 
 #include <lib_json_config/lib_json_config.hpp>

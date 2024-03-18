@@ -1,6 +1,6 @@
 #pragma once
 
-#include <core_sdk/logger.hpp>
+#include <core_sdk/logger/logger.hpp>
 #include <lib_rendering/common/render_command.hpp>
 #include <lib_rendering/common/types.hpp>
 

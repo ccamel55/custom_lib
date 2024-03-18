@@ -1,6 +1,6 @@
 #include <lib_threading/thread_pool/job_collection.hpp>
 
-#include <core_sdk/logger.hpp>
+#include <core_sdk/logger/logger.hpp>
 
 using namespace lib::threading;
 

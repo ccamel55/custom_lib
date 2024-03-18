@@ -1,7 +1,7 @@
 #include <lib_rendering/common/font_loader.hpp>
 #include <lib_rendering/render_api_base.hpp>
 
-#include <core_sdk/logger.hpp>
+#include <core_sdk/logger/logger.hpp>
 
 #define STB_TRUETYPE_IMPLEMENTATION
 #include <lib_rendering/common/stb/stb_truetype.hpp>

@@ -4,7 +4,7 @@
 #include <vector>
 #include <string>
 
-#include <core_sdk/logger.hpp>
+#include <core_sdk/logger/logger.hpp>
 
 namespace lib::scripts
 {

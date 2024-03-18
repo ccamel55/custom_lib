@@ -4,10 +4,7 @@
 #include <vector>
 #include <cassert>
 
-#include <core_sdk/logger.hpp>
-#include <core_sdk/templates/singleton.hpp>
-
-#include <lib_gui/utils.hpp>
+#include <core_sdk/logger/logger.hpp>
 
 #include <lib_gui/defines/global_defines.hpp>
 #include <lib_gui/interface/ui_base_window.hpp>
