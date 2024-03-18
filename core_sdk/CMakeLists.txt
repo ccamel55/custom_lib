@@ -10,6 +10,7 @@ lib_option(
 lib_component(lib_core
     SOURCES
         core_sdk.cpp
+		logger/logger.cpp
         math/math.cpp
 		math/intersection.cpp
     INCLUDES

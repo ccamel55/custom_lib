@@ -12,7 +12,7 @@ public:
 	static t& get()
 	{
 		// instance will be created on first use and destroyed when program is killed.
-		static t singleton_instance;
+		static t singleton_instance = {};
 		return singleton_instance;
 	}
 
