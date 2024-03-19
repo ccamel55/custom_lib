@@ -4,7 +4,7 @@
 #include <lib_rendering/common/font_loader.hpp>
 #include <lib_rendering/common/image_loader.hpp>
 
-#include <core_sdk/logger.hpp>
+#include <core_sdk/logger/logger.hpp>
 #include <core_sdk/types/vector/vector2D.hpp>
 
 #include <glm/ext/quaternion_geometric.hpp>

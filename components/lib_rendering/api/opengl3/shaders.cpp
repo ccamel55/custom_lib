@@ -1,4 +1,4 @@
-#include <core_sdk/logger.hpp>
+#include <core_sdk/logger/logger.hpp>
 #include <lib_rendering/shaders.hpp>
 
 #include <cassert>

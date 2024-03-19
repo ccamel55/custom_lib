@@ -2,7 +2,7 @@
 #include <lib_rendering/render_api_base.hpp>
 
 #define STB_RECT_PACK_IMPLEMENTATION
-#include <core_sdk/logger.hpp>
+#include <core_sdk/logger/logger.hpp>
 #include <lib_rendering/common/stb/stb_rect_pack.hpp>
 
 using namespace lib::rendering;

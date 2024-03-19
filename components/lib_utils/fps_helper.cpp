@@ -1,7 +1,6 @@
 #include <lib_utils/fps_helper.hpp>
 
 #include <chrono>
-#include <core_sdk/logger.hpp>
 
 using namespace lib::utils;
 
