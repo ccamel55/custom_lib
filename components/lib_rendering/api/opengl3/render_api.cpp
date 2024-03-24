@@ -61,24 +61,53 @@ render_api::render_api(const std::weak_ptr<render_api_data_t>& render_api_data, 
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _index_buffer);
 		glBindBuffer(GL_UNIFORM_BUFFER, _uniform_buffer);
 
-		glBufferData(GL_ARRAY_BUFFER, MAX_VERTICES * sizeof(vertex_t), nullptr, GL_DYNAMIC_DRAW);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, MAX_INDICES * sizeof(uint32_t), nullptr, GL_DYNAMIC_DRAW);
-		glBufferData(GL_UNIFORM_BUFFER, sizeof(gl3::uniform_buffer_object_t), nullptr, GL_DYNAMIC_DRAW);
+		glBufferData(
+			GL_ARRAY_BUFFER,
+			MAX_VERTICES * sizeof(vertex_t),
+			nullptr,
+			GL_DYNAMIC_DRAW);
+
+		glBufferData(
+			GL_ELEMENT_ARRAY_BUFFER,
+			MAX_INDICES * sizeof(uint32_t),
+			nullptr,
+			GL_DYNAMIC_DRAW);
+
+		glBufferData(
+			GL_UNIFORM_BUFFER,
+			sizeof(uniform_buffer_object_t),
+			nullptr,
+			GL_DYNAMIC_DRAW);
 
 		// position
 		glEnableVertexAttribArray(0);
 		glVertexAttribPointer(
-			0, 2, GL_FLOAT, GL_FALSE, sizeof(vertex_t), reinterpret_cast<void*>(offsetof(vertex_t, position)));
+			0,
+			3,
+			GL_FLOAT,
+			GL_FALSE,
+			sizeof(vertex_t),
+			reinterpret_cast<void*>(offsetof(vertex_t, position)));
 
 		// color
 		glEnableVertexAttribArray(1);
 		glVertexAttribPointer(
-				1, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(vertex_t), reinterpret_cast<void*>(offsetof(vertex_t, color)));
+				1,
+				4,
+				GL_UNSIGNED_BYTE,
+				GL_TRUE,
+				sizeof(vertex_t),
+				reinterpret_cast<void*>(offsetof(vertex_t, color)));
 
 		// texture position
 		glEnableVertexAttribArray(2);
 		glVertexAttribPointer(
-			2, 2, GL_FLOAT, GL_FALSE, sizeof(vertex_t), reinterpret_cast<void*>(offsetof(vertex_t, texture_position)));
+			2,
+			2,
+			GL_FLOAT,
+			GL_FALSE,
+			sizeof(vertex_t),
+			reinterpret_cast<void*>(offsetof(vertex_t, texture_position)));
 	}
 
 	// bind texture sampler
@@ -129,7 +158,17 @@ void render_api::bind_atlas(const uint8_t* data, int width, int height)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+	glTexImage2D(
+		GL_TEXTURE_2D,
+		0,
+		GL_RGBA,
+		width,
+		height,
+		0,
+		GL_RGBA,
+		GL_UNSIGNED_BYTE,
+		data);
+
 	glBindTexture(GL_TEXTURE_2D, last_texture);
 }
 
@@ -137,16 +176,6 @@ void render_api::update_screen_size(const lib::point2Di& window_size)
 {
 	// save a copy of window size for us to use later
 	_window_size = window_size;
-
-	// update projection and view matrix, model matrix can be instance speicifc
-	_uniform_buffer_object.projection_matrix = glm::ortho(
-		0.f,
-		static_cast<float>(window_size.x),
-		static_cast<float>(window_size.y),
-		0.f);
-
-	// load identity matrix for now, we can fuck with this later
-	_uniform_buffer_object.view_matrix = glm::mat4(1.f);
 }
 
 void render_api::draw(const render_command& render_command)
@@ -204,12 +233,18 @@ void render_api::draw(const render_command& render_command)
 		static_cast<GLsizeiptr>(render_command.index_count * sizeof(uint32_t)),
 		render_command.indices.data());
 
+	glBufferSubData(
+		GL_UNIFORM_BUFFER,
+		0,
+		sizeof(uniform_buffer_object_t),
+		&render_command.ubo);
+
 	glBindBufferRange(
 		GL_UNIFORM_BUFFER,
 		0,
 		_uniform_buffer,
 		0,
-		sizeof(gl3::uniform_buffer_object_t));
+		sizeof(uniform_buffer_object_t));
 
 	// bind our atlas, every texture should live on the atlas
 	glBindTexture(GL_TEXTURE_2D, _texture_atlas);
@@ -217,7 +252,6 @@ void render_api::draw(const render_command& render_command)
 	for (uint32_t i = 0; i < render_command.batch_count; i++)
 	{
 		const auto& batch = render_command.batches.at(i);
-		_uniform_buffer_object.model_matrix = batch.model_matrix;
 
 		switch (batch.shader)
 		{
@@ -231,12 +265,6 @@ void render_api::draw(const render_command& render_command)
 			_sdf_outline_shader.bind();
 			break;
 		}
-
-		glBufferSubData(
-			GL_UNIFORM_BUFFER,
-			0,
-			sizeof(gl3::uniform_buffer_object_t),
-			&_uniform_buffer_object);
 
 		// x and y represent the bottom left corner, we give x and y as the top right corner
 		glScissor(

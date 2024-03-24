@@ -173,7 +173,7 @@ const auto get_vertex_attribute_descriptions = []() -> std::array<vk::VertexInpu
 
 			pos_description.binding = 0;
 			pos_description.location = 0;
-			pos_description.format = vk::Format::eR32G32Sfloat;
+			pos_description.format = vk::Format::eR32G32B32Sfloat;
 			pos_description.offset = offsetof(vertex_t, position);
 		}
 
@@ -666,17 +666,6 @@ void render_api::update_screen_size(const lib::point2Di& window_size)
 
 	_viewport.minDepth = 0.f;
 	_viewport.maxDepth = 1.f;
-
-	// update projection and view matrix, model matrix can be instance speicifc
-	_unifrom_buffer_object.projection_matrix = glm::ortho(
-		0.f,
-		static_cast<float>(window_size.x),
-		// vulkan has y axis flipped, hence why bottom and top are swapped here :P
-		0.f,
-		static_cast<float>(window_size.y));
-
-	// load identity matrix for now, we can fuck with this later
-	_unifrom_buffer_object.view_matrix = glm::mat4(1.f);
 }
 
 void render_api::draw(const render_command& render_command)
@@ -921,7 +910,7 @@ void render_api::init_graphics_pipeline()
 		push_constant_range.stageFlags = vk::ShaderStageFlagBits::eVertex;
 
 		push_constant_range.offset = 0;
-		push_constant_range.size = sizeof(vulkan::push_constants_t);
+		push_constant_range.size = vulkan::push_constant_data_size_bytes;
 	}
 
 	vk::PipelineLayoutCreateInfo pipeline_layout_create_info = {};
@@ -1313,10 +1302,12 @@ void render_api::record_command_buffer(
 	// copy data into vertex, index and uniform buffer
 	std::memcpy(_vertex_staging_buffer_alloc_info.pMappedData, render_command.vertices.data(), vertex_buffer_size);
 	std::memcpy(_index_staging_buffer_alloc_info.pMappedData, render_command.indices.data(), index_buffer_size);
+
+	// only copy the first two items, the projection and view matrix since model is provided via push constants
 	std::memcpy(
 		_unifrom_buffer_alloc_info.at(current_frame).pMappedData,
-		&_unifrom_buffer_object,
-		sizeof(vulkan::uniform_buffer_object_t));
+		&render_command.ubo,
+		sizeof(glm::mat4) * 2);
 
 	vk::CommandBufferBeginInfo command_buffer_begin_info = {};
 	{
@@ -1395,15 +1386,12 @@ void render_api::record_command_buffer(
 		// set viewport
 		command_buffer.setViewport(0, 1, &_viewport);
 
-		vulkan::push_constants_t push_constants = {};
-		push_constants.model_matrix = batch.model_matrix;
-
 		command_buffer.pushConstants(
 			_pipeline_layout,
 			vk::ShaderStageFlagBits::eVertex,
 			0,
-			sizeof(vulkan::push_constants_t),
-			&push_constants);
+			sizeof(glm::mat4),
+			&render_command.ubo.model_matrix);
 
 		command_buffer.bindDescriptorSets(
 			vk::PipelineBindPoint::eGraphics,
@@ -1512,7 +1500,7 @@ void render_api::init_descriptor_set()
 		{
 			buffer_info.buffer = _uniform_buffer.at(i);
 			buffer_info.offset = 0;
-			buffer_info.range = sizeof(vulkan::uniform_buffer_object_t);
+			buffer_info.range = vulkan::ubo_data_size_bytes;
 		}
 
 		// smapler descriptor buffer
@@ -1884,7 +1872,7 @@ void render_api::init_uniform_buffer()
 	VkBufferCreateInfo uniform_buffer_create_info = {};
 	{
 		uniform_buffer_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		uniform_buffer_create_info.size = sizeof(vulkan::uniform_buffer_object_t);
+		uniform_buffer_create_info.size = vulkan::ubo_data_size_bytes;
 
 		uniform_buffer_create_info.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 		uniform_buffer_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;

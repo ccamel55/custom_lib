@@ -2,8 +2,6 @@
 find_package(Vulkan REQUIRED)
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
-add_subdirectory(dependencies/VulkanMemoryAllocator)
-
 # shut the fuck memory allocator >:|
 target_compile_options(VulkanMemoryAllocator INTERFACE
         -Wno-nullability-completeness

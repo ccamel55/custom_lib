@@ -1,9 +1,29 @@
 #include <lib_rendering/common/render_command.hpp>
 
+#include <glm/gtc/matrix_transform.hpp>
+
 using namespace lib::rendering;
 
-void render_command::reset()
+void render_command::start_new(const lib::point2Di& screen_size)
 {
+	// generate new projection matrix, view and model matrices are identity by default, so leave alone for now.
+	// note: vulkan has y co-oridnates flipped from opengl
+#if defined(DEF_LIB_RENDERING_gl3)
+	ubo.projection_matrix = glm::ortho(
+		0.f,
+		static_cast<float>(screen_size.x),
+		static_cast<float>(screen_size.y),
+		0.f);
+#elif defined(DEF_LIB_RENDERING_vulkan)
+	ubo.projection_matrix = glm::ortho(
+		0.f,
+		static_cast<float>(screen_size.x),
+		0.f,
+		static_cast<float>(screen_size.y));
+#else
+#error "render_command: did not specify projection matrix for render api"
+#endif
+
 	// reset iterators to start of array, we will simply write over existing values
 	vertex_count = 0;
 	index_count = 0;

@@ -6,16 +6,6 @@
 
 namespace lib::rendering
 {
-namespace gl3
-{
-struct uniform_buffer_object_t
-{
-	glm::mat4 projection_matrix = {1.f};
-	glm::mat4 view_matrix = {1.f};
-	glm::mat4 model_matrix = {1.f};
-};
-}
-
 struct render_api_data_t
 {
 };
@@ -32,8 +22,6 @@ public:
 
 private:
 	gl3::render_state _render_state = {};
-	gl3::uniform_buffer_object_t _uniform_buffer_object = {};
-
 	gl3::shader_module _normal_shader = {};
 	gl3::shader_module _sdf_shader = {};
 	gl3::shader_module _sdf_outline_shader = {};

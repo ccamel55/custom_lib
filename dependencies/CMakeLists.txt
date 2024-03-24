@@ -1,7 +1,10 @@
 add_subdirectory(cxxopts)
 add_subdirectory(fmt)
+add_subdirectory(glad)
+add_subdirectory(glfw)
 add_subdirectory(glm)
 add_subdirectory(json)
+add_subdirectory(VulkanMemoryAllocator)
 
 # GLM preprocessors
 target_compile_definitions(glm PUBLIC
