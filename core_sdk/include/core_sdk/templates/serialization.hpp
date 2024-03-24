@@ -71,7 +71,7 @@ constexpr void for_sequence(std::integer_sequence<size_type, size...>, fn&& f) {
 
 //! Calls the \p cb for each element defined as "metadata' for the type \a container
 template<typename container, typename callback>
-void for_each_metadata(callback&& cb)
+constexpr void for_each_metadata(callback&& cb)
 {
     // We iterate on the index sequence of size `nbProperties`
     for_sequence(std::make_index_sequence<get_metadata_size<container>()>{}, [&](auto i)

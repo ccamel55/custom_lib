@@ -9,7 +9,6 @@ public:
     no_copy() = default;
     ~no_copy() = default;
 
-private:
     // Copy constructors have been deleted. BAD
     no_copy(const no_copy&) = delete;
     no_copy(const no_copy&&) = delete;
