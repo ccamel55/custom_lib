@@ -30,6 +30,11 @@ macro(get_libraries_recursive)
     _search_recursively(${GET_LIB_ARGS_LIBRARY_LIST_NAME} ${GET_LIB_ARGS_LIBRARY_NAME})
 
     list(REMOVE_DUPLICATES ${GET_LIB_ARGS_LIBRARY_LIST_NAME})
+
+    # print out name of each library we will generate
+    foreach(library ${${GET_LIB_ARGS_LIBRARY_LIST_NAME}})
+        message(STATUS "    ${library}")
+    endforeach()
 endmacro()
 
 macro(_search_recursively LIBRARY_LIST LIBRARY_NAME)
@@ -56,8 +61,6 @@ macro(_search_recursively LIBRARY_LIST LIBRARY_NAME)
             NOT _TARGET_TYPE STREQUAL "EXECUTABLE")
             continue()
         endif()
-
-        message(STATUS "    ${library}")
 
         list(APPEND ${LIBRARY_LIST} ${library})
 

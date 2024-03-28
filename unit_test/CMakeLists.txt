@@ -1,8 +1,6 @@
 project(custom_lib_tests)
 include(CTest)
 
-add_subdirectory(dependencies/Catch2)
-
 add_executable(${PROJECT_NAME}
         cryptography_tests.cpp
         macro_tests.cpp

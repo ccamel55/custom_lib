@@ -8,6 +8,27 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# enable libraries and add tests only if this repo is top level
+if(PROJECT_IS_TOP_LEVEL)
+    message(STATUS "-------------------------------------------------")
+    message(STATUS "Custom Lib is the top level project. Enabling tests and setting default options.")
+
+    set(LIB_COMMAND_PARSER on)
+    set(LIB_GUI on)
+    set(LIB_HASHING on)
+    set(LIB_INPUT on)
+    set(LIB_JSON_CONFIG on)
+    set(LIB_THREADING on)
+    set(LIB_UTILS on)
+    set(LIB_LOGGER 6)
+
+    set(LIB_RENDERING off)
+    set(LIB_WINDOW_CREATION off)
+
+    # all unit tests should be automatically registered by catch2
+    add_subdirectory(unit_test)
+endif()
+
 # todo: add flag for dynamic library
 add_library(${PROJECT_NAME} STATIC
         custom_lib.cpp
@@ -26,9 +47,6 @@ add_subdirectory(dependencies)
 add_subdirectory(components)
 add_subdirectory(core_sdk)
 
-# all unit tests should be automatically registered by catch2
-add_subdirectory(unit_test)
-
 # combine all linked libraries into one target 'custom_lib'
 list(APPEND SUB_LIBRARIES "")
 
@@ -38,8 +56,8 @@ get_libraries_recursive(
 )
 
 # for each library in the list, link it to the main library
-foreach(LIBRARY ${SUB_LIBRARIES})
+foreach(library ${SUB_LIBRARIES})
     target_link_libraries(${PROJECT_NAME} PUBLIC
-            $<TARGET_OBJECTS:${LIBRARY}>
+            $<TARGET_OBJECTS:${library}>
     )
 endforeach()
