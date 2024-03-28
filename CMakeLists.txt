@@ -8,6 +8,23 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# custom build options for the project
+option(
+    CUSTOM_LIB_BUILD_FAT_LIBRARY
+    "Whether or not to link all libraries to the custom_lib target."
+    OFF
+)
+
+message(STATUS "CUSTOM_LIB_BUILD_FAT_LIBRARY: ${CUSTOM_LIB_BUILD_FAT_LIBRARY}")
+
+option(
+    CUSTOM_LIB_DYNAMIC_LIBRARY
+    "Build custom lib as a dynamic library."
+    OFF
+)
+
+message(STATUS "CUSTOM_LIB_DYNAMIC_LIBRARY: ${CUSTOM_LIB_DYNAMIC_LIBRARY}")
+
 # enable libraries and add tests only if this repo is top level
 if(PROJECT_IS_TOP_LEVEL)
     message(STATUS "-------------------------------------------------")
@@ -48,16 +65,19 @@ add_subdirectory(components)
 add_subdirectory(core_sdk)
 
 # combine all linked libraries into one target 'custom_lib'
-list(APPEND SUB_LIBRARIES "")
+if (CUSTOM_LIB_BUILD_FAT_LIBRARY)
+    list(APPEND SUB_LIBRARIES "")
 
-get_libraries_recursive(
-    LIBRARY_LIST_NAME SUB_LIBRARIES
-    LIBRARY_NAME custom_lib
-)
-
-# for each library in the list, link it to the main library
-foreach(library ${SUB_LIBRARIES})
-    target_link_libraries(${PROJECT_NAME} PUBLIC
-            $<TARGET_OBJECTS:${library}>
+    get_libraries_recursive(
+            LIBRARY_LIST_NAME SUB_LIBRARIES
+            LIBRARY_NAME custom_lib
     )
-endforeach()
+
+    # for each library in the list, link it to the main library
+    foreach(library ${SUB_LIBRARIES})
+        target_sources(${PROJECT_NAME} PUBLIC
+                $<TARGET_OBJECTS:${library}>
+        )
+    endforeach()
+endif ()
+
