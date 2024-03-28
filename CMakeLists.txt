@@ -19,6 +19,8 @@ include(cmake/options/build_options.cmake)
 include(cmake/components/lib_component.cmake)
 include(cmake/components/lib_sub_component.cmake)
 
+include(cmake/helper/gather_libraries.cmake)
+
 # build options that will propagate to the whole project
 add_subdirectory(dependencies)
 add_subdirectory(components)
@@ -26,3 +28,18 @@ add_subdirectory(core_sdk)
 
 # all unit tests should be automatically registered by catch2
 add_subdirectory(unit_test)
+
+# combine all linked libraries into one target 'custom_lib'
+list(APPEND SUB_LIBRARIES "")
+
+get_libraries_recursive(
+    LIBRARY_LIST_NAME SUB_LIBRARIES
+    LIBRARY_NAME custom_lib
+)
+
+# for each library in the list, link it to the main library
+foreach(LIBRARY ${SUB_LIBRARIES})
+    target_link_libraries(${PROJECT_NAME} PUBLIC
+            $<TARGET_OBJECTS:${LIBRARY}>
+    )
+endforeach()

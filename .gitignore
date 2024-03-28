@@ -108,3 +108,5 @@ fabric.properties
 
 # Ignore all cmake-build files as well.
 **/cmake-build-*/
+
+.idea/

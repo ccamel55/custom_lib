@@ -1,5 +1,7 @@
 #include <core_sdk/math/intersection.hpp>
 
+#include <algorithm>
+
 #include <glm/glm.hpp>
 #include <glm/gtx/norm.hpp>
 

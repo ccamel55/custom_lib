@@ -59,11 +59,15 @@ else()
     endif()
 endif()
 
-# create an interface that will be inherited by all components so that compile options apply to all components
-set(LIB_COMPILE_OPTIONS_TARGET ${PROJECT_NAME}_compile_options)
+# set global build options, this will apply these build options to all targets that include this project
+set(LIB_BUILD_OPTIONS_STRING)
 
-add_library(${LIB_COMPILE_OPTIONS_TARGET} INTERFACE)
-target_compile_options(${LIB_COMPILE_OPTIONS_TARGET} INTERFACE ${LIB_BUILD_OPTIONS})
+# we need to loop through all options to remove the ; from lists
+foreach (option ${LIB_BUILD_OPTIONS})
+    set(LIB_BUILD_OPTIONS_STRING "${LIB_BUILD_OPTIONS_STRING} ${option}")
+endforeach ()
 
-# link to library top level target, each component created with lib_component will link to this target too
-target_link_libraries(${PROJECT_NAME} PUBLIC ${LIB_COMPILE_OPTIONS_TARGET})
+# set compile options for C, and C++
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${LIB_BUILD_OPTIONS_STRING}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${LIB_BUILD_OPTIONS_STRING}")
+
