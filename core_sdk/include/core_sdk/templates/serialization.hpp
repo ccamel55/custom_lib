@@ -1,13 +1,13 @@
 #pragma once
 
 #include <tuple>
+#include <concepts>
 
 // todo: list of todos are the following
 //  - allow for custom getter/setters, defaulting to ptr setter and getter if nothing is specified
 //  - allow for more complex types (linked to previous todo)
-//  - use concepts library to add compile time error messages for functions that don't contain "get_metadata"
 
-/**
+/*
     Example usage:
     struct example_data_struct
     {
@@ -20,20 +20,26 @@
         // serializable
         static constexpr auto get_metadata()
         {
-            start_metadata
+            return {
 
             serializable(example_data_struct, my_int_1)
             serializable(example_data_struct, my_long_1)
             serializable(example_data_struct, my_float_1)
             serializable(example_data_struct, my_double_1)
 
-            finish_metadata
+           	};
         }
     };
- */
+*/
 
 namespace lib
 {
+template<typename container>
+concept serializable = requires
+{
+	{ container::get_metadata() };
+};
+
 //! The struct that will hold our member metadata. It includes the name and a class ptr to the member it's self.
 template<typename container, typename member_type>
 struct member_metadata
@@ -70,10 +76,9 @@ constexpr void for_sequence(std::integer_sequence<size_type, size...>, fn&& f) {
 }
 
 //! Calls the \p cb for each element defined as "metadata' for the type \a container
-template<typename container, typename callback>
+template<serializable container, typename callback>
 constexpr void for_each_metadata(callback&& cb)
 {
-    // We iterate on the index sequence of size `nbProperties`
     for_sequence(std::make_index_sequence<get_metadata_size<container>()>{}, [&](auto i)
     {
         constexpr auto tuple = container::get_metadata();
@@ -82,16 +87,7 @@ constexpr void for_each_metadata(callback&& cb)
         cb(property);
     });
 }
-
-//! This macro must be used to define the start of a metadata list
-#define start_metadata \
-    return std::tuple {
-
 //! Use this macro to define a member that should be serializable.
 #define serializable(class_name, member) \
     lib::member_metadata(#member, &class_name::member),
-
-//! This macro must be used to finish/close a metadata list
-#define finish_metadata \
-    };
 }

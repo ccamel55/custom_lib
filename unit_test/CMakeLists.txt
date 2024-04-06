@@ -5,8 +5,8 @@ add_subdirectory(dependencies/Catch2)
 
 add_executable(${PROJECT_NAME}
         cryptography_tests.cpp
-        macro_tests.cpp
         math_tests.cpp
+		serialization_tests.cpp
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
