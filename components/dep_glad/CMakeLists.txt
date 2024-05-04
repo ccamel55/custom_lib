@@ -1,9 +1,9 @@
 add_dependency(
-	fmt
+	glad
 	GITHUB_REPOSITORY
-		fmtlib/fmt
+		ccamel55/glad
 	GIT_TAG
-		10.2.1
+		main
 	DEPENDENCIES
-		fmt::fmt
+		glad
 )

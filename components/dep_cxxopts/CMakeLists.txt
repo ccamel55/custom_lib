@@ -1,9 +1,9 @@
 add_dependency(
-	fmt
+	cxxopts
 	GITHUB_REPOSITORY
-		fmtlib/fmt
+		jarro2783/cxxopts
 	GIT_TAG
-		10.2.1
+		v3.2.0
 	DEPENDENCIES
-		fmt::fmt
+		cxxopts
 )

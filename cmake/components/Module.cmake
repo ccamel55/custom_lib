@@ -42,7 +42,7 @@ macro(add_module name)
 
 	# Create new test target and add test
 	if (LIB_ENABLE_TESTS)
-		set(PROJECT_NAME_TEST ${PROJECT_NAME}_TEST)
+		set(PROJECT_NAME_TEST ${PROJECT_NAME}_test)
 
 		file(
 			GLOB_RECURSE

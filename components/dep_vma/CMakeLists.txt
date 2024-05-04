@@ -1,0 +1,9 @@
+add_dependency(
+	vma
+	GITHUB_REPOSITORY
+		GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
+	GIT_TAG
+		master
+	DEPENDENCIES
+		GPUOpen::VulkanMemoryAllocator
+)

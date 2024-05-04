@@ -1,0 +1,9 @@
+add_dependency(
+	json
+	GITHUB_REPOSITORY
+		nlohmann/json
+	GIT_TAG
+		v3.11.3
+	DEPENDENCIES
+		nlohmann_json::nlohmann_json
+)

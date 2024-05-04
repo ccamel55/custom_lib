@@ -13,7 +13,8 @@ macro(add_dependency name)
 
 	# Template - one value arguments
 	set(_ARG_ONE
-
+		GITHUB_REPOSITORY
+		GIT_TAG
 	)
 
 	# Template - multi value arguments
@@ -27,6 +28,13 @@ macro(add_dependency name)
 		"${_ARG_ONE}"
 		"${_ARG_MULTI}"
 		${ARGN}
+	)
+
+	# Add package using CPM
+	CPMAddPackage(
+		NAME ${name}
+		GITHUB_REPOSITORY ${${PROJECT_NAME}_GITHUB_REPOSITORY}
+		GIT_TAG ${${PROJECT_NAME}_GIT_TAG}
 	)
 
 	# Create new target and add files
@@ -44,7 +52,7 @@ macro(add_dependency name)
 
 	# Create new test target and add test
 	if (LIB_ENABLE_TESTS)
-		set(PROJECT_NAME_TEST ${PROJECT_NAME}_TEST)
+		set(PROJECT_NAME_TEST ${PROJECT_NAME}_test)
 
 		file(
 			GLOB_RECURSE
@@ -66,4 +74,7 @@ macro(add_dependency name)
 	unset(_ARG_DEF)
 	unset(_ARG_ONE)
 	unset(_ARG_MULTI)
+
+	message(STATUS "------------------------------------------")
+
 endmacro()

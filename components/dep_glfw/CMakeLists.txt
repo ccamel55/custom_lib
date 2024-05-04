@@ -1,9 +1,9 @@
 add_dependency(
-	fmt
+	glfw
 	GITHUB_REPOSITORY
-		fmtlib/fmt
+		glfw/glfw
 	GIT_TAG
-		10.2.1
+		3.4
 	DEPENDENCIES
-		fmt::fmt
+		glfw
 )
