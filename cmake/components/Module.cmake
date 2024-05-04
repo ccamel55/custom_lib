@@ -2,7 +2,6 @@ include(CMakeParseArguments)
 
 macro(add_module name)
 	project("module_${name}")
-	message(STATUS "Module - ${name}")
 
 	# Template - defined arguments
 	set(_ARG_DEF
@@ -16,6 +15,7 @@ macro(add_module name)
 
 	# Template - multi value arguments
 	set (_ARG_MULTI
+		REQUIRES
 		DEPENDENCIES
 	)
 
@@ -26,6 +26,17 @@ macro(add_module name)
 		"${_ARG_MULTI}"
 		${ARGN}
 	)
+
+	# Make sure all requirements from REQUIRES is true
+	if (${PROJECT_NAME}_REQUIRES)
+		foreach (REQUIREMENT ${${PROJECT_NAME}_REQUIRES})
+			if (NOT ${REQUIREMENT})
+				return()
+			endif ()
+		endforeach ()
+	endif()
+
+	message(STATUS "Module - ${name}")
 
 	# Create new target and add files
 	file(

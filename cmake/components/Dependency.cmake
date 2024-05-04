@@ -3,9 +3,6 @@ include(CMakeParseArguments)
 macro(add_dependency name)
 	project("dep_${name}")
 
-	message(STATUS "------------------------------------------")
-	message(STATUS "Dependency - ${name}")
-
 	# Template - defined arguments
 	set(_ARG_DEF
 
@@ -19,6 +16,7 @@ macro(add_dependency name)
 
 	# Template - multi value arguments
 	set (_ARG_MULTI
+		REQUIRES
 		DEPENDENCIES
 	)
 
@@ -30,12 +28,26 @@ macro(add_dependency name)
 		${ARGN}
 	)
 
+	# Make sure all requirements from REQUIRES is true
+	if (${PROJECT_NAME}_REQUIRES)
+		foreach (REQUIREMENT ${${PROJECT_NAME}_REQUIRES})
+			if (NOT ${REQUIREMENT})
+				return()
+			endif ()
+		endforeach ()
+	endif()
+
+	message(STATUS "Dependency - ${name}")
+	message(STATUS "------------------------------------------")
+
 	# Add package using CPM
 	CPMAddPackage(
 		NAME ${name}
 		GITHUB_REPOSITORY ${${PROJECT_NAME}_GITHUB_REPOSITORY}
 		GIT_TAG ${${PROJECT_NAME}_GIT_TAG}
 	)
+
+	message(STATUS "------------------------------------------")
 
 	# Create new target and add files
 	file(
@@ -74,7 +86,5 @@ macro(add_dependency name)
 	unset(_ARG_DEF)
 	unset(_ARG_ONE)
 	unset(_ARG_MULTI)
-
-	message(STATUS "------------------------------------------")
 
 endmacro()
