@@ -8,13 +8,13 @@ option(
 option(
 	LIB_VULKAN_SUPPORT
 	"Whether or not the platform supports Vulkan"
-	ON
+	OFF
 )
 
 option(
 	LIB_OPENGL_SUPPORT
 	"Whether or not the platform supports OpenGL"
-	ON
+	OFF
 )
 
 # Apply C++ standard options
