@@ -1,8 +1,1 @@
-//
-// Created by Allan on 5/4/2024.
-//
-
-#ifndef CUSTOM_LIB_MODULE_CORE_PRIVATE_HPP
-#define CUSTOM_LIB_MODULE_CORE_PRIVATE_HPP
-
-#endif //CUSTOM_LIB_MODULE_CORE_PRIVATE_HPP
+#pragma once
