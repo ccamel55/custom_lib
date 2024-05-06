@@ -49,7 +49,7 @@ macro(add_module name)
 	add_library(${PROJECT_NAME} STATIC ${MODULE_SOURCE_FILES})
 	target_include_directories(${PROJECT_NAME} PRIVATE include_private)
 	target_include_directories(${PROJECT_NAME} PUBLIC include)
-	target_link_libraries(${PROJECT_NAME} PRIVATE ${${PROJECT_NAME}_DEPENDENCIES})
+	target_link_libraries(${PROJECT_NAME} PUBLIC ${${PROJECT_NAME}_DEPENDENCIES})
 
 	# Create new test target and add test
 	if (LIB_ENABLE_TESTS)
