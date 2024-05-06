@@ -1,5 +1,5 @@
 #pragma once
-#include <module_core/singleton.hpp>
+#include <module_core/no_copy.hpp>
 
 namespace lib
 {
