@@ -1,17 +1,17 @@
 #pragma once
 
-#include <module_core/types/Ray.hpp>
+#include <module_core/types/ray.hpp>
 #include <module_core/types/vector/vector3D.hpp>
 #include <module_core/types/point/point3D.hpp>
 
-namespace lib
+namespace lib::math
 {
 //! Simple ray plane intersection test.
 //! \param Ray is the ray we want to cast
 //! \param plane_origin is the origin of the plane
 //! \param plane_normal is the normal of the plane
 bool does_intersect_plane(
-        const Ray& ray,
+        const ray& ray,
         const point3Df& plane_origin,
         const vector3D& plane_normal
 );
@@ -21,7 +21,7 @@ bool does_intersect_plane(
 //! \param min is the minimum co-ordinates of the bounding box
 //! \param max is the maximum co-ordinates of the boudning box
 bool does_intersect_aabb(
-        const Ray& ray,
+        const ray& ray,
         const point3Df& min,
         const point3Df& max
 );
@@ -32,7 +32,7 @@ bool does_intersect_aabb(
 //! \param b point b
 //! \param c point c
 bool does_intersect_triangle(
-        const Ray& ray,
+        const ray& ray,
         const point3Df& a,
         const point3Df& b,
         const point3Df& c
@@ -44,7 +44,7 @@ bool does_intersect_triangle(
 //! \param plane_normal is the normal of the disk
 //! \param radius is the radius of the disk
 bool does_intersect_disk(
-        const Ray& ray,
+        const ray& ray,
         const point3Df& plane_origin,
         const vector3D& plane_normal,
         float radius
@@ -55,7 +55,7 @@ bool does_intersect_disk(
 //! \param sphere_origin is the origin of the sphere
 //! \param radius is the radius of the sphere
 bool does_intersect_sphere(
-        const Ray& ray,
+        const ray& ray,
         const point3Df& sphere_origin,
         float radius
 );
@@ -66,7 +66,7 @@ bool does_intersect_sphere(
 //! \param b point b
 //! \param radius is the radius of the capsule
 bool does_intersect_capsule(
-        const Ray& ray,
+        const ray& ray,
         const point3Df& a,
         const point3Df& b,
         float radius

@@ -1,7 +1,7 @@
 #include <module_logger/handler/StdHandler.hpp>
 #include <fmt/color.h>
 
-using namespace lib;
+using namespace lib::logger;
 
 namespace
 {

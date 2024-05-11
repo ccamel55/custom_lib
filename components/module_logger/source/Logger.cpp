@@ -1,6 +1,6 @@
 #include <module_logger/Logger.hpp>
 
-using namespace lib;
+using namespace lib::logger;
 
 void Logger::plant(const std::shared_ptr<BaseHandler>& handler) {
     // push_back will make copy, hence increment reference counter for shared_ptr

@@ -4,7 +4,7 @@
 
 #include <string>
 
-namespace lib
+namespace lib::logger
 {
 //! Interface for all log handlers
 class BaseHandler {

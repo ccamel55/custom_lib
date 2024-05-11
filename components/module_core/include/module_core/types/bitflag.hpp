@@ -5,13 +5,13 @@ namespace lib
 {
 using bitflag_t = uint32_t;
 
-class Bitflag {
+class bitflag {
 public:
-    Bitflag() = default;
-    ~Bitflag() = default;
+    bitflag() = default;
+    ~bitflag() = default;
 
     // allow implicit conversion, we want this!
-    Bitflag(bitflag_t flag)
+    bitflag(bitflag_t flag)
             : _flag(flag) {
     }
 

@@ -1,7 +1,7 @@
 #pragma once
 #include <module_logger/BaseHandler.hpp>
 
-namespace lib
+namespace lib::logger
 {
 class StdHandler : public BaseHandler {
 public:

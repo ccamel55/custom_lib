@@ -1,6 +1,7 @@
 #pragma once
 
-namespace lib {
+namespace lib::logger
+{
     enum class log_level {
         EXPLICIT,
         ERROR,

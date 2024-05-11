@@ -1,6 +1,6 @@
 #pragma once
 
-namespace lib
+namespace lib::math
 {
 // IEEE-754 specifies that floats have 21 significant bits (assuming that a float is 32 bits), this can give us
 // approximately (just under) 7 decimal digits.

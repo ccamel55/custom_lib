@@ -5,10 +5,10 @@
 #include <glm/glm.hpp>
 #include <glm/gtx/norm.hpp>
 
-using namespace lib;
+using namespace lib::math;
 
-bool lib::does_intersect_plane(
-        const Ray& ray,
+bool lib::math::does_intersect_plane(
+        const ray& ray,
         const point3Df& plane_origin,
         const vector3D& plane_normal
 ) {
@@ -24,8 +24,8 @@ bool lib::does_intersect_plane(
     return t <= ray.scalar;
 }
 
-bool lib::does_intersect_aabb(
-        const Ray& ray,
+bool lib::math::does_intersect_aabb(
+        const ray& ray,
         const point3Df& min,
         const point3Df& max
 ) {
@@ -57,8 +57,8 @@ bool lib::does_intersect_aabb(
     return t_min <= ray.scalar;
 }
 
-bool lib::does_intersect_triangle(
-        const Ray& ray,
+bool lib::math::does_intersect_triangle(
+        const ray& ray,
         const point3Df& a,
         const point3Df& b,
         const point3Df& c
@@ -97,8 +97,8 @@ bool lib::does_intersect_triangle(
     return t <= ray.scalar;
 }
 
-bool lib::does_intersect_disk(
-        const Ray& ray,
+bool lib::math::does_intersect_disk(
+        const ray& ray,
         const point3Df& plane_origin,
         const vector3D& plane_normal,
         float radius
@@ -118,8 +118,8 @@ bool lib::does_intersect_disk(
     return glm::length2(p - plane_origin) <= radius * radius;
 }
 
-bool lib::does_intersect_sphere(
-        const Ray& ray,
+bool lib::math::does_intersect_sphere(
+        const ray& ray,
         const point3Df& sphere_origin,
         float radius
 ) {
@@ -144,8 +144,8 @@ bool lib::does_intersect_sphere(
     return t1 <= ray.scalar;
 }
 
-bool lib::does_intersect_capsule(
-        const Ray& ray,
+bool lib::math::does_intersect_capsule(
+        const ray& ray,
         const point3Df& a,
         const point3Df& b,
         float radius

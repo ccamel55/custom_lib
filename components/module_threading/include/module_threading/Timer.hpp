@@ -1,6 +1,6 @@
 #pragma once
 
-namespace lib
+namespace lib::threading
 {
 
 }

@@ -76,7 +76,7 @@ macro(add_dependency name)
 		add_executable(${PROJECT_NAME_TEST} ${DEP_TEST_FILES})
 		target_link_libraries(${PROJECT_NAME_TEST} PRIVATE Catch2::Catch2WithMain ${PROJECT_NAME})
 
-		add_test(ComponentTests ${PROJECT_NAME_TEST})
+		catch_discover_tests(${PROJECT_NAME_TEST})
 
 		unset(DEP_TEST_FILES)
 		unset(PROJECT_NAME_TEST)

@@ -1,3 +1,7 @@
-//
-// Created by Allan on 5/4/2024.
-//
+#include <catch2/catch_test_macros.hpp>
+
+#include <dep_vma/vma.hpp>
+
+TEST_CASE("dep-vma - true", "[dep-vma]") {
+    REQUIRE(true);
+}

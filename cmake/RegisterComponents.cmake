@@ -1,6 +1,4 @@
 if (LIB_ENABLE_TESTS)
-	include(CTest)
-
 	# Add Catch2 if we are using tests
 	message(STATUS "------------------------------------------")
 	CPMAddPackage(
@@ -8,6 +6,11 @@ if (LIB_ENABLE_TESTS)
 		GITHUB_REPOSITORY catchorg/Catch2
 		VERSION 3.5.4
 	)
+
+	list(APPEND CMAKE_MODULE_PATH ${Catch2_SOURCE_DIR}/extras)
+
+	include(CTest)
+	include(Catch)
 
 	enable_testing()
 endif()

@@ -3,15 +3,15 @@
 
 namespace lib
 {
-class Ray {
+class ray {
 public:
-    constexpr Ray() = default;
+    constexpr ray() = default;
 
     //! Construct a ray.
     //! \param origin Origin or the ray.
     //! \param normalized_direction direction of the ray.
     //! \param scalar the unit length of the ray.
-    constexpr Ray(const point3Df& origin, const vector3D& normalized_direction, float scalar)
+    constexpr ray(const point3Df& origin, const vector3D& normalized_direction, float scalar)
             : origin(origin), direction(normalized_direction), scalar(scalar) {
     }
 
