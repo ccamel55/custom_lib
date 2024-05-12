@@ -1,6 +1,6 @@
 #pragma once
 
-#include <module_logger/BaseHandler.hpp>
+#include <module_logger/handler/Base_Handler.hpp>
 #include <module_core/Singleton.hpp>
 
 #include <memory>
@@ -12,10 +12,10 @@ namespace lib::logger
 class Logger: public Singleton<Logger> {
 public:
     //! Plant a new log handler which will process incoming logs.
-    void plant(const std::shared_ptr<BaseHandler>& handler);
+    void plant(const std::shared_ptr<Base_Handler>& handler);
 
     //! Remove a log handler.
-    void uproot(const std::shared_ptr<BaseHandler>& handler);
+    void uproot(const std::shared_ptr<Base_Handler>& handler);
 
     //! Remove all log handlers.
     void uproot_all();
@@ -24,7 +24,7 @@ public:
     void print(log_level log_level, const std::string& message) const;
 
 private:
-    std::vector<std::shared_ptr<BaseHandler>> _handlers = {};
+    std::vector<std::shared_ptr<Base_Handler>> _handlers = {};
 
 };
 }

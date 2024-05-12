@@ -1,4 +1,4 @@
-#include <module_logger/handler/StdHandler.hpp>
+#include <module_logger/handler/Std_Handler.hpp>
 #include <fmt/color.h>
 
 using namespace lib::logger;
@@ -13,7 +13,7 @@ constexpr auto COL_DEBUG =      fmt::color::light_gray;
 constexpr auto COL_VERBOSE =    fmt::color::light_gray;
 }
 
-void StdHandler::write_to_log(log_level log_level, const std::string& message) {
+void Std_Handler::write_to_log(log_level log_level, const std::string& message) {
     switch (log_level) {
     case log_level::EXPLICIT:
         fmt::print(fg(COL_EXPLICIT), "(ex)\t" + message + "\n");

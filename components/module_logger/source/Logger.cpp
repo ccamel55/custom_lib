@@ -2,14 +2,14 @@
 
 using namespace lib::logger;
 
-void Logger::plant(const std::shared_ptr<BaseHandler>& handler) {
+void Logger::plant(const std::shared_ptr<Base_Handler>& handler) {
     // push_back will make copy, hence increment reference counter for shared_ptr
     _handlers.push_back(handler);
 }
 
-void Logger::uproot(const std::shared_ptr<BaseHandler>& handler) {
+void Logger::uproot(const std::shared_ptr<Base_Handler>& handler) {
     // check ptr addresses since it MUST be the same... RIGHT??
-    std::erase_if(_handlers, [&](const std::shared_ptr<BaseHandler>& i) {
+    std::erase_if(_handlers, [&](const std::shared_ptr<Base_Handler>& i) {
         return i.get() == handler.get();
     });
 }

@@ -29,7 +29,7 @@ void Timer::start() {
             std::unique_lock<std::mutex> lock(_callback_mutex);
             _thread_cv.wait_until(lock, _exec_start_time + _timeout);
 
-            if (!_running) {
+            if (!_running) [[unlikely]] {
                 break;
             }
 

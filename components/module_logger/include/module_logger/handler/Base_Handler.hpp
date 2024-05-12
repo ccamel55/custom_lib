@@ -7,9 +7,9 @@
 namespace lib::logger
 {
 //! Interface for all log handlers
-class BaseHandler {
+class Base_Handler {
 public:
-    virtual ~BaseHandler() = default;
+    virtual ~Base_Handler() = default;
 
     virtual void write_to_log(
             log_level log_level,
