@@ -13,7 +13,7 @@ public:
         return singleton_instance;
     }
 
-protected:
+private:
     // Ensure constructor and destructor is only callable from the singleton.
     Singleton() = default;
     ~Singleton() = default;
