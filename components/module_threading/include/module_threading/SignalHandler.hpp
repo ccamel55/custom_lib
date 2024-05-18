@@ -34,7 +34,7 @@ public:
 
     ~SignalHandler() {
         // Wait until we get lock otherwise we risk nuking this object while things are still referencing it.
-        std::lock_guard<std::mutex> lock(_vector_mutex);
+        std::unique_lock<std::mutex> lock(_vector_mutex);
     }
 
     //! Invoke all registered listeners.
@@ -47,7 +47,7 @@ public:
         const auto call_listeners = [&]{
             // We lock for the duration of the call because we don't want to introduce new
             // listeners mid-call.
-            std::lock_guard<std::mutex> lock(_vector_mutex);
+            std::unique_lock<std::mutex> lock(_vector_mutex);
 
             for (const auto& listener: _listeners) {
                 listener.fn(args...);
@@ -63,7 +63,7 @@ public:
     //! \param listener Listener that will be registered.
     //! \return Unique ID that is used to identify a listener.
     listener_id emplace(listener_fn&& listener) {
-        std::lock_guard<std::mutex> lock(_vector_mutex);
+        std::unique_lock<std::mutex> lock(_vector_mutex);
 
         const auto id = _id_counter++;
         _listeners.emplace_back(id, std::move(listener));
@@ -91,7 +91,7 @@ public:
     //! Remove a listener, guaranteeing that the listener will be removed.
     //! \param id The identifier for a specific listener.
     void erase(listener_id id) {
-        std::lock_guard<std::mutex> lock(_vector_mutex);
+        std::unique_lock<std::mutex> lock(_vector_mutex);
         std::erase_if(_listeners, [&](const auto& x) {
             return x.id == id;
         });
@@ -117,19 +117,19 @@ public:
 
     //! Remove all listeners.
     void clear() {
-        std::lock_guard<std::mutex> lock(_vector_mutex);
+        std::unique_lock<std::mutex> lock(_vector_mutex);
         _listeners.clear();
     }
 
     //! Number of listeners registered.
     [[nodiscard]] size_t size() const {
-        std::lock_guard<std::mutex> lock(_vector_mutex);
+        std::unique_lock<std::mutex> lock(_vector_mutex);
         return _listeners.size();
     }
 
     //! Whether there are listeners or not.
     [[nodiscard]] bool empty() const {
-        std::lock_guard<std::mutex> lock(_vector_mutex);
+        std::unique_lock<std::mutex> lock(_vector_mutex);
         return _listeners.empty();
     }
 

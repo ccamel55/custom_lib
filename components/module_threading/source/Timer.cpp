@@ -55,6 +55,9 @@ void Timer::start() {
 }
 
 void Timer::reset() {
+    // Make sure we hold lock, some other thread might be doing stuff to the vector.
+    std::unique_lock<std::mutex> lock(_callback_mutex);
+
     // Tell thread to piss off
     if (_running) {
         _running = false;
@@ -68,11 +71,11 @@ void Timer::reset() {
 }
 
 void Timer::emplace(std::function<void()>&& callback) {
-    std::lock_guard<std::mutex> lock(_callback_mutex);
+    std::unique_lock<std::mutex> lock(_callback_mutex);
     _callbacks.emplace_back(std::move(callback));
 }
 
 void Timer::clear() {
-    std::lock_guard<std::mutex> lock(_callback_mutex);
+    std::unique_lock<std::mutex> lock(_callback_mutex);
     _callbacks.clear();
 }
