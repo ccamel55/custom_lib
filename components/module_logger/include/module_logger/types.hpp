@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <concepts>
+#include <string>
 #include <type_traits>
 
 namespace lib::logger

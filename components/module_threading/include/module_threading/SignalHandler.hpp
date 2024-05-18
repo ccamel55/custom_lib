@@ -22,6 +22,11 @@ class SignalHandler {
 
     struct listener_object_t
     {
+        listener_object_t(listener_id id, listener_fn&& fn)
+            : id(id)
+            , fn(std::move(fn)) {
+        }
+
         listener_id id;
         listener_fn fn;
     };

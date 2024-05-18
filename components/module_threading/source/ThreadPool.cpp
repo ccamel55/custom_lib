@@ -34,9 +34,6 @@ ThreadPool::ThreadPool(size_t max_threads)
 }
 
 ThreadPool::~ThreadPool() {
-    // Make sure we hold this mutex otherwise we risk destroying the vector while another thread is accessing it.
-    std::unique_lock<std::mutex> lock(_job_queue_mutex);
-
     // Tell all threads, bedtime!
     if (_running) {
         _running = false;

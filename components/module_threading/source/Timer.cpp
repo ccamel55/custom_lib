@@ -55,9 +55,6 @@ void Timer::start() {
 }
 
 void Timer::reset() {
-    // Make sure we hold lock, some other thread might be doing stuff to the vector.
-    std::unique_lock<std::mutex> lock(_callback_mutex);
-
     // Tell thread to piss off
     if (_running) {
         _running = false;
