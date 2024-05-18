@@ -1,14 +1,51 @@
 #pragma once
-#include <module_logger/handler/Base_Handler.hpp>
+
+#include <iostream>
+
+#include <dep_fmt/fmt.hpp>
+
+#include <module_logger/types.hpp>
 
 namespace lib::logger
 {
-class Std_Handler : public Base_Handler {
+class Std_Handler {
 public:
-    void write_to_log(
-            log_level log_level,
-            const std::string& message
-    ) override;
+    void log(const log_message_t& message) {
+        const auto get_level_identifier = [&]{
+            switch (message.level)
+            {
+            case log_level::EXPLICIT:
+                return "EX";
+            case log_level::ERROR:
+                return "E";
+            case log_level::WARNING:
+                return "W";
+            case log_level::INFO:
+                return "I";
+            case log_level::DEBUG:
+                return "D";
+            case log_level::VERBOSE:
+                return "V";
+            }
+        };
+
+        // Logs should look like the following
+        // | %Y-%m-%d %H:%M:%S | LEVEL | [TAG]  | message
+        std::cout
+            << fmt::format(
+                "| {} | {} | [{}] | {}\n",
+                message.timestamp,
+                get_level_identifier(),
+                message.tag,
+                message.message
+            );
+    }
+
+    void flush() {
+        std::cout << std::flush;
+    }
+
+private:
 
 };
 }
