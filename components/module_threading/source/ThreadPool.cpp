@@ -8,10 +8,10 @@ ThreadPool::ThreadPool(size_t max_threads)
 
     const auto worker_thread = [&](size_t thread_id){
 
-        // Hold the function in our worker so we can unlock the mutex when we process stuff.
-        std::function<void()> function = nullptr;
+        // Hold the function in our worker, so we can unlock the mutex when we process stuff.
+        std::function<void()> function;
 
-        while(true) {
+        while(_running) {
             std::unique_lock<std::mutex> lock(_job_queue_mutex);
 
             // If empty, wait until we receive something otherwise keep going, eat it up.
@@ -23,7 +23,13 @@ ThreadPool::ThreadPool(size_t max_threads)
                 break;
             }
 
-            // todo: pop from priority queue, then run
+            // function is marked mutable, this is why we can move it!!
+            function = std::move(_job_queue.top().function);
+            _job_queue.pop();
+
+            // Release mutex so other threads can add/remove while the function runs,
+            lock.unlock();
+            function();
         }
     };
 
@@ -48,4 +54,19 @@ ThreadPool::~ThreadPool() {
 
         thread.join();
     }
+}
+
+void ThreadPool::clear() {
+    std::unique_lock<std::mutex> lock(_job_queue_mutex);
+    _job_queue = {};
+}
+
+size_t ThreadPool::size() const {
+    std::unique_lock<std::mutex> lock(_job_queue_mutex);
+    return _job_queue.size();
+}
+
+bool ThreadPool::empty() const {
+    std::unique_lock<std::mutex> lock(_job_queue_mutex);
+    return _job_queue.empty();
 }

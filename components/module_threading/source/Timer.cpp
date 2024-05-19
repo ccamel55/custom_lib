@@ -24,7 +24,7 @@ void Timer::start() {
     _exec_start_time = std::chrono::system_clock::now();
 
     _thread = std::thread([&]{
-        while(true) {
+        while(_running) {
             // Wait until we receive something from the cv or until we reach our timeout.
             std::unique_lock<std::mutex> lock(_callback_mutex);
             _thread_cv.wait_until(lock, _exec_start_time + _timeout);
