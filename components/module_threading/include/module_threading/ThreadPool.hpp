@@ -18,13 +18,13 @@ constexpr uint8_t DEFAULT_PRIORITY = 50;
 class ThreadPool {
     struct queue_object_t {
         queue_object_t() = default;
-        queue_object_t(uint8_t priority, std::function<void()>&& function)
+        queue_object_t(uint8_t priority, const std::shared_ptr<std::packaged_task<void()>>& function)
             : priority(priority)
-            , function(std::move(function)) {
+            , function(function) {
         }
 
         uint8_t priority = DEFAULT_PRIORITY;
-        mutable std::function<void()> function = nullptr;
+        mutable std::shared_ptr<std::packaged_task<void()>> function = nullptr;
 
         // Min heap, aka lower the number, lower the priority.
         bool operator()(const queue_object_t& l, const queue_object_t& r) const {
@@ -41,21 +41,31 @@ public:
     //! Add a new job to the thread pool
     //! \param priority Function priority, the lower the number, the higher the priority.
     //! \param function Function to call in the thread pool.
-    template <typename T> requires (std::is_null_pointer_v<T> == false)
-    void emplace(uint8_t priority, T&& function) {
+    //! \param args Optional arguments to pass to the function.
+    //! \return Future for function.
+    template<typename Fn, typename... Args> requires (std::is_null_pointer_v<Fn> == false)
+    std::future<void> emplace(uint8_t priority, Fn&& function, Args&&... args) {
+        // We need to do this BS since std::packaged_task isn't copyable and the comparison operator for priority_queue
+        // has to make a copy.
+        // The worker thread will steal ownership from the priority_queue when it runs the function.
+        const auto packaged_task = std::make_shared<std::packaged_task<void()>>(
+            std::bind(std::forward<Fn>(function), std::forward<Args>(args)...)
+        );
+
         std::unique_lock<std::mutex> lock(_job_queue_mutex);
-        _job_queue.emplace(priority, std::forward<T>(function));
+        _job_queue.emplace(priority, packaged_task);
+
+        return packaged_task->get_future();
     }
 
     //! Add a new job to the thread pool
     //! \param function Function to call in the thread pool.
-    template <typename T> requires (std::is_null_pointer_v<T> == false)
-    void emplace(T&& function) {
-        emplace(DEFAULT_PRIORITY, std::forward<T>(function));
+    //! \param args Optional arguments to pass to the function.
+    //! \return Future for function.
+    template<typename Fn, typename... Args> requires (std::is_null_pointer_v<Fn> == false)
+    std::future<void> emplace(Fn&& function, Args&&... args) {
+        return emplace(DEFAULT_PRIORITY, std::forward<Fn>(function), std::forward<Args>(args)...);
     }
-
-    //! Add a new job to the thread pool and return a future for that job.
-    void emplace_future();
 
     //! Remove all queued jobs from the thread pool.
     void clear();

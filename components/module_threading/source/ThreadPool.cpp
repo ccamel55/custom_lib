@@ -7,9 +7,7 @@ ThreadPool::ThreadPool(size_t max_threads)
     , _running(true) {
 
     const auto worker_thread = [&](size_t thread_id){
-
         // Hold the function in our worker, so we can unlock the mutex when we process stuff.
-        std::function<void()> function;
 
         while(_running) {
             std::unique_lock<std::mutex> lock(_job_queue_mutex);
@@ -23,13 +21,16 @@ ThreadPool::ThreadPool(size_t max_threads)
                 break;
             }
 
-            // function is marked mutable, this is why we can move it!!
-            function = std::move(_job_queue.top().function);
+            // Take ownership from the priority_queue, function is marked mutable!
+            auto function_ptr = std::move(_job_queue.top().function);
             _job_queue.pop();
 
             // Release mutex so other threads can add/remove while the function runs,
             lock.unlock();
-            function();
+
+            // get reference to packaged_task and call it, this is ugly asf since we can't copy std::packed_task
+            // After this call, it will return the future.
+            (*function_ptr)();
         }
     };
 
