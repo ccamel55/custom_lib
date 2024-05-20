@@ -49,3 +49,25 @@ TEST_CASE("Thread pool - future", "[threading]") {
     REQUIRE(thread_pool.empty());
     REQUIRE(counter == 45);
 }
+
+TEST_CASE("Thread pool - different return types", "[threading]") {
+    lib::threading::ThreadPool thread_pool(100);
+
+    auto result_1 = thread_pool.emplace([](){
+        return "Result 1";
+    });
+
+    auto result_2 = thread_pool.emplace([&](){
+        return 0x0123;
+    });
+
+    auto result_3 = thread_pool.emplace([](float some_float){
+        return some_float;
+    }, 124.0);
+
+    auto val_1 = std::string(result_1.get());
+    REQUIRE(std::equal(val_1.begin(), val_1.end(),"Result 1"));
+
+    REQUIRE(result_2.get() == 0x0123);
+    REQUIRE(result_3.get() == 124.0);
+}
