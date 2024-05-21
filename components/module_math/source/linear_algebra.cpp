@@ -1,13 +1,13 @@
 #include <module_math/linear_algebra.hpp>
-#include <module_math/constants.hpp>
+#include <numbers>
 
 using namespace lib::math;
 
 constexpr float lib::math::radian_to_degree(float radian) {
-    return (radian * 180.f) / PI;
+    return static_cast<float>((radian * 180.f) / std::numbers::pi);
 }
 
 constexpr float lib::math::degree_to_radian(float degree) {
-    return (degree * PI) / 180.f;
+    return static_cast<float>((degree * std::numbers::pi) / 180.f);
 }
 
