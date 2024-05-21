@@ -1,5 +1,7 @@
 #pragma once
 
+#include <module_core/custom_traits.hpp>
+
 #include <concepts>
 #include <string_view>
 #include <tuple>
@@ -65,17 +67,10 @@ constexpr auto get_metadata_size() {
     return tuple_size;
 }
 
-// https://stackoverflow.com/a/67975523
-//! Helper function to convert a \a std::integer_sequence into a \a std::integral_constant
-template <typename size_type, size_type... size, typename fn>
-constexpr void for_sequence(std::integer_sequence<size_type, size...>, fn&& f) {
-    (static_cast<void>(f(std::integral_constant<size_type, size>{})), ...);
-}
-
 //! Calls the \p cb for each element defined as "metadata' for the type \a container
 template<serializable container, typename callback>
 constexpr void for_each_metadata(callback&& cb) {
-    for_sequence(std::make_index_sequence<get_metadata_size<container>()>{}, [&](auto i) {
+    lib::iterate_integer_sequence(std::make_index_sequence<get_metadata_size<container>()>{}, [&](auto i) {
         constexpr auto tuple = container::get_metadata();
         constexpr auto property = std::get<i>(tuple);
 
