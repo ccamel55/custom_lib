@@ -56,10 +56,10 @@ public:
         // std::promise isn't copyable, therefor we create shared ptr to the promise where this function and the
         // job queue holds ownership, once this function returns the job queue will be the only thing owning the
         // promise.
-        const auto shared_promise = std::make_shared<std::promise<T>>();
+        auto shared_promise = std::make_shared<std::promise<T>>();
         auto promise_future = shared_promise->get_future();
 
-        const auto fn = [
+        auto fn = [
             promise = std::move(shared_promise),
             fn_bind = std::bind(std::forward<Fn>(function), std::forward<Args>(args)...)
         ]() {
@@ -85,10 +85,10 @@ public:
         // std::promise isn't copyable, therefor we create shared ptr to the promise where this function and the
         // job queue holds ownership, once this function returns the job queue will be the only thing owning the
         // promise.
-        const auto shared_promise = std::make_shared<std::promise<void>>();
+        auto shared_promise = std::make_shared<std::promise<void>>();
         auto promise_future = shared_promise->get_future();
 
-        const auto fn = [
+        auto fn = [
             promise = std::move(shared_promise),
             fn_bind = std::bind(std::forward<Fn>(function), std::forward<Args>(args)...)
         ]() {
