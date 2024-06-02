@@ -1,5 +1,7 @@
 #include <module_threading/ThreadPool.hpp>
 
+#include <algorithm>
+
 using namespace lib::threading;
 
 ThreadPool::ThreadPool(size_t max_threads)

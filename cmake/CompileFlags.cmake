@@ -67,16 +67,28 @@ else()
 endif()
 
 # Append to C and C++ Build options then unset
-set(BUILD_OPTIONS_STRING)
+set(C_BUILD_OPTIONS_STRING)
+set(CXX_BUILD_OPTIONS_STRING)
+
+# Some options are not available for C so we can blacklist them here
+list(APPEND C_BUILD_OPTIONS_BLACKLIST
+	"-fno-rtti"
+)
 
 # we need to loop through all options to remove the ; from lists
 foreach (option ${BUILD_OPTIONS})
-	set(BUILD_OPTIONS_STRING "${BUILD_OPTIONS_STRING} ${option}")
+	# Skip any C++ only flags
+	if (NOT ${option} IN_LIST C_BUILD_OPTIONS_BLACKLIST)
+		set(C_BUILD_OPTIONS_STRING "${C_BUILD_OPTIONS_STRING} ${option}")
+	endif ()
+
+	set(CXX_BUILD_OPTIONS_STRING "${CXX_BUILD_OPTIONS_STRING} ${option}")
 endforeach ()
 
 # set compile options for C, and C++
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${BUILD_OPTIONS_STRING}")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${BUILD_OPTIONS_STRING}")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${C_BUILD_OPTIONS_STRING}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXX_BUILD_OPTIONS_STRING}")
 
-unset(BUILD_OPTIONS_STRING)
+unset(C_BUILD_OPTIONS_STRING)
+unset(CXX_BUILD_OPTIONS_STRING)
 unset(BUILD_OPTIONS)
