@@ -29,13 +29,11 @@ macro(add_dependency name)
 	)
 
 	# Make sure all requirements from REQUIRES is true
-	if (${PROJECT_NAME}_REQUIRES)
-		foreach (REQUIREMENT ${${PROJECT_NAME}_REQUIRES})
-			if (NOT ${REQUIREMENT})
-				return()
-			endif ()
-		endforeach ()
-	endif()
+	foreach (REQUIREMENT ${${PROJECT_NAME}_REQUIRES})
+		if (NOT ${REQUIREMENT})
+			return()
+		endif ()
+	endforeach ()
 
 	message(STATUS "Dependency - ${name}")
 	message(STATUS "------------------------------------------")

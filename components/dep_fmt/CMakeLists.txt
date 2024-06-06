@@ -1,3 +1,6 @@
+# Don't install FMT library
+set(FMT_INSTALL ${LIB_INSTALL_DEPENDENCIES})
+
 add_dependency(
 	fmt
 	GITHUB_REPOSITORY
