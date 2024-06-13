@@ -11,12 +11,10 @@ TEST_CASE("Thread Pool - init", "[threading]") {
 
 TEST_CASE("Thread pool - basic", "[threading]") {
     lib::threading::ThreadPool thread_pool(100);
-    std::atomic<int> counter = 0;
 
     for (size_t i = 0; i < 10; i++) {
         thread_pool.emplace([&]{
             std::this_thread::sleep_for(std::chrono::seconds(1));
-            counter += 1;
         });
     }
 

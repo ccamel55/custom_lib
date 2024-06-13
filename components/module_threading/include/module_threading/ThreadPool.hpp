@@ -59,15 +59,19 @@ public:
         auto shared_promise = std::make_shared<std::promise<T>>();
         auto promise_future = shared_promise->get_future();
 
-        auto fn = [
-            promise = std::move(shared_promise),
-            fn_bind = std::bind(std::forward<Fn>(function), std::forward<Args>(args)...)
-        ]() {
-            promise->set_value(fn_bind());
-        };
+        {
+            auto fn = [
+                promise = std::move(shared_promise),
+                fn_bind = std::bind(std::forward<Fn>(function), std::forward<Args>(args)...)
+            ] {
+                promise->set_value(fn_bind());
+            };
 
-        std::unique_lock<std::mutex> lock(_job_queue_mutex);
-        _job_queue.emplace(priority, std::move(fn));
+            std::unique_lock<std::mutex> lock(_job_queue_mutex);
+            _job_queue.emplace(priority, std::move(fn));
+        }
+
+        _threads_update.notify_one();
 
         return promise_future;
     }
@@ -88,16 +92,20 @@ public:
         auto shared_promise = std::make_shared<std::promise<void>>();
         auto promise_future = shared_promise->get_future();
 
-        auto fn = [
-            promise = std::move(shared_promise),
-            fn_bind = std::bind(std::forward<Fn>(function), std::forward<Args>(args)...)
-        ]() {
-            fn_bind();
-            promise->set_value();
-        };
+        {
+            auto fn = [
+                promise = std::move(shared_promise),
+                fn_bind = std::bind(std::forward<Fn>(function), std::forward<Args>(args)...)
+            ] {
+                fn_bind();
+                promise->set_value();
+            };
 
-        std::unique_lock<std::mutex> lock(_job_queue_mutex);
-        _job_queue.emplace(priority, std::move(fn));
+            std::unique_lock<std::mutex> lock(_job_queue_mutex);
+            _job_queue.emplace(priority, std::move(fn));
+        }
+
+        _threads_update.notify_one();
 
         return promise_future;
     }

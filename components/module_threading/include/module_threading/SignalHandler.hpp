@@ -1,6 +1,5 @@
 #pragma once
 
-#include <atomic>
 #include <condition_variable>
 #include <functional>
 #include <mutex>
@@ -20,8 +19,7 @@ class SignalHandler {
     using listener_id = uint32_t;
     using listener_fn = std::function<void(Args...)>;
 
-    struct listener_object_t
-    {
+    struct listener_object_t {
         listener_object_t(listener_id id, listener_fn&& fn)
             : id(id)
             , fn(std::move(fn)) {

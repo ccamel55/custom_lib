@@ -27,6 +27,9 @@ public:
             case log_level::VERBOSE:
                 return "V";
             }
+
+            // This should never be reached
+            return "V";
         };
 
         // Logs should look like the following

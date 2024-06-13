@@ -68,8 +68,12 @@ void Timer::reset() {
 }
 
 void Timer::emplace(std::function<void()>&& callback) {
-    std::unique_lock<std::mutex> lock(_callback_mutex);
-    _callbacks.emplace_back(std::move(callback));
+    {
+        std::unique_lock<std::mutex> lock(_callback_mutex);
+        _callbacks.emplace_back(std::move(callback));
+    }
+
+    _thread_cv.notify_one();
 }
 
 void Timer::clear() {

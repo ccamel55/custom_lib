@@ -10,25 +10,25 @@ ThreadPool::ThreadPool(size_t max_threads)
 
     const auto worker_thread = [&](size_t thread_id){
         // Hold the function in our worker, so we can unlock the mutex when we process stuff.
+        std::function<void()> function = {};
 
         while(_running) {
-            std::unique_lock<std::mutex> lock(_job_queue_mutex);
+            {
+                std::unique_lock<std::mutex> lock(_job_queue_mutex);
 
-            // If empty, wait until we receive something otherwise keep going, eat it up.
-            if (_job_queue.empty()) {
-                _threads_update.wait(lock);
+                // Wait until we recieve something or until we get told to stop
+                _threads_update.wait(lock, [&]{
+                    return !_job_queue.empty() || !_running;
+                });
+
+                if (!_running) [[unlikely]] {
+                    break;
+                }
+
+                // Take ownership from the priority_queue, function is marked mutable!
+                function = std::move(_job_queue.top().function);
+                _job_queue.pop();
             }
-
-            if (!_running) [[unlikely]] {
-                break;
-            }
-
-            // Take ownership from the priority_queue, function is marked mutable!
-            auto function = std::move(_job_queue.top().function);
-            _job_queue.pop();
-
-            // Release mutex so other threads can add/remove while the function runs,
-            lock.unlock();
 
             // Call the wrapped function which will signal the promise once it finishes.
             function();
