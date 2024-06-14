@@ -4,15 +4,13 @@
 #include <cstring>
 #include <type_traits>
 
-namespace lib::hashing
-{
+namespace lib::hashing {
     //! Alias for representing fnv1a_32 hashes
     using fnv1a_32_t = uint32_t;
 
     // https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function
-    namespace detail
-    {
-        constexpr fnv1a_32_t FNV_PRIME = 0x01000193;
+    namespace detail {
+        constexpr fnv1a_32_t FNV_PRIME        = 0x01000193;
         constexpr fnv1a_32_t FNV_OFFSET_BASIS = 0x811c9dc5;
 
         // Compile time fnv1a 32 bit hashing function. This uses recursion so I want to avoid calling
