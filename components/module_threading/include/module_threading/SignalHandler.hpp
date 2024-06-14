@@ -6,11 +6,13 @@
 #include <optional>
 #include <vector>
 
-namespace lib::threading
-{
+namespace lib::threading {
 enum class signal_invoke_mode {
     //! Blocking mode blocks the calling thread until all listeners have finished executing.
-    BLOCKING
+    BLOCKING,
+
+    //! Async mode does not block but executes the listeners asynchronously
+    ASYNC,
 };
 
 //! Safely call functions from different threads.
@@ -47,7 +49,7 @@ public:
             return;
         }
 
-        const auto call_listeners = [&]{
+        const auto call_listeners = [&] {
             // We lock for the duration of the call because we don't want to introduce new
             // listeners mid-call.
             std::unique_lock<std::mutex> lock(_vector_mutex);
@@ -81,7 +83,7 @@ public:
     std::optional<listener_id> try_emplace(listener_fn&& listener) {
         std::unique_lock<std::mutex> lock(_vector_mutex, std::try_to_lock);
 
-        if(!lock.owns_lock()){
+        if (!lock.owns_lock()) {
             return std::nullopt;
         }
 
@@ -95,9 +97,12 @@ public:
     //! \param id The identifier for a specific listener.
     void erase(listener_id id) {
         std::unique_lock<std::mutex> lock(_vector_mutex);
-        std::erase_if(_listeners, [&](const auto& x) {
-            return x.id == id;
-        });
+        std::erase_if(
+            _listeners,
+            [&](const auto& x) {
+                return x.id == id;
+            }
+        );
     }
 
     //! Remove a listener, if the caller can obtain a lock.
@@ -107,13 +112,16 @@ public:
     bool try_erase(listener_id id) {
         std::unique_lock<std::mutex> lock(_vector_mutex, std::try_to_lock);
 
-        if(!lock.owns_lock()){
+        if (!lock.owns_lock()) {
             return false;
         }
 
-        std::erase_if(_listeners, [&](const auto& x) {
-            return x.id == id;
-        });
+        std::erase_if(
+            _listeners,
+            [&](const auto& x) {
+                return x.id == id;
+            }
+        );
 
         return true;
     }
@@ -138,10 +146,10 @@ public:
 
 private:
     signal_invoke_mode _invoke_mode = signal_invoke_mode::BLOCKING;
-    uint32_t _id_counter = 0;
+    uint32_t _id_counter            = 0;
 
-    mutable std::mutex _vector_mutex = {};
-    std::vector<listener_object_t> _listeners = {};
+    mutable std::mutex _vector_mutex          = { };
+    std::vector<listener_object_t> _listeners = { };
 
 };
 }

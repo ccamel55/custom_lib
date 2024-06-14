@@ -1,20 +1,20 @@
 #pragma once
+
 #include <module_core/NoCopy.hpp>
 
-namespace lib
-{
+namespace lib {
 //! Helper for creating a singleton from a class.
 template<typename T>
-class Singleton: public NoCopy {
+class Singleton : public NoCopy {
 public:
     static T& get() {
-        static T instance{};
+        static T instance{ };
         return instance;
     }
 
 protected:
-    Singleton() = default;
+    Singleton()  = default;
     ~Singleton() = default;
 
 };
-}  // namespace lib
+} // namespace lib

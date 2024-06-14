@@ -2,8 +2,7 @@
 
 #include <module_logger/Logger.hpp>
 
-namespace lib::logger
-{
+namespace lib::logger {
 //! Log manager than handles logs in the current scope.
 template<logger_impl T>
 class ScopeLog {
@@ -31,12 +30,11 @@ public:
     //! \param args Packed arguments list containing things to be formatted.
     template<typename... Args>
     void log(log_level level, const fmt::format_string<Args...>& message, Args&&... args) {
-        log_message_t message_object = {};
-        {
+        log_message_t message_object = { }; {
             message_object.timestamp = std::chrono::system_clock::now();
-            message_object.level = level;
-            message_object.tag = _tag;
-            message_object.message = fmt::format(message, std::forward<Args>(args)...);
+            message_object.level     = level;
+            message_object.tag       = _tag;
+            message_object.message   = fmt::format(message, std::forward<Args>(args)...);
         }
         _logger.log(message_object);
     }

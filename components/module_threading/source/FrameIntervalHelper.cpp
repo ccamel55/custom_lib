@@ -8,8 +8,8 @@ void FrameIntervalHelper::reset() {
 
     _average_fps = 0;
 
-    _min_frame_time = std::chrono::microseconds(0);
-    _max_frame_time = std::chrono::microseconds(0);
+    _min_frame_time     = std::chrono::microseconds(0);
+    _max_frame_time     = std::chrono::microseconds(0);
     _average_frame_time = std::chrono::microseconds(0);
 
     _last_frame_time = std::chrono::system_clock::now();
@@ -17,7 +17,7 @@ void FrameIntervalHelper::reset() {
 
 void FrameIntervalHelper::emplace() {
     const auto frame_start_time = std::chrono::system_clock::now();
-    const auto frame_time = std::chrono::duration_cast<std::chrono::microseconds>(
+    const auto frame_time       = std::chrono::duration_cast<std::chrono::microseconds>(
         frame_start_time - _last_frame_time
     );
 

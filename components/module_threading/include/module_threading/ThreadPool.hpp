@@ -11,8 +11,7 @@
 #include <type_traits>
 #include <vector>
 
-namespace lib::threading
-{
+namespace lib::threading {
 constexpr uint8_t DEFAULT_PRIORITY = 50;
 
 class ThreadPool {
@@ -23,7 +22,7 @@ class ThreadPool {
             , function(std::move(function)) {
         }
 
-        uint8_t priority = DEFAULT_PRIORITY;
+        uint8_t priority                       = DEFAULT_PRIORITY;
         mutable std::function<void()> function = nullptr;
 
         // Min heap, aka lower the number, lower the priority.
@@ -50,20 +49,17 @@ public:
     template<
         typename Fn,
         typename... Args,
-        typename T = std::invoke_result_t<Fn, Args...>
-    > requires (std::is_invocable_v<Fn, Args...> && std::is_void_v<T> == false)
+        typename T = std::invoke_result_t<Fn, Args...>> requires (std::is_invocable_v<Fn, Args...> && std::is_void_v<T> == false)
     std::future<T> emplace(uint8_t priority, Fn&& function, Args&&... args) {
         // std::promise isn't copyable, therefor we create shared ptr to the promise where this function and the
         // job queue holds ownership, once this function returns the job queue will be the only thing owning the
         // promise.
         auto shared_promise = std::make_shared<std::promise<T>>();
-        auto promise_future = shared_promise->get_future();
-
-        {
+        auto promise_future = shared_promise->get_future(); {
             auto fn = [
-                promise = std::move(shared_promise),
-                fn_bind = std::bind(std::forward<Fn>(function), std::forward<Args>(args)...)
-            ] {
+                        promise = std::move(shared_promise),
+                        fn_bind = std::bind(std::forward<Fn>(function), std::forward<Args>(args)...)
+                    ] {
                 promise->set_value(fn_bind());
             };
 
@@ -90,13 +86,11 @@ public:
         // job queue holds ownership, once this function returns the job queue will be the only thing owning the
         // promise.
         auto shared_promise = std::make_shared<std::promise<void>>();
-        auto promise_future = shared_promise->get_future();
-
-        {
+        auto promise_future = shared_promise->get_future(); {
             auto fn = [
-                promise = std::move(shared_promise),
-                fn_bind = std::bind(std::forward<Fn>(function), std::forward<Args>(args)...)
-            ] {
+                        promise = std::move(shared_promise),
+                        fn_bind = std::bind(std::forward<Fn>(function), std::forward<Args>(args)...)
+                    ] {
                 fn_bind();
                 promise->set_value();
             };
@@ -117,8 +111,7 @@ public:
     template<
         typename Fn,
         typename... Args,
-        typename T = std::invoke_result_t<Fn, Args...>
-    > requires (std::is_invocable_v<Fn, Args...>)
+        typename T = std::invoke_result_t<Fn, Args...>> requires (std::is_invocable_v<Fn, Args...>)
     std::future<T> emplace(Fn&& function, Args&&... args) {
         return emplace(DEFAULT_PRIORITY, std::forward<Fn>(function), std::forward<Args>(args)...);
     }
@@ -133,14 +126,14 @@ public:
     [[nodiscard]] bool empty() const;
 
 public:
-    size_t _num_threads = 0;
+    size_t _num_threads        = 0;
     std::atomic<bool> _running = false;
 
-    std::condition_variable _threads_update = {};
-    std::vector<std::thread> _threads = {};
+    std::condition_variable _threads_update = { };
+    std::vector<std::thread> _threads       = { };
 
-    mutable std::mutex _job_queue_mutex = {};
-    std::priority_queue<queue_object_t, std::deque<queue_object_t>, queue_object_t> _job_queue = {};
+    mutable std::mutex _job_queue_mutex                                                        = { };
+    std::priority_queue<queue_object_t, std::deque<queue_object_t>, queue_object_t> _job_queue = { };
 
 };
 }

@@ -15,9 +15,11 @@ TEST_CASE("Signal handler - blocking", "[threading]") {
     REQUIRE(counter == 0);
     REQUIRE(handler.empty());
 
-    const auto id = handler.try_emplace([&](int c){
-        counter += c;
-    });
+    const auto id = handler.try_emplace(
+        [&](int c) {
+            counter += c;
+        }
+    );
 
     REQUIRE(id.has_value());
     REQUIRE(handler.size() == 1);

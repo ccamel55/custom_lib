@@ -1,13 +1,11 @@
 #pragma once
 
-#include <concepts>
 #include <functional>
 #include <type_traits>
 
 // More template/type traits that I use/think is useful
 
-namespace lib
-{
+namespace lib {
 // typeid implementation without rtti
 template<typename T>
 struct type_info_t {
@@ -32,7 +30,7 @@ template<typename T, typename... Types>
 struct is_type_present {
     // (std::is_same_v<T, Types> || ...) expands to
     // (std::is_same_v<T, Types[0]> || std::is_same_v<T, Types[1]> ...)
-    constexpr static bool value { (std::is_same_v<T, Types> || ...) };
+    constexpr static bool value{ (std::is_same_v<T, Types> || ...) };
 };
 
 //! Returns a constexpr bool representing if type T exists in the parameter pack Types...
@@ -54,7 +52,7 @@ constexpr inline void iterate_integer_sequence(
     Fn&& callback
 ) {
     // We use pack expression to call the callback for each value of the integer sequence
-    (callback(std::integral_constant<T, element>{}), ...);
+    (callback(std::integral_constant<T, element>{ }), ...);
 }
 
 // ===================================================================================

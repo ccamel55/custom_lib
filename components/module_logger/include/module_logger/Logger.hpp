@@ -5,8 +5,7 @@
 
 #include <dep_fmt/fmt.hpp>
 
-namespace lib::logger
-{
+namespace lib::logger {
 //! Lightweight logging interface, with minimal overhead.
 template<logger_impl T>
 class Logger final : public Singleton<Logger<T>> {
@@ -23,12 +22,11 @@ public:
     //! \param args Packed arguments list containing things to be formatted.
     template<typename... Args>
     void log(log_level level, const std::string& tag, const fmt::format_string<Args...>& message, Args&&... args) {
-        log_message_t message_object = {};
-        {
+        log_message_t message_object = { }; {
             message_object.timestamp = std::chrono::system_clock::now();
-            message_object.level = level;
-            message_object.tag = tag;
-            message_object.message = fmt::format(message, std::forward<Args>(args)...);
+            message_object.level     = level;
+            message_object.tag       = tag;
+            message_object.message   = fmt::format(message, std::forward<Args>(args)...);
         }
         log(message_object);
     }
@@ -38,7 +36,7 @@ public:
     }
 
 private:
-    T _impl = {};
+    T _impl = { };
 
 };
 }

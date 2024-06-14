@@ -4,8 +4,7 @@
 #include <module_core/types/vector/vector3D.hpp>
 #include <module_core/types/point/point3D.hpp>
 
-namespace lib::math
-{
+namespace lib::math {
 //! Simple ray plane intersection test.
 //! \param Ray is the ray we want to cast
 //! \param plane_origin is the origin of the plane

@@ -8,18 +8,21 @@ ThreadPool::ThreadPool(size_t max_threads)
     : _num_threads(std::clamp<size_t>(max_threads, 1, std::max<size_t>(1, std::thread::hardware_concurrency())))
     , _running(true) {
 
-    const auto worker_thread = [&](size_t thread_id){
+    const auto worker_thread = [&](size_t thread_id) {
         // Hold the function in our worker, so we can unlock the mutex when we process stuff.
-        std::function<void()> function = {};
+        std::function<void()> function = { };
 
-        while(_running) {
+        while (_running) {
             {
                 std::unique_lock<std::mutex> lock(_job_queue_mutex);
 
                 // Wait until we recieve something or until we get told to stop
-                _threads_update.wait(lock, [&]{
-                    return !_job_queue.empty() || !_running;
-                });
+                _threads_update.wait(
+                    lock,
+                    [&] {
+                        return !_job_queue.empty() || !_running;
+                    }
+                );
 
                 if (!_running) [[unlikely]] {
                     break;
@@ -60,7 +63,7 @@ ThreadPool::~ThreadPool() {
 
 void ThreadPool::clear() {
     std::unique_lock<std::mutex> lock(_job_queue_mutex);
-    _job_queue = {};
+    _job_queue = { };
 }
 
 size_t ThreadPool::size() const {

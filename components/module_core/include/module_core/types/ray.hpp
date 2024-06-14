@@ -1,8 +1,7 @@
 #pragma once
 #include <module_core/types/vector/vector3D.hpp>
 
-namespace lib
-{
+namespace lib {
 class ray {
 public:
     constexpr ray() = default;
@@ -12,7 +11,9 @@ public:
     //! \param normalized_direction direction of the ray.
     //! \param scalar the unit length of the ray.
     constexpr ray(const point3Df& origin, const vector3D& normalized_direction, float scalar)
-            : origin(origin), direction(normalized_direction), scalar(scalar) {
+        : origin(origin)
+        , direction(normalized_direction)
+        , scalar(scalar) {
     }
 
     //! Returns the point in 3d space that the ray represents
@@ -21,9 +22,9 @@ public:
     }
 
 public:
-    point3Df origin = {};
-    vector3D direction = {};
-    float scalar = {};
+    point3Df origin    = { };
+    vector3D direction = { };
+    float scalar       = { };
 
 };
 }

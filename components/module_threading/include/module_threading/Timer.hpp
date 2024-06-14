@@ -7,8 +7,7 @@
 #include <thread>
 #include <vector>
 
-namespace lib::threading
-{
+namespace lib::threading {
 enum class timer_mode {
     //! One shot timers execute their functions once when started.
     ONE_SHOT,
@@ -44,15 +43,15 @@ public:
 private:
     timer_mode _mode = timer_mode::ONE_SHOT;
 
-    std::chrono::milliseconds  _timeout = {};
-    std::chrono::system_clock::time_point _exec_start_time = {};
+    std::chrono::milliseconds _timeout                     = { };
+    std::chrono::system_clock::time_point _exec_start_time = { };
 
-    std::thread _thread = {};
-    std::atomic<bool> _running = false;
-    std::condition_variable _thread_cv = {};
+    std::thread _thread                = { };
+    std::atomic<bool> _running         = false;
+    std::condition_variable _thread_cv = { };
 
-    std::mutex _callback_mutex = {};
-    std::vector<std::function<void()>> _callbacks = {};
+    std::mutex _callback_mutex                    = { };
+    std::vector<std::function<void()>> _callbacks = { };
 
 };
 }

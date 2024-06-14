@@ -2,7 +2,6 @@
 
 #include <module_core/custom_traits.hpp>
 
-#include <concepts>
 #include <string_view>
 #include <tuple>
 
@@ -35,8 +34,7 @@
     };
 */
 
-namespace lib
-{
+namespace lib {
 template<typename container>
 concept serializable = requires {
     { container::get_metadata() };
@@ -46,10 +44,11 @@ concept serializable = requires {
 template<typename container, typename member_type>
 struct member_metadata {
     constexpr member_metadata(
-            std::string_view member_name,
-            member_type container::* member_ptr)
-            : member_name(member_name)
-            , member_ptr(member_ptr) {
+        std::string_view member_name,
+        member_type container::* member_ptr
+    )
+        : member_name(member_name)
+        , member_ptr(member_ptr) {
     }
 
     std::string_view member_name;
@@ -61,7 +60,7 @@ template<typename container>
 constexpr auto get_metadata_size() {
     // get the tuple type from the function "get_metadata" and parse parameters to derive the number of
     // items within that tuple
-    using tuple = std::invoke_result_t<decltype(container::get_metadata)>;
+    using tuple               = std::invoke_result_t<decltype(container::get_metadata)>;
     constexpr auto tuple_size = std::tuple_size_v<tuple>;
 
     return tuple_size;
@@ -70,12 +69,15 @@ constexpr auto get_metadata_size() {
 //! Calls the \p cb for each element defined as "metadata' for the type \a container
 template<serializable container, typename callback>
 constexpr void for_each_metadata(callback&& cb) {
-    lib::iterate_integer_sequence(std::make_index_sequence<get_metadata_size<container>()>{}, [&](auto i) {
-        constexpr auto tuple = container::get_metadata();
-        constexpr auto property = std::get<i>(tuple);
+    lib::iterate_integer_sequence(
+        std::make_index_sequence<get_metadata_size<container>()>{ },
+        [&](auto i) {
+            constexpr auto tuple    = container::get_metadata();
+            constexpr auto property = std::get<i>(tuple);
 
-        cb(property);
-    });
+            cb(property);
+        }
+    );
 }
 
 //! Use this macro to define a member that should be serializable.

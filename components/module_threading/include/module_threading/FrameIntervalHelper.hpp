@@ -3,8 +3,7 @@
 #include <chrono>
 #include <limits>
 
-namespace lib::threading
-{
+namespace lib::threading {
 class FrameIntervalHelper {
 public:
     //! Reset all values
@@ -33,9 +32,9 @@ private:
     uint16_t _average_fps = 0;
     uint16_t _current_fps = 0;
 
-    std::chrono::microseconds _min_frame_time = {};
-    std::chrono::microseconds _max_frame_time = {};
-    std::chrono::microseconds _average_frame_time = {};
+    std::chrono::microseconds _min_frame_time     = { };
+    std::chrono::microseconds _max_frame_time     = { };
+    std::chrono::microseconds _average_frame_time = { };
 
     std::chrono::system_clock::time_point _last_frame_time = std::chrono::system_clock::now();
 

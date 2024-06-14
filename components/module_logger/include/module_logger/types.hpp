@@ -5,8 +5,7 @@
 #include <string>
 #include <type_traits>
 
-namespace lib::logger
-{
+namespace lib::logger {
 enum class log_level {
     EXPLICIT,
     ERROR,

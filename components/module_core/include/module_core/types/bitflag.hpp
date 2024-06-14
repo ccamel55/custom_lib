@@ -1,18 +1,17 @@
 #pragma once
 #include <cstdint>
 
-namespace lib
-{
+namespace lib {
 using bitflag_t = uint32_t;
 
 class bitflag {
 public:
-    bitflag() = default;
+    bitflag()  = default;
     ~bitflag() = default;
 
     // allow implicit conversion, we want this!
     bitflag(bitflag_t flag)
-            : _flag(flag) {
+        : _flag(flag) {
     }
 
     //! Add the bit specified by \param flag
