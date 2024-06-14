@@ -59,7 +59,7 @@ else()
 		)
 	else()
 		list(APPEND BUILD_OPTIONS
-			-flto # enable link time optimization
+			-flto=auto # enable link time optimization
 			-Ofast # Ofast is O3 with further flags
 			-fomit-frame-pointer # since we should never be debugging a release build, remove frame pointers
 		)
