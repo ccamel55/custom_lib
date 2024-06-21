@@ -49,6 +49,7 @@ else()
 		-fno-rtti # disable rtti
 		-ffast-math # enable fast math functions that dont align with IEEE/ANSI standard fully.
 		-ftree-vectorize # enabled by -O3 but in case we dont compile in release, enable vectorisation
+		-fPIC # position independent code
 	)
 
 	if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR
