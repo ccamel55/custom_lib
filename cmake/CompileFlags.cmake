@@ -19,7 +19,6 @@ if (CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
 	# msvc front end compile options
 	list(APPEND BUILD_OPTIONS
 		-W3
-		-GR # disable RTTI
 		-fp:fast # fast floating point arithmetic
 	)
 
@@ -46,7 +45,6 @@ else()
 	# options are valid for clang and gcc on GNU but if using msvc front ends we need to use msvc options
 	list(APPEND BUILD_OPTIONS
 		-Wall # all warnings
-		-fno-rtti # disable rtti
 		-ffast-math # enable fast math functions that dont align with IEEE/ANSI standard fully.
 		-ftree-vectorize # enabled by -O3 but in case we dont compile in release, enable vectorisation
 		-fPIC # position independent code
@@ -73,7 +71,6 @@ set(CXX_BUILD_OPTIONS_STRING)
 
 # Some options are not available for C so we can blacklist them here
 list(APPEND C_BUILD_OPTIONS_BLACKLIST
-	"-fno-rtti"
 )
 
 # we need to loop through all options to remove the ; from lists

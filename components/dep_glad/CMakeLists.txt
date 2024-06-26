@@ -1,9 +1,0 @@
-add_dependency(
-	glad
-	GITHUB_REPOSITORY
-		ccamel55/glad
-	GIT_TAG
-		main
-	DEPENDENCIES
-		glad
-)
