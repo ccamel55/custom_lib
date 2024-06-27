@@ -1,0 +1,9 @@
+add_dependency(
+	cxxopts
+	GITHUB_REPOSITORY
+		jarro2783/cxxopts
+	GIT_TAG
+		v3.2.0
+	DEPENDENCIES
+		cxxopts
+)
