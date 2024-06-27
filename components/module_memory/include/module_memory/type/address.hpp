@@ -33,10 +33,11 @@ struct address_object {
     explicit address_object(const void* ptr) : raw(reinterpret_cast<Ptr>(ptr)) {};
 
     //! Offset the current address object
-    //! \param size number of bytes to offset
+    //! \param size how much to offset. number of bytes = size * sizeof(T)
     //! \return offset address
+    template<typename T = uint8_t>
     [[nodiscard]] address_object offset(ptrdiff_t size) const {
-        return address_object(raw + size);
+        return address_object(raw + size * sizeof(T));
     }
 
     //! Deference the address and use that as address object
@@ -57,6 +58,17 @@ struct address_object {
     template<typename T>
     [[nodiscard]] T* ptr() const {
         return reinterpret_cast<T*>(raw);
+    }
+
+    //! Raw dog cast the address.
+    //! \return address as T
+    template<typename T>
+    [[nodiscard]] T cast() const {
+        return reinterpret_cast<T>(raw);
+    }
+
+    bool operator==(const address_object& in) {
+        return this->raw == in.raw;
     }
 
     Ptr raw = 0;

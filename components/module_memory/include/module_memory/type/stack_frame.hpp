@@ -16,21 +16,16 @@ struct stack_frame{
         , return_address(return_address) {
     }
 
-    //! Get the address to a variable relative to the frame pointer
-    //! \param pointer_offset offset (number of bytes = pointer_offset * sizeof(uintptr_t))
-    //! \return pointer of type T to the variable
-    template<typename T>
-    [[nodiscard]] T* get(ptrdiff_t pointer_offset) const {
-        constexpr ptrdiff_t pointer_size = sizeof(uintptr_t);
-        return frame_pointer.offset(pointer_offset * pointer_size).ptr<T>();
+    //! Get a variable relative to the frame pointer
+    //! \param index index from the frame pointer
+    //! \return address to the variable
+    [[nodiscard]] address get(int32_t index) const {
+        return frame_pointer.offset<uintptr_t>(index);
     }
 
-    //! Get a variable relative to the frame pointer
-    //! \param pointer_offset offset (number of bytes = pointer_offset * sizeof(uintptr_t))
-    //! \return reference to the variable
-    template<typename T>
-    [[nodiscard]] T& get_variable(ptrdiff_t pointer_offset) const {
-        return *get<T>(pointer_offset);
+    bool operator==(const stack_frame& in) {
+        return this->frame_pointer == in.frame_pointer
+            && this->return_address == in.return_address;
     }
 
     address frame_pointer;
