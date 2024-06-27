@@ -55,9 +55,9 @@ public:
     }
 
 private:
-    std::atomic<std::shared_ptr<T>> _reading = nullptr;
-    std::atomic<std::shared_ptr<T>> _writing = nullptr;
-    std::atomic<std::shared_ptr<T>> _ready = nullptr;
+    std::atomic<std::shared_ptr<T>> _reading    = nullptr;
+    std::atomic<std::shared_ptr<T>> _writing    = nullptr;
+    std::atomic<std::shared_ptr<T>> _ready      = nullptr;
 
     std::atomic<bool> _updated = false;
 

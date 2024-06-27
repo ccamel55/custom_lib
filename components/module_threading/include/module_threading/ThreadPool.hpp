@@ -38,10 +38,6 @@ namespace lib::threading {
         explicit ThreadPool(size_t max_threads = std::thread::hardware_concurrency());
         ~ThreadPool();
 
-        // mmmm SFINAE!!
-        // Because we need to invoke set-value for the promise we need to have two different functions depending on whether
-        // the return value is null.
-
         //! Add a new job to the thread pool
         //! \param priority Function priority, the lower the number, the higher the priority.
         //! \param function Function to call in the thread pool.
@@ -50,7 +46,7 @@ namespace lib::threading {
         template<
             typename Fn,
             typename... Args,
-            typename T = std::invoke_result_t<Fn, Args...>> requires (std::is_invocable_v<Fn, Args...> && std::is_void_v<T> == false)
+            typename T = std::invoke_result_t<Fn, Args...>> requires std::is_invocable_v<Fn, Args...>
         std::future<T> emplace(uint8_t priority, Fn&& function, Args&&... args) {
             // std::promise isn't copyable, therefor we create shared ptr to the promise where this function and the
             // job queue holds ownership, once this function returns the job queue will be the only thing owning the
@@ -61,39 +57,13 @@ namespace lib::threading {
                             promise = std::move(shared_promise),
                             fn_bind = std::bind(std::forward<Fn>(function), std::forward<Args>(args)...)
                         ] {
-                    promise->set_value(fn_bind());
-                };
-
-                std::unique_lock<std::mutex> lock(_job_queue_mutex);
-                _job_queue.emplace(priority, std::move(fn));
-            }
-
-            _threads_update.notify_one();
-
-            return promise_future;
-        }
-
-        //! Add a new job to the thread pool
-        //! \param priority Function priority, the lower the number, the higher the priority.
-        //! \param function Function to call in the thread pool.
-        //! \param args Optional arguments to pass to the function.
-        //! \return Future for function.
-        template<
-            typename Fn,
-            typename... Args
-        > requires (std::is_invocable_v<Fn, Args...> && std::is_void_v<std::invoke_result_t<Fn, Args...>>)
-        std::future<void> emplace(uint8_t priority, Fn&& function, Args&&... args) {
-            // std::promise isn't copyable, therefor we create shared ptr to the promise where this function and the
-            // job queue holds ownership, once this function returns the job queue will be the only thing owning the
-            // promise.
-            auto shared_promise = std::make_shared<std::promise<void>>();
-            auto promise_future = shared_promise->get_future(); {
-                auto fn = [
-                            promise = std::move(shared_promise),
-                            fn_bind = std::bind(std::forward<Fn>(function), std::forward<Args>(args)...)
-                        ] {
-                    fn_bind();
-                    promise->set_value();
+                    // Can't return void duh
+                    if constexpr (std::is_void_v<T>) {
+                        fn_bind();
+                        promise->set_value();
+                    } else {
+                        promise->set_value(fn_bind());
+                    }
                 };
 
                 std::unique_lock<std::mutex> lock(_job_queue_mutex);

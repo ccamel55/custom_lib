@@ -17,8 +17,14 @@ public:
     }
 
     //! Returns the point in 3d space that the ray represents
-    [[nodiscard]] point3Df get_point() const {
+    [[nodiscard]] constexpr point3Df get_point() const {
         return origin + (direction * scalar);
+    }
+
+    constexpr bool operator==(const ray& in) const {
+        return this->origin == in.origin
+            && this->direction == in.direction
+            && this->scalar == in.scalar;
     }
 
 public:

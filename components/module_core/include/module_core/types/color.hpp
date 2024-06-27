@@ -20,6 +20,13 @@ public:
         , a(static_cast<float>(a) / 255.f) {
     }
 
+    constexpr bool operator==(const color_f& in) const {
+        return this->r == in.r
+            && this->g == in.g
+            && this->b == in.b
+            && this->a == in.a;
+    }
+
 public:
     float r = 0.f;
     float g = 0.f;
@@ -43,6 +50,13 @@ public:
     //! \return Color_f of size sizeof(float) * 4
     [[nodiscard]] constexpr color_f to_color_f() const {
         return { r, g, b, a };
+    }
+
+    constexpr bool operator==(const color& in) const {
+        return this->r == in.r
+               && this->g == in.g
+               && this->b == in.b
+               && this->a == in.a;
     }
 
 public:

@@ -7,11 +7,11 @@ namespace lib::memory
 //! Struct that represents the current method's stack frame
 struct stack_frame{
 
-    stack_frame(void* frame_pointer, void* return_address)
+    constexpr stack_frame(void* frame_pointer, void* return_address)
         : stack_frame(reinterpret_cast<uintptr_t>(frame_pointer), reinterpret_cast<uintptr_t>(return_address)) {
     }
 
-    stack_frame(uintptr_t frame_pointer, uintptr_t return_address)
+    constexpr stack_frame(uintptr_t frame_pointer, uintptr_t return_address)
         : frame_pointer(frame_pointer)
         , return_address(return_address) {
     }
@@ -19,11 +19,11 @@ struct stack_frame{
     //! Get a variable relative to the frame pointer
     //! \param index index from the frame pointer
     //! \return address to the variable
-    [[nodiscard]] address get(int32_t index) const {
+    [[nodiscard]] constexpr address get(int32_t index) const {
         return frame_pointer.offset<uintptr_t>(index);
     }
 
-    bool operator==(const stack_frame& in) {
+    constexpr bool operator==(const stack_frame& in) {
         return this->frame_pointer == in.frame_pointer
             && this->return_address == in.return_address;
     }
