@@ -33,7 +33,7 @@ if (CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
 			-flto # enable link time optimization
 			-Oi # allow intrinsics
 			-O2 # favour speed over size
-			-Oy # commit frame pointers
+			-Oy # ommit frame pointers
 			-Gw # place global data in COMDAT sections
 			-Gy # enable function level linking
 		)
