@@ -19,3 +19,9 @@ elseif (UNIX AND NOT APPLE)
 else ()
 	set(CURRENT_PLATFORM "")
 endif()
+
+# Make defines available to everything
+add_definitions(
+	-DCURRENT_ARCH_${CURRENT_ARCH}
+	-DCURRENT_ARCH_${CURRENT_PLATFORM}
+)

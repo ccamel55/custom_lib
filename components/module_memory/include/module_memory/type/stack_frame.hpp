@@ -23,7 +23,7 @@ struct stack_frame{
         return frame_pointer.offset<uintptr_t>(index);
     }
 
-    constexpr bool operator==(const stack_frame& in) {
+    constexpr bool operator==(const stack_frame& in) const {
         return this->frame_pointer == in.frame_pointer
             && this->return_address == in.return_address;
     }

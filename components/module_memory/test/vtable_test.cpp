@@ -30,7 +30,7 @@ TEST_CASE("VTable - basic", "[memory]") {
     auto vtable = lib::memory::vtable(vtable_address);
 
     // destructor + 3 methods + 2 other things??
-    REQUIRE(vtable.size == 6);
+    REQUIRE(vtable.size() == 6);
 
     using fn_sig = int(*)();
 

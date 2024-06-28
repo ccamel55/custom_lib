@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <type_traits>
 
@@ -34,7 +35,7 @@ struct address_object {
     //! Offset the current address object
     //! \param size how much to offset. number of bytes = size * sizeof(T)
     //! \return offset address
-    template<typename T = uint8_t>
+    template<typename T = std::byte>
     [[nodiscard]] constexpr address_object offset(ptrdiff_t size) const {
         return address_object(raw + size * sizeof(T));
     }
@@ -66,8 +67,24 @@ struct address_object {
         return reinterpret_cast<T>(raw);
     }
 
-    constexpr bool operator==(const address_object& in) {
+    constexpr bool operator==(const address_object& in) const {
         return this->raw == in.raw;
+    }
+
+    constexpr bool operator>(const address_object& in) const {
+        return this->raw > in.raw;
+    }
+
+    constexpr bool operator<(const address_object& in) const {
+        return this->raw < in.raw;
+    }
+
+    constexpr bool operator<=(const address_object& in) const {
+        return this->raw <= in.raw;
+    }
+
+    constexpr bool operator>=(const address_object& in) const{
+        return this->raw >= in.raw;
     }
 
     Ptr raw;
