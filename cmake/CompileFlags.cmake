@@ -66,8 +66,8 @@ else()
 endif()
 
 # Append to C and C++ Build options then unset
-set(C_BUILD_OPTIONS_STRING)
-set(CXX_BUILD_OPTIONS_STRING)
+set(C_BUILD_OPTIONS_STRING "")
+set(CXX_BUILD_OPTIONS_STRING "")
 
 # Some options are not available for C so we can blacklist them here
 list(APPEND C_BUILD_OPTIONS_BLACKLIST
@@ -84,8 +84,8 @@ foreach (option ${BUILD_OPTIONS})
 endforeach ()
 
 # set compile options for C, and C++
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${C_BUILD_OPTIONS_STRING}")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXX_BUILD_OPTIONS_STRING}")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${C_BUILD_OPTIONS_STRING}" CACHE INTERNAL "")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXX_BUILD_OPTIONS_STRING}" CACHE INTERNAL "")
 
 unset(C_BUILD_OPTIONS_STRING)
 unset(CXX_BUILD_OPTIONS_STRING)

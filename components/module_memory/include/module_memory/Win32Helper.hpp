@@ -1,9 +1,5 @@
 #pragma once
 
-#if  !defined(CURRENT_ARCH_win32) || !defined(CURRENT_ARCH_x86)
-#error "Not supported go home"
-#endif
-
 #include <module_memory/type/address.hpp>
 #include <module_memory/type/memory_section.hpp>
 
