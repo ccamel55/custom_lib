@@ -87,6 +87,14 @@ struct address_object {
         return this->raw >= in.raw;
     }
 
+    constexpr address_object operator+(Ptr in) const{
+        return this->offset(in);
+    }
+
+    constexpr address_object operator-(Ptr in) const{
+        return this->offset(-in);
+    }
+
     Ptr raw;
 
 };

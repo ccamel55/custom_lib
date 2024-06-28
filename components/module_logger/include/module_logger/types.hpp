@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <string>
+#include <thread>
 
 namespace lib::logger {
     enum class log_level {
@@ -14,15 +15,10 @@ namespace lib::logger {
     };
 
     struct log_message_t {
+        std::thread::id thread_id;
         std::chrono::system_clock::time_point timestamp;
         log_level level;
         std::string tag;
         std::string message;
-    };
-
-    template<typename T>
-    concept logger_impl = requires(T& t, const log_message_t& message) {
-        { t.log(message) };
-        { t.flush() };
     };
 }

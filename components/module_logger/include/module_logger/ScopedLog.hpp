@@ -4,24 +4,22 @@
 
 namespace lib::logger {
     //! Log manager than handles logs in the current scope.
-    template<logger_impl T>
     class ScopeLog {
     public:
-        //! \param tag The tag for all logs within this scope.
-        //! \param flush_when_unscoped Whether or not to explicitly flush when leaving scope.
-        explicit ScopeLog(const std::string_view& tag, bool flush_when_unscoped = false)
-            : _logger(Logger<T>::get())
+        ScopeLog(const std::shared_ptr<Logger>& logger, const std::string& tag, bool flush_on_scope_leave = false)
+            : _logger(logger)
             , _tag(tag)
-            , _flush_when_unscoped(flush_when_unscoped) {
+            , _flush_on_scope_leave(flush_on_scope_leave) {
 
         }
 
         ~ScopeLog() {
-            if (!_flush_when_unscoped) {
+            const auto logger = _logger.lock();
+            if (!_flush_on_scope_leave || !logger) {
                 return;
             }
 
-            _logger.flush();
+            logger->flush();
         }
 
         //! Write a string log.
@@ -29,21 +27,54 @@ namespace lib::logger {
         //! \param message String containing message body.
         //! \param args Packed arguments list containing things to be formatted.
         template<typename... Args>
-        void log(log_level level, const fmt::format_string<Args...>& message, Args&&... args) {
-            log_message_t message_object = { }; {
-                message_object.timestamp = std::chrono::system_clock::now();
-                message_object.level     = level;
-                message_object.tag       = _tag;
-                message_object.message   = fmt::format(message, std::forward<Args>(args)...);
-            }
-            _logger.log(message_object);
+        void print(log_level level, const fmt::format_string<Args...>& message, Args&&... args) {
+            _logger.lock()->print(level, _tag, message, std::forward<Args>(args)...);
+        }
+
+        //! Write a log of type ERROR
+        //! \param message String containing message body.
+        //! \param args Packed arguments list containing things to be formatted.
+        template<typename... Args>
+        void e(const fmt::format_string<Args...>& message, Args&&... args) {
+            print(log_level::ERROR, message, std::forward<Args>(args)...);
+        }
+
+        //! Write a log of type WARNING
+        //! \param message String containing message body.
+        //! \param args Packed arguments list containing things to be formatted.
+        template<typename... Args>
+        void w(const fmt::format_string<Args...>& message, Args&&... args) {
+            print(log_level::WARNING, message, std::forward<Args>(args)...);
+        }
+
+        //! Write a log of type INFO
+        //! \param message String containing message body.
+        //! \param args Packed arguments list containing things to be formatted.
+        template<typename... Args>
+        void i(const fmt::format_string<Args...>& message, Args&&... args) {
+            print(log_level::INFO, message, std::forward<Args>(args)...);
+        }
+
+        //! Write a log of type DEBUG
+        //! \param message String containing message body.
+        //! \param args Packed arguments list containing things to be formatted.
+        template<typename... Args>
+        void d(const fmt::format_string<Args...>& message, Args&&... args) {
+            print(log_level::DEBUG, message, std::forward<Args>(args)...);
+        }
+
+        //! Write a log of type VERBOSE
+        //! \param message String containing message body.
+        //! \param args Packed arguments list containing things to be formatted.
+        template<typename... Args>
+        void v(const fmt::format_string<Args...>& message, Args&&... args) {
+            print(log_level::VERBOSE, message, std::forward<Args>(args)...);
         }
 
     private:
-        Logger<T>& _logger;
-
-        std::string_view _tag;
-        bool _flush_when_unscoped = false;
+        std::weak_ptr<Logger> _logger   = {};
+        std::string _tag                = {};
+        bool _flush_on_scope_leave      = false;
 
     };
 }
