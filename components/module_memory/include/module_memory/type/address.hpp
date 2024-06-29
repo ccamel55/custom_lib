@@ -11,6 +11,7 @@ namespace detail
 //! Struct containing helper functions for dealing with pointers.
 template<typename Ptr = uintptr_t> requires std::is_unsigned_v<Ptr>
 struct address_object {
+    constexpr address_object() = default;
 
     //! Create address object from an integer.
     //! \param ptr address the object represents
@@ -83,19 +84,19 @@ struct address_object {
         return this->raw <= in.raw;
     }
 
-    constexpr bool operator>=(const address_object& in) const{
+    constexpr bool operator>=(const address_object& in) const {
         return this->raw >= in.raw;
     }
 
-    constexpr address_object operator+(Ptr in) const{
+    constexpr address_object operator+(Ptr in) const {
         return this->offset(in);
     }
 
-    constexpr address_object operator-(Ptr in) const{
+    constexpr address_object operator-(Ptr in) const {
         return this->offset(-in);
     }
 
-    Ptr raw;
+    Ptr raw     = 0;
 
 };
 

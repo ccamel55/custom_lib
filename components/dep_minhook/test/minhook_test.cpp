@@ -22,7 +22,7 @@ TEST_CASE("dep-minhook - Basic", "[dep-minhook]") {
         MH_CreateHook(
             reinterpret_cast<LPVOID>(&get_value),
             reinterpret_cast<LPVOID>(&get_value_hooked),
-            reinterpret_cast<LPVOID*>(get_value_original)
+            reinterpret_cast<LPVOID*>(&get_value_original)
         ) == MH_OK
     );
 
@@ -31,6 +31,7 @@ TEST_CASE("dep-minhook - Basic", "[dep-minhook]") {
     REQUIRE(MH_EnableHook(reinterpret_cast<LPVOID>(&get_value)) == MH_OK);
 
     REQUIRE(get_value() == 69);
+    REQUIRE(get_value_original() == 0);
 
     REQUIRE(MH_DisableHook(reinterpret_cast<LPVOID>(&get_value)) == MH_OK);
 

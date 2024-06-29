@@ -1,5 +1,8 @@
 #pragma once
 
+// Only enable for windows :)
+#ifdef _WIN32
+
 #include <module_memory/type/address.hpp>
 #include <module_memory/type/memory_section.hpp>
 
@@ -32,3 +35,5 @@ namespace lib::memory
     return memory_section(span);
 }
 }
+
+#endif

@@ -6,4 +6,6 @@ endif ()
 
 add_module(
 	memory
+	DEPENDENCIES
+		dep_minhook
 )
