@@ -4,34 +4,67 @@
 namespace lib {
 using bitflag_t = uint32_t;
 
+//! 32-bit flag type
 class bitflag {
 public:
     constexpr bitflag()  = default;
-    ~bitflag() = default;
 
-    // allow implicit conversion, we want this!
     constexpr bitflag(bitflag_t flag)
         : _flag(flag) {
     }
 
-    //! Add the bit specified by \param flag
+    //! Add a bit
+    //! \param flag bit to add
     constexpr void add(bitflag_t flag) {
         _flag |= flag;
     }
 
-    //! Unset the bit specified by \param flag
+    //! Add a bit
+    //! \param flag bit to add
+    constexpr void add(bitflag flag) {
+        _flag |= flag._flag;
+    }
+
+    //! Remove a bit
+    //! \param flag bit to remove
     constexpr void remove(bitflag_t flag) {
         _flag &= ~flag;
     }
 
-    //! Set the bit specified by \param flag
+    //! Remove a bit
+    //! \param flag bit to remove
+    constexpr void remove(bitflag flag) {
+        _flag &= ~flag._flag;
+    }
+
+    //! Check if flag has a bit
+    //! \param flag bit to check
+    //! \return whether or not flag is preset
     [[nodiscard]] constexpr bool has(bitflag_t flag) const {
         return _flag & flag;
     }
 
-    //! Flip the bit specified by \param flag
+    //! Check if flag has a bit
+    //! \param flag bit to check
+    //! \return whether or not flag is preset
+    [[nodiscard]] constexpr bool has(bitflag flag) const {
+        return _flag & flag._flag;
+    }
+
+    //! Toggle the state of a bit
+    //! \param flag bit to toggle
     constexpr void toggle(bitflag_t flag) {
         _flag ^= flag;
+    }
+
+    //! Toggle the state of a bit
+    //! \param flag bit to toggle
+    constexpr void toggle(bitflag flag) {
+        _flag ^= flag._flag;
+    }
+
+    constexpr bool operator==(const bitflag_t & in) const {
+        return this->_flag == in;
     }
 
     constexpr bool operator==(const bitflag& in) const {

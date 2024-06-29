@@ -12,15 +12,14 @@ namespace lib::memory
 //! Represents a section in memory
 struct memory_section
 {
-    constexpr explicit memory_section(const std::span<std::byte>& section)
+    constexpr memory_section(const std::span<std::byte>& section)
         : section(section) {
-
     }
 
     //! Get the base address of the memory section
     //! \return base address of memory section
     [[nodiscard]] constexpr address base() const {
-        return address(section.data());
+        return {section.data()};
     }
 
     //! Get the size of memory section for type T. If memory section is not divisible by sizeof(t)

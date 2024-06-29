@@ -32,7 +32,7 @@ namespace lib::memory
     const auto nt_header = get_nt_header(address);
     const std::span<std::byte> span = { address.ptr<std::byte>(), nt_header->OptionalHeader.SizeOfImage };
 
-    return memory_section(span);
+    return { span };
 }
 }
 

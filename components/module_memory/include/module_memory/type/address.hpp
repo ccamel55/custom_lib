@@ -15,23 +15,19 @@ struct address_object {
 
     //! Create address object from an integer.
     //! \param ptr address the object represents
-    constexpr explicit address_object(Ptr ptr) : raw(ptr) {};
+    constexpr address_object(Ptr ptr) : raw(ptr) {};
 
     //! Create address object from a pointer.
     //! \param ptr address the object represents
-    constexpr explicit address_object(Ptr* ptr) : raw(reinterpret_cast<Ptr>(ptr)) {};
+    constexpr address_object(Ptr* ptr) : raw(reinterpret_cast<Ptr>(ptr)) {};
 
     //! Create address object from a pointer.
     //! \param ptr address the object represents
-    constexpr explicit address_object(const Ptr* ptr) : raw(reinterpret_cast<Ptr>(ptr)) {};
+    constexpr address_object(void* ptr) : raw(reinterpret_cast<Ptr>(ptr)) {};
 
     //! Create address object from a pointer.
     //! \param ptr address the object represents
-    constexpr explicit address_object(void* ptr) : raw(reinterpret_cast<Ptr>(ptr)) {};
-
-    //! Create address object from a pointer.
-    //! \param ptr address the object represents
-    constexpr explicit address_object(const void* ptr) : raw(reinterpret_cast<Ptr>(ptr)) {};
+    constexpr address_object(const void* ptr) : raw(reinterpret_cast<Ptr>(ptr)) {};
 
     //! Offset the current address object
     //! \param size how much to offset. number of bytes = size * sizeof(T)

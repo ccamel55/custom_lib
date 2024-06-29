@@ -12,7 +12,7 @@ struct vtable {
 
     //! Create an object that represents the currently set vtable. If the Vtable ptr changes
     //! this will not update.
-    constexpr explicit vtable(address vtable_ptr_address)
+    constexpr vtable(address vtable_ptr_address)
         : table({}) {
 
         // Find size by walking the table
