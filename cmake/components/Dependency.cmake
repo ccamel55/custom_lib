@@ -16,7 +16,6 @@ macro(add_dependency name)
 
 	# Template - multi value arguments
 	set (_ARG_MULTI
-		REQUIRES
 		DEPENDENCIES
 	)
 
@@ -27,13 +26,6 @@ macro(add_dependency name)
 		"${_ARG_MULTI}"
 		${ARGN}
 	)
-
-	# Make sure all requirements from REQUIRES is true
-	foreach (REQUIREMENT ${${PROJECT_NAME}_REQUIRES})
-		if (NOT ${REQUIREMENT})
-			return()
-		endif ()
-	endforeach ()
 
 	message(STATUS "Dependency - ${name}")
 	message(STATUS "------------------------------------------")
