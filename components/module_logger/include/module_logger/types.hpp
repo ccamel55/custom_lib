@@ -4,6 +4,10 @@
 #include <string>
 #include <thread>
 
+#ifdef ERROR
+#undef ERROR
+#endif
+
 namespace lib::logger {
     enum class log_level {
         EXPLICIT,
