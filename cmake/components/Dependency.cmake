@@ -57,6 +57,9 @@ macro(add_dependency name)
 	target_include_directories(${PROJECT_NAME} PUBLIC include)
 	target_link_libraries(${PROJECT_NAME} PUBLIC ${${PROJECT_NAME}_DEPENDENCIES})
 
+	# Expose target source location in case we have extra files we want to reference later
+	set(${PROJECT_NAME}_directory ${CMAKE_CURRENT_LIST_DIR} CACHE INTERNAL "")
+
 	# Create new test target and add test
 	if (LIB_ENABLE_TESTS)
 		set(PROJECT_NAME_TEST ${PROJECT_NAME}_test)

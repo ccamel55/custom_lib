@@ -42,6 +42,9 @@ macro(add_module name)
 	target_include_directories(${PROJECT_NAME} PUBLIC include)
 	target_link_libraries(${PROJECT_NAME} PUBLIC ${${PROJECT_NAME}_DEPENDENCIES})
 
+	# Expose target source location in case we have extra files we want to reference later
+	set(${PROJECT_NAME}_directory ${CMAKE_CURRENT_LIST_DIR} CACHE INTERNAL "")
+
 	# Add install headers if they are defined
 	target_sources(
 		${PROJECT_NAME}

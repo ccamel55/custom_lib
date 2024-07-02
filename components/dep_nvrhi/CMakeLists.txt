@@ -11,7 +11,6 @@ if (NVRHI_WITH_VULKAN)
 
 	if (NOT ${Vulkan_FOUND})
 		message(FATAL_ERROR "Could not find vulkan sdk")
-		return()
 	endif ()
 endif ()
 

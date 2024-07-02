@@ -4,3 +4,6 @@ add_module(
 		dep_nvrhi
 		module_core
 )
+
+include(cmake/compile_hlsl.cmake)
+

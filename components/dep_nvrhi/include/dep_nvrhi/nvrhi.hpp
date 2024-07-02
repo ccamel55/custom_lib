@@ -4,6 +4,7 @@
 
 #include <nvrhi/vulkan.h>
 #include <nvrhi/validation.h>
+#include <nvrhi/utils.h>
 
 // these macros can suck dick
 
