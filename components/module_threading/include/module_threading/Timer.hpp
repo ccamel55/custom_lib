@@ -7,7 +7,8 @@
 #include <thread>
 #include <vector>
 
-namespace lib::threading {
+namespace lib::threading
+{
     enum class timer_mode {
         //! One shot timers execute their functions once when started.
         ONE_SHOT,

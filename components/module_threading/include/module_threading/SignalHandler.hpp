@@ -6,7 +6,8 @@
 #include <optional>
 #include <vector>
 
-namespace lib::threading {
+namespace lib::threading
+{
     enum class signal_invoke_mode {
         //! Blocking mode blocks the calling thread until all listeners have finished executing.
         BLOCKING,

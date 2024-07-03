@@ -1,8 +1,8 @@
-#include <module_threading/FrameIntervalHelper.hpp>
+#include <module_render/FrameInterval.hpp>
 
-using namespace lib::threading;
+using namespace lib::render;
 
-void FrameIntervalHelper::reset() {
+void FrameInterval::reset() {
     _max_fps = 0;
     _min_fps = std::numeric_limits<uint16_t>::max();
 
@@ -15,7 +15,7 @@ void FrameIntervalHelper::reset() {
     _last_frame_time = std::chrono::system_clock::now();
 }
 
-void FrameIntervalHelper::emplace() {
+void FrameInterval::emplace() {
     const auto frame_start_time = std::chrono::system_clock::now();
     const auto frame_time       = std::chrono::duration_cast<std::chrono::microseconds>(
         frame_start_time - _last_frame_time
@@ -25,7 +25,7 @@ void FrameIntervalHelper::emplace() {
     emplace(frame_time);
 }
 
-void FrameIntervalHelper::emplace(std::chrono::microseconds frame_time) {
+void FrameInterval::emplace(std::chrono::microseconds frame_time) {
     _current_fps = static_cast<uint16_t>(1000.f / (static_cast<float>(frame_time.count()) / 1000.f));
 
     _max_fps = std::max(_max_fps, _current_fps);
@@ -39,30 +39,30 @@ void FrameIntervalHelper::emplace(std::chrono::microseconds frame_time) {
     _average_frame_time = (_average_frame_time + frame_time) / 2;
 }
 
-uint16_t FrameIntervalHelper::get_max_fps() const {
+uint16_t FrameInterval::get_max_fps() const {
     return _max_fps;
 }
 
-uint16_t FrameIntervalHelper::get_min_fps() const {
+uint16_t FrameInterval::get_min_fps() const {
     return _min_fps;
 }
 
-uint16_t FrameIntervalHelper::get_average_fps() const {
+uint16_t FrameInterval::get_average_fps() const {
     return _average_fps;
 }
 
-uint16_t FrameIntervalHelper::get_current_fps() const {
+uint16_t FrameInterval::get_current_fps() const {
     return _current_fps;
 }
 
-std::chrono::microseconds FrameIntervalHelper::get_max_frame_time() const {
+std::chrono::microseconds FrameInterval::get_max_frame_time() const {
     return _max_frame_time;
 }
 
-std::chrono::microseconds FrameIntervalHelper::get_min_frame_time() const {
+std::chrono::microseconds FrameInterval::get_min_frame_time() const {
     return _min_frame_time;
 }
 
-std::chrono::microseconds FrameIntervalHelper::get_average_frame_time() const {
+std::chrono::microseconds FrameInterval::get_average_frame_time() const {
     return _average_frame_time;
 }

@@ -11,7 +11,8 @@
 #include <type_traits>
 #include <vector>
 
-namespace lib::threading {
+namespace lib::threading
+{
     constexpr uint8_t DEFAULT_PRIORITY = 50;
 
     class ThreadPool {
