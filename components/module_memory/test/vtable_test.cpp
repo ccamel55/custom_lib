@@ -29,8 +29,21 @@ TEST_CASE("VTable - basic", "[memory]") {
     auto vtable_address = lib::memory::address(my_class.get());
     auto vtable = lib::memory::vtable(vtable_address);
 
-    // destructor + 3 methods + 2 other things??
-    REQUIRE(vtable.size() == 6);
+    // Linux has slighly different VTable from windows
+#ifdef _WIN32
+    REQUIRE(vtable.size() == 5);
+
+    using fn_sig = int(*)();
+
+    // Index 0 is the destructor
+    REQUIRE(vtable.get(0).has_value());
+
+    // Wacky stuff here :)
+    REQUIRE(vtable.get(1).value().cast<fn_sig>()() == my_class->func_1());
+    REQUIRE(vtable.get(2).value().cast<fn_sig>()() == my_class->func_2());
+    REQUIRE(vtable.get(3).value().cast<fn_sig>()() == my_class->func_3());
+#else
+    REQUIRE(vtable.size() == 5);
 
     using fn_sig = int(*)();
 
@@ -39,7 +52,8 @@ TEST_CASE("VTable - basic", "[memory]") {
     REQUIRE(vtable.get(1).has_value());
 
     // Wacky stuff here :)
-    REQUIRE(vtable.get(1).value().cast<fn_sig>()() == my_class->func_1());
-    REQUIRE(vtable.get(2).value().cast<fn_sig>()() == my_class->func_2());
-    REQUIRE(vtable.get(3).value().cast<fn_sig>()() == my_class->func_3());
+    REQUIRE(vtable.get(2).value().cast<fn_sig>()() == my_class->func_1());
+    REQUIRE(vtable.get(3).value().cast<fn_sig>()() == my_class->func_2());
+    REQUIRE(vtable.get(4).value().cast<fn_sig>()() == my_class->func_3());
+#endif
 }

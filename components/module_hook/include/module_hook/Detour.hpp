@@ -7,7 +7,7 @@
 
 #include <module_memory/type/address.hpp>
 
-namespace lib::memory
+namespace lib::hook
 {
 using hook_id               = size_t;
 static hook_id ID_COUNTER   = 0;

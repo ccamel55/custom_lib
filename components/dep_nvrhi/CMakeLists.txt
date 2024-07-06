@@ -45,7 +45,7 @@ if (NVRHI_WITH_VULKAN)
 endif ()
 
 # We didn't make this library so i don't care about the warnings.
-set(NVRHI_COMPILE_FLAGS "-Wno-unused-private-field -Wno-unused-command-line-argument -Wno-deprecated-copy")
+set(NVRHI_COMPILE_FLAGS "-Wno-unused-private-field -Wno-unused-command-line-argument -Wno-deprecated-copy -Wno-strict-aliasing")
 
 set_target_properties(nvrhi PROPERTIES
 	COMPILE_FLAGS ${NVRHI_COMPILE_FLAGS}

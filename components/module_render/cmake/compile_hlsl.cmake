@@ -4,7 +4,11 @@ find_package(Python3 REQUIRED COMPONENTS Interpreter)
 if (CURRENT_PLATFORM STREQUAL "win32")
 	set(_VULKAN_DXC_PATH "$ENV{VULKAN_SDK}/bin/dxc.exe" CACHE INTERNAL "")
 else ()
-	set(_VULKAN_DXC_PATH "$ENV{VULKAN_SDK}/bin/dxc" CACHE INTERNAL "")
+	if (NOT LINUX_DXC_PATH)
+		message(FATAL_ERROR "LINUX_DXC_PATH is not set. This must be the absolute path of dxc binary when building for linux.")
+	endif ()
+
+	set(_VULKAN_DXC_PATH "${LINUX_DXC_PATH}" CACHE INTERNAL "")
 endif ()
 
 if (NOT EXISTS ${_VULKAN_DXC_PATH})
@@ -49,6 +53,7 @@ macro(compile_hlsl TARGET)
 			-i ${${PROJECT_NAME}_INPUT}
 			-o ${${PROJECT_NAME}_OUTPUT}
 			-n ${${PROJECT_NAME}_NAMESPACE}
+			-vk # We will always build in vulkan mode for now
 		COMMENT
 			"Compiling HLSL shaders (${TARGET})"
 	)

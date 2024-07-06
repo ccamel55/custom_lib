@@ -60,6 +60,9 @@ def main():
     parsed_arguments.add_argument("-e", "--dxc",
                                   help="Path to DXC executable", required=True)
 
+    parsed_arguments.add_argument("-vk", "--vulkan",
+                                  help="Generate shaders with vulkan support", action='store_true')
+
     args = parsed_arguments.parse_args()
 
     input_dir = args.input_directory
@@ -97,12 +100,19 @@ def main():
         # compile each pixel/vertex shader (entry point of main)
         compile_shader_arg = [args.dxc, "-spirv", "-E", "main", f'{input_dir}/{file}', "-Fo", compiled_shader_path]
 
+        if args.vulkan:
+            for i in range(10):
+                compile_shader_arg += ["-fvk-t-shift", "0", str(i)]
+                compile_shader_arg += ["-fvk-s-shift", "128", str(i)]
+                compile_shader_arg += ["-fvk-b-shift", "256", str(i)]
+                compile_shader_arg += ["-fvk-u-shift", "384", str(i)]
+
         if is_pixel_shader:
             compile_shader_arg.append("-T")
-            compile_shader_arg.append("ps_6_0")
+            compile_shader_arg.append("ps_6_1")
         else:
             compile_shader_arg.append("-T")
-            compile_shader_arg.append("vs_6_0")
+            compile_shader_arg.append("vs_6_1")
 
         try:
             subprocess.check_output(compile_shader_arg)

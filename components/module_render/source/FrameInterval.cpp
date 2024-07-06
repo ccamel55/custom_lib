@@ -26,7 +26,8 @@ void FrameInterval::emplace() {
 }
 
 void FrameInterval::emplace(std::chrono::microseconds frame_time) {
-    _current_fps = static_cast<uint16_t>(1000.f / (static_cast<float>(frame_time.count()) / 1000.f));
+    _current_fps        = static_cast<uint16_t>(1000.f / (static_cast<float>(frame_time.count()) / 1000.f));
+    _current_frame_time = frame_time;
 
     _max_fps = std::max(_max_fps, _current_fps);
     _min_fps = std::min(_min_fps, _current_fps);
@@ -65,4 +66,8 @@ std::chrono::microseconds FrameInterval::get_min_frame_time() const {
 
 std::chrono::microseconds FrameInterval::get_average_frame_time() const {
     return _average_frame_time;
+}
+
+std::chrono::microseconds FrameInterval::get_current_frame_time() const {
+    return _current_frame_time;
 }

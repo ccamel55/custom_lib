@@ -25,6 +25,7 @@ public:
     [[nodiscard]] std::chrono::microseconds get_max_frame_time() const;
     [[nodiscard]] std::chrono::microseconds get_min_frame_time() const;
     [[nodiscard]] std::chrono::microseconds get_average_frame_time() const;
+    [[nodiscard]] std::chrono::microseconds get_current_frame_time() const;
 
 private:
     uint16_t _max_fps = 0;
@@ -36,6 +37,7 @@ private:
     std::chrono::microseconds _min_frame_time     = { };
     std::chrono::microseconds _max_frame_time     = { };
     std::chrono::microseconds _average_frame_time = { };
+    std::chrono::microseconds _current_frame_time = { };
 
     std::chrono::system_clock::time_point _last_frame_time = std::chrono::system_clock::now();
 
