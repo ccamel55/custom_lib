@@ -1,6 +1,5 @@
 # Min hook only supports windows
 if (NOT CURRENT_PLATFORM STREQUAL "win32")
-	message(STATUS "dep_minhook has been disable: platform is not supported")
 	return()
 endif ()
 
