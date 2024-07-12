@@ -88,7 +88,7 @@ struct address_object {
         return this->offset(in);
     }
 
-    constexpr address_object operator-(Ptr in) const {
+    constexpr const unsigned int operator-(Ptr in) const {
         return this->offset(-in);
     }
 
