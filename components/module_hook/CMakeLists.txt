@@ -6,6 +6,7 @@ endif ()
 add_module(
 	hook
 	DEPENDENCIES
-		dep_minhook
+		dep_zasm
+		dep_zydis
 		module_memory
 )

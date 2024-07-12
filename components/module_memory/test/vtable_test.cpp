@@ -31,7 +31,7 @@ TEST_CASE("VTable - basic", "[memory]") {
 
     // Linux has slighly different VTable from windows
 #ifdef _WIN32
-    REQUIRE(vtable.size() == 5);
+    REQUIRE(vtable.size() == 6);
 
     using fn_sig = int(*)();
 
