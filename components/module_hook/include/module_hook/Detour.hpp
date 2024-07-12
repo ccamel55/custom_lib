@@ -14,7 +14,7 @@ static hook_id ID_COUNTER   = 0;
 
 // This concept will be used to ensure all platform APIs match in compile time!
 template<typename T>
-concept DetourApi = requires(T t, address address, hook_id id)
+concept DetourApi = requires(T t, lib::memory::address address, hook_id id)
 {
     //! Hook a function
     //! \param function The function to hook
@@ -44,9 +44,9 @@ public:
     }
 
     [[nodiscard]] std::optional<hook_id> intercept(
-        const address& function,
-        const address& replacement,
-        address& original
+        const lib::memory::address& function,
+        const lib::memory::address& replacement,
+        lib::memory::address& original
     ) {
         LPVOID original_fn = nullptr;
         const auto create_hook = MH_CreateHook(
@@ -90,7 +90,7 @@ public:
     }
 
 private:
-    std::unordered_map<hook_id, address> _hook_map  = {};
+    std::unordered_map<hook_id, lib::memory::address> _hook_map  = {};
 
 };
 
