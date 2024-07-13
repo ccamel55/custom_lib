@@ -7,6 +7,7 @@ add_module(
 	hook
 	NO_INSTALL
 	DEPENDENCIES
+		dep_fmt
 		dep_zydis
 		module_memory
 )
