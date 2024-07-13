@@ -10,8 +10,7 @@ macro(add_dependency name)
 
 	# Template - one value arguments
 	set(_ARG_ONE
-		GITHUB_REPOSITORY
-		GIT_TAG
+
 	)
 
 	# Template - multi value arguments
@@ -28,21 +27,6 @@ macro(add_dependency name)
 	)
 
 	message(STATUS "Dependency - ${name}")
-	message(STATUS "------------------------------------------")
-
-	# Add package using CPM only if we specify GITHUB_REPOSITORY otherwise ignore and assume our dependency
-	# is included manually.
-	if (${PROJECT_NAME}_GITHUB_REPOSITORY)
-		CPMAddPackage(
-			NAME ${name}
-			GITHUB_REPOSITORY ${${PROJECT_NAME}_GITHUB_REPOSITORY}
-			GIT_TAG ${${PROJECT_NAME}_GIT_TAG}
-		)
-	else ()
-		message(STATUS "CPM: Disabled (manual dependency handling)")
-	endif()
-
-	message(STATUS "------------------------------------------")
 
 	# Create new target and add files
 	file(

@@ -1,5 +1,6 @@
 add_module(
 	render
+	NO_INSTALL
 	DEPENDENCIES
 		dep_nvrhi
 		module_core

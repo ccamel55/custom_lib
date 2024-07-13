@@ -5,6 +5,7 @@ endif ()
 
 add_module(
 	hook
+	NO_INSTALL
 	DEPENDENCIES
 		dep_zydis
 		module_memory
