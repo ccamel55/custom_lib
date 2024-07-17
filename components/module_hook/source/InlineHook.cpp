@@ -6,6 +6,15 @@
 #include <dep_capstone/capstone.hpp>
 #include <dep_fmt/fmt.hpp>
 
+/*
+ * Hook strategy for x86
+ *  - check if we can do relative jump (+- 2Gb)
+ *  - if not, perform absolute JMP
+ *
+ * Hook strategy for x86_64
+ * - perform absolute JMP
+ */
+
 // Todo: 32 bit support need to be tested and refined
 // Note: also want to do some more sanity checks and deal with edge cases gracefully.
 // Note: abstract away windows specific stuff we can create impls for linux in later

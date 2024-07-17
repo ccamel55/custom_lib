@@ -1,5 +1,5 @@
-# I only have support for x86 (64bit) windows ATM.
-if (NOT CURRENT_PLATFORM STREQUAL "win32")
+# I only have support for x86 (64bit) ATM.
+if (NOT CURRENT_ARCH STREQUAL "x86")
 	return()
 endif ()
 
