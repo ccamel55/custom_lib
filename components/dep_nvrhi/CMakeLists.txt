@@ -43,14 +43,12 @@ if (CURRENT_PLATFORM STREQUAL "darwin")
 endif()
 
 # We didn't make this library so i don't care about the warnings.
-set(NVRHI_COMPILE_FLAGS "-Wno-unused-private-field -Wno-unused-command-line-argument -Wno-deprecated-copy -Wno-strict-aliasing")
+set(NVRHI_COMPILE_FLAGS "-Wno-unused-private-field" "-Wno-unused-command-line-argument" "-Wno-deprecated-copy" "-Wno-strict-aliasing")
 
-set_target_properties(nvrhi PROPERTIES
-	COMPILE_FLAGS ${NVRHI_COMPILE_FLAGS}
+target_compile_options(nvrhi PRIVATE
+	${NVRHI_COMPILE_FLAGS}
 )
 
-set_target_properties(nvrhi_vk PROPERTIES
-	COMPILE_FLAGS ${NVRHI_COMPILE_FLAGS}
+target_compile_options(nvrhi_vk PRIVATE
+	${NVRHI_COMPILE_FLAGS}
 )
-
-

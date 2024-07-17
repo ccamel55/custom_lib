@@ -3,8 +3,8 @@
 #include <limits>
 #include <span>
 
+#include <dep_capstone/capstone.hpp>
 #include <dep_fmt/fmt.hpp>
-#include <dep_zydis/zydis.hpp>
 
 // Todo: 32 bit support need to be tested and refined
 // Note: also want to do some more sanity checks and deal with edge cases gracefully.
@@ -58,43 +58,66 @@ address                         \
 
 std::vector<uint8_t> dirty_bytes(lib::memory::address original_function) {
     // Todo: check that our function is at least JMP instruction in size.
-    ZyanUSize base_address                      = original_function.raw;
-    ZyanUSize offset                            = 0;
-    ZydisDisassembledInstruction instruction    = {};
+    csh handle = {};
+    cs_insn* instance = nullptr;
 
-    while (ZYAN_SUCCESS(ZydisDisassembleIntel(
-        ZYDIS_MACHINE_MODE_LONG_64,
-        base_address,
-        original_function.ptr<uint8_t>() + offset,
-        BYTES_TO_LOAD - offset,
-        &instruction
-    ))) {
-        offset += instruction.info.length;
-        base_address += instruction.info.length;
+    if (cs_open(CS_ARCH_X86, CS_MODE_64, &handle) != CS_ERR_OK) {
+        return {};
+    }
+
+    if (cs_option(handle, CS_OPT_DETAIL, CS_OPT_ON) != CS_ERR_OK) {
+        cs_close(&handle);
+        return {};
+    }
+
+    size_t offset = 0;
+    const size_t instruction_count = cs_disasm(
+        handle,
+        original_function.ptr<uint8_t>(),
+        BYTES_TO_LOAD,
+        original_function.raw,
+        0,
+        &instance
+    );
+
+    bool found_rip = false;
+    for (size_t i = 0; i < instruction_count; i++) {
+        const cs_insn& instruction = instance[i];
+        offset += instruction.size;
 
         // If we come across an instruction that uses "rip" the nope the fuck
         // out of there coz we gonna break shit if we patch it.
         // todo: implement fix for "rip" instructions
-        for (size_t i = 0; i < instruction.info.operand_count; i++) {
-            const auto operand = instruction.operands[i];
-
-            if (operand.type != ZydisOperandType::ZYDIS_OPERAND_TYPE_REGISTER) {
-                continue;
+        for (uint8_t j = 0; j < instruction.detail->groups_count; j++) {
+            if (instruction.detail->groups[j] == X86_GRP_BRANCH_RELATIVE) {
+                found_rip = true;
+                break;
             }
+        }
 
-            const auto reg_value = operand.reg.value;
-
-            if (reg_value == ZydisRegister::ZYDIS_REGISTER_IP ||
-                reg_value == ZydisRegister::ZYDIS_REGISTER_EIP ||
-                reg_value == ZydisRegister::ZYDIS_REGISTER_RIP) {
-                return {};
+        for (uint8_t j = 0; j < instruction.detail->x86.op_count; j++) {
+            const cs_x86_op& operand = instruction.detail->x86.operands[j];
+            if (operand.type == X86_OP_MEM && operand.mem.base == X86_REG_RIP) {
+                found_rip = true;
+                break;
             }
+        }
+
+        if (found_rip) {
+            break;
         }
 
         // Smallest number after/equal to JMP patch size
         if (offset >= JMP_SIZE) {
             break;
         }
+    }
+
+    cs_free(instance, instruction_count);
+    cs_close(&handle);
+
+    if (found_rip) {
+        return {};
     }
 
     std::span<uint8_t> instructions(original_function.ptr<uint8_t>(), offset);

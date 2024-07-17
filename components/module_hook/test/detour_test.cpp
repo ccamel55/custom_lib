@@ -19,6 +19,14 @@ struct DetourConceptTest {
 };
 }
 
+#if defined(_M_AMD64) || defined(__x86_64__)
+
+#elif defined(_M_IX86) || defined(__i386__)
+
+#elif defined(_M_ARM64) || defined(__aarch64__)
+
+#endif
+
 //TEST_CASE("Detour - Basic", "[module-hook]") {
 //    DetourConceptTest<lib::hook::Detour> detour = {};
 //
