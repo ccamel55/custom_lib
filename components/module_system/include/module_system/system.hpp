@@ -1,16 +1,6 @@
 #pragma once
 
-// Thank you catch, I stole this from you!
-#ifdef __APPLE__
-#define PLATFORM_APPLE
-#error "Todo: support Mac OS, it should be similar to Linux."
-#elif defined(linux) || defined(__linux) || defined(__linux__)
-#define PLATFORM_LINUX
-#elif defined(WIN32) || defined(__WIN32__) || defined(_WIN32) || defined(_MSC_VER) || defined(__MINGW32__)
-#define PLATFORM_WIN32
-#else
-#error "Platform not supported. Eat poo."
-#endif
+#include <module_system/definitions.hpp>
 
 #include <module_memory/type/address.hpp>
 #include <module_memory/type/memory_section.hpp>

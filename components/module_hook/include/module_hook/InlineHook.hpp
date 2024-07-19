@@ -12,8 +12,7 @@ namespace lib::hook
 //! All functions should be thread safe.
 class InlineHook {
     struct hook_object_t {
-        std::vector<uint8_t> dirty_bytes = {};
-        std::vector<uint8_t> jump_instruction = {};
+
     };
 
 public:

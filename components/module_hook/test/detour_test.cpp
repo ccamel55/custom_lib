@@ -1,31 +1,27 @@
 #include <catch2/catch_test_macros.hpp>
-#include <module_hook/Detour.hpp>
 
-namespace
-{
-__attribute__((noinline)) int get_value() {
-    return 0;
-}
 
-__attribute__((noinline)) int get_value_hooked() {
-    return 69;
-}
 
-using fn_t = int(__cdecl*)();
-
-template<lib::hook::DetourApi T>
-struct DetourConceptTest {
-    T impl = {};
-};
-}
-
-#if defined(_M_AMD64) || defined(__x86_64__)
-
-#elif defined(_M_IX86) || defined(__i386__)
-
-#elif defined(_M_ARM64) || defined(__aarch64__)
-
-#endif
+//#include <module_hook/Detour.hpp>
+//
+//namespace
+//{
+//__attribute__((noinline)) int get_value() {
+//    return 0;
+//}
+//
+//__attribute__((noinline)) int get_value_hooked() {
+//    return 69;
+//}
+//
+//using fn_t = int(__cdecl*)();
+//
+//template<lib::hook::DetourApi T>
+//struct DetourConceptTest {
+//    T impl = {};
+//};
+//}
+//
 
 //TEST_CASE("Detour - Basic", "[module-hook]") {
 //    DetourConceptTest<lib::hook::Detour> detour = {};
