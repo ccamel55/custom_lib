@@ -27,7 +27,9 @@ struct memory_section
     //! \return size of memory section in terms of T (total bytes = size() * sizeof(T))
     template<typename T = std::byte>
     [[nodiscard]] constexpr size_t size() const {
-        return static_cast<size_t>(std::floor(static_cast<float>(section.size_bytes()) / static_cast<float>(sizeof(T))));
+        return sizeof(T) == 1
+            ? section.size_bytes()
+            : static_cast<size_t>(std::floor(static_cast<float>(section.size_bytes()) / static_cast<float>(sizeof(T))));
     }
 
     //! Checks if memory section contains a specific address

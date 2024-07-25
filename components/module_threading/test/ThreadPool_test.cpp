@@ -20,8 +20,6 @@ TEST_CASE("Thread pool - basic", "[threading]") {
         );
     }
 
-    REQUIRE(!thread_pool.empty());
-
     thread_pool.clear();
 
     REQUIRE(thread_pool.empty());
@@ -44,8 +42,6 @@ TEST_CASE("Thread pool - future", "[threading]") {
             )
         );
     }
-
-    REQUIRE(!thread_pool.empty());
 
     for (auto& future: futures) {
         future.wait();

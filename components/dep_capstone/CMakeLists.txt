@@ -26,5 +26,10 @@ add_dependency(
 
 # We didn't make this library so i don't care about the warnings.
 target_compile_options(capstone PRIVATE
-	"-Wno-unused-function" "-Wno-unused-variable" "-Wno-unused-value" "-Wno-unused-but-set-variable" "-Wno-deprecated-declarations"
+	"-Wno-unused-function"
+	"-Wno-unused-variable"
+	"-Wno-unused-value"
+	"-Wno-unused-but-set-variable"
+	"-Wno-deprecated-declarations"
+	"-Wno-maybe-uninitialized"
 )

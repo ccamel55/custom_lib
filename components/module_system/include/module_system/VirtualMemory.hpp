@@ -16,54 +16,50 @@ enum class ProtectionType {
     EXECUTE_READ_WRITE
 };
 
-// Internal use only...
-namespace detail
-{
 //! Get the current page size in bytes
 //! \return page size in bytes
 [[nodiscard]] uint32_t vm_get_page_size();
-}
 
-//! RAII wrapper for dealing with virtual memory
-class VirtualMemory {
-public:
-    //! \param size_bytes size of virtual memory in bytes
-    explicit VirtualMemory(size_t size_bytes);
-    ~VirtualMemory();
+//! Allocate some virtual memory
+//! \param size size of virtual memory allocation in bytes
+//! \return std::nullopt if alloc failed, otherwise memory section representing allocated memory
+std::optional<memory::memory_section> vm_allocate(size_t size);
 
-    //! Commit a section of virtual memory to physical memory.
-    //! \param type protection type to be applied to virtual memory
-    //! \return true if commit occurred, false otherwise.
-    [[nodiscard]] bool commit(ProtectionType type) const;
+//! Allocate some virtual memory with a specific protection type
+//! Allocate some virtual memory
+//! \param size size of virtual memory allocation in bytes
+//! \param protection_type memory protection type
+//! \return std::nullopt if alloc failed, otherwise memory section representing allocated memory
+std::optional<memory::memory_section> vm_allocate(size_t size, ProtectionType protection_type);
 
-    //! Uncommit a section of virtual memory from physical memory.
-    //! \return true if uncommit occurred, false otherwise.
-    [[nodiscard]] bool uncommit() const;
+//! Deallocate virtual memory.
+//! \param memory_section section of memory to deallocate.
+//! \return true if success false otherwise
+bool vm_deallocate(const memory::memory_section& memory_section);
 
-private:
-    lib::memory::memory_section _virtual_memory;
+//! Commit virtual memory into physical memory
+//! \param memory_section section of memory to commit.
+//! \return true if success false otherwise
+bool vm_commit(const memory::memory_section& memory_section);
 
-};
+//! Uncommit virtual memory into physical memory
+//! \param memory_section section of memory to uncommit.
+//! \return true if success false otherwise
+bool vm_uncommit(const memory::memory_section& memory_section);
 
-//! RAII helper for dealing with custom page protection
-class VirtualProtection {
-public:
-    //! \param section virtual memory section we want to alter protection for
-    //! \param type type of protection
-    //! \param restore_previous_protection whether or not to restore previous protection type on destruction
-    VirtualProtection(
-        const lib::memory::memory_section& section,
-        ProtectionType type,
-        bool restore_previous_protection = true
-    );
+//! Apply a specific protection type to virtual memory.
+//! \param memory_section section of memory to apply protection type too.
+//! \param protection_type protection type to apply.
+//! \return true if protection could be applied false otherwise
+bool vm_protect(const memory::memory_section& memory_section, ProtectionType protection_type);
 
-    ~VirtualProtection();
+//! Lock a section of virtual memory into physical memory.
+//! \param memory_section section of memory to lock.
+//! \return true if success false otherwise
+bool vm_lock(const memory::memory_section& memory_section);
 
-private:
-    lib::memory::memory_section _section;
-
-    bool _restore_previous_protection   = true;
-    uint32_t _previous_protection       = 0;
-
-};
+//! Unlock a section of virtual memory from physical memory, allowing the system to swap it out if needed.
+//! \param memory_section section of memory to unlock.
+//! \return true if success false otherwise
+bool vm_unlock(const memory::memory_section& memory_section);
 }
