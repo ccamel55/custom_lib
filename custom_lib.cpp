@@ -1,1 +1,0 @@
-//! This file does nothing, it is a work around to creating a CMake library without source code

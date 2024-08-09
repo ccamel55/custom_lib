@@ -1,50 +1,49 @@
 # custom_lib
 
-- Custom lib is a library of code that I commonly use in between projects. 
-- This library is designed to make starting new projects easier and reduce the amount of repeated code between all my personal projects.
+**Refactor Undergoing**
 
-## Support
+## Component structure
 
-- currently supports gcc and clang compilers (both gnu and msvc front ends)
-- tested on x86 and arm64 (Apple M1 Max)
+The `components` subdirectory holds modules and dependencies that make up `custom_lib`.
+The library will automatically discover all dependencies and modules when configuring 
+the project. 
 
-## Future goals
-
-- 3D rendering engine, the goal is to eventually integrate a 3D rendering engine which can use any rendering backend that is implemented
-- abstract SIMD trig approximation and math functions
-
-## Usage
-
-Note: if you include this library, it will add some predefined compiler options. These options change depending on `CMAKE_BUILD_TYPE` but they all share the following options: disable RTTI, disable exceptions, enable all warnings.
-
-1) Include as a submodule
-```cmake
-add_subdirectory(custom_lib)
+Components must use the following file structure:
+```text
+component/
+├── include/
+│   ├── header_1.hpp
+│   └── ...
+├── include_private/
+│   ├── header_private_1.hpp
+│   └── ...
+├── source/
+│   ├── source_file_1.cpp
+│   └── ...
+├── test/
+│   ├── test_1.cpp
+│   └── ...
+└── CMakeList.txt
 ```
 
-2) Link the library
-```cmake
-target_link_libraries(${PROJECT_NAME}
-    custom_lib
-)
-```
+### Adding modules
 
-3) Specify options
-```cmake
-set(LIB_RENDERING gl3)
-```
+Modules are found under the `components` subdirectory. Each module can function 
+as an isolated library or as a high level dependency of another module. 
 
-## Structure
+A module must use the following naming structure: `module_[module name]` where `[module_name]` 
+is unique. The name of the target must match the name of its directory.
 
-- `cmake` holds all `.cmake` files which include automatic configuration scripts, custom functions and predefined configs.
+A module must not have submodules. Any new dependencies must be included as
+a dependency component. 
 
-- `components` contains all the modular components of the library. Each component can be enabled/disabled depending on what you are doing. 
+### Adding dependencies
 
-- `core_sdk` contains core types and methods used some components. This is always included but is designed to be as minimal as possible.
+Dependencies are found under the `components` subdirectory. Dependency components
+wrap imported modules and configure them for use in our library. 
 
-- `dependencies` contains third party dependencies used by the library.
+A dependency must use the following naming structure: `dep_[dependency name]`.
+The name of the target must match the name of its directory.
 
-- `unit_test` contains all unit tests. if the library is loaded as the top level `CMakeLists.txt` then this subdirectory is included and is buildable and runnable.
-
-
+Dependencies are imported using [CPM](https://github.com/cpm-cmake/CPM.cmake).
 
