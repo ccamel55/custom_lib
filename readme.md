@@ -1,10 +1,10 @@
-# custom_lib
+# camel_lib
 
 **Refactor Undergoing**
 
 ## Component structure
 
-The `components` subdirectory holds modules and dependencies that make up `custom_lib`.
+The `components` subdirectory holds modules and dependencies that make up `camel_lib`.
 The library will automatically discover all dependencies and modules when configuring 
 the project. 
 
