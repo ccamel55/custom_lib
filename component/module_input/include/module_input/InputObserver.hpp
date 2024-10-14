@@ -1,7 +1,7 @@
 #pragma once
 
-#include <module_core/types/bitflag.hpp>
-#include <module_core/types/point/point2D.hpp>
+#include <module_core/type/bitflag.hpp>
+#include <module_core/type/point/point2D.hpp>
 
 namespace lib::input
 {

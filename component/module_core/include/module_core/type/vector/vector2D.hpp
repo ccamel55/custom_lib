@@ -1,6 +1,6 @@
 #pragma once
 
-#include <module_core/types/point/point2D.hpp>
+#include <module_core/type/point/point2D.hpp>
 
 namespace lib
 {

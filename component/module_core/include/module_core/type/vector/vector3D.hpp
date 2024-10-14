@@ -1,6 +1,6 @@
 #pragma once
 
-#include <module_core/types/point/point3D.hpp>
+#include <module_core/type/point/point3D.hpp>
 
 namespace lib
 {

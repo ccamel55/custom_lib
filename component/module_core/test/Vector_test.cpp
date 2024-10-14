@@ -1,7 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include <module_core/types/vector/vector2D.hpp>
-#include <module_core/types/vector/vector3D.hpp>
+#include <module_core/type/vector/vector2D.hpp>
+#include <module_core/type/vector/vector3D.hpp>
 
 TEST_CASE("Vector 2D - Initialisation", "[core]") {
     lib::vector2D point_2d_i_1(1, 2);

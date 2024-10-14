@@ -1,11 +1,9 @@
 #pragma once
 
 #include <optional>
-#include <string>
 #include <vector>
 
 #include <module_memory/type/memory_section.hpp>
-#include <module_memory/ByteSearchHelper.hpp>
 
 namespace lib::memory
 {

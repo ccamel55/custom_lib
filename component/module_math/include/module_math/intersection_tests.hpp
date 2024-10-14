@@ -1,8 +1,8 @@
 #pragma once
 
-#include <module_core/types/ray.hpp>
-#include <module_core/types/vector/vector3D.hpp>
-#include <module_core/types/point/point3D.hpp>
+#include <module_core/type/ray.hpp>
+#include <module_core/type/vector/vector3D.hpp>
+#include <module_core/type/point/point3D.hpp>
 
 namespace lib::math {
 //! Simple ray plane intersection test.

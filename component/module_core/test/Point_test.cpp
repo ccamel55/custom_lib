@@ -1,8 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include <module_core/types/point/point2D.hpp>
-#include <module_core/types/point/point3D.hpp>
-#include <module_core/types/point/point4D.hpp>
+#include <module_core/type/point/point2D.hpp>
+#include <module_core/type/point/point3D.hpp>
+#include <module_core/type/point/point4D.hpp>
 
 TEST_CASE("Point 2D - Initialisation", "[core]") {
     lib::point2Di point_2d_i_1(1, 2);

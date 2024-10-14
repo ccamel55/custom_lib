@@ -1,5 +1,5 @@
 #pragma once
-#include <module_core/types/vector/vector3D.hpp>
+#include <module_core/type/vector/vector3D.hpp>
 
 namespace lib {
 class ray {

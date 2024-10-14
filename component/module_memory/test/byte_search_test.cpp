@@ -1,5 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
+
 #include <module_memory/ByteSearch.hpp>
+#include <module_memory/ByteSearchHelper.hpp>
 
 TEST_CASE("Byte Search - conversion", "[memory]") {
 

@@ -43,6 +43,9 @@ set(${_ARCH_VAR} 1)
 add_compile_definitions(${_PLATFORM_VAR})
 add_compile_definitions(${_ARCH_VAR})
 
+add_compile_definitions(CAMEL_PLATFORM=${CAMEL_PLATFORM_LOWER})
+add_compile_definitions(CAMEL_ARCH=${CAMEL_ARCH_LOWER})
+
 message("\t\tCAMEL_PLATFORM: ${CAMEL_PLATFORM_UPPER}")
 message("\t\tCAMEL_ARCH: ${CAMEL_ARCH_UPPER}")
 

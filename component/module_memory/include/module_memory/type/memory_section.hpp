@@ -12,8 +12,15 @@ namespace lib::memory
 //! Represents a section in memory
 struct memory_section
 {
+    constexpr memory_section() = default;
+    constexpr memory_section(const memory_section &) = default;
+
     constexpr memory_section(const std::span<std::byte>& section)
         : section(section) {
+    }
+
+    constexpr memory_section(std::byte* address, const size_t size)
+        : section(address, size) {
     }
 
     //! Get the base address of the memory section
@@ -34,7 +41,7 @@ struct memory_section
 
     //! Checks if memory section contains a specific address
     //! \param in address to check
-    //! \return whether or not in exists in memory section
+    //! \return whether in exists in memory section
     [[nodiscard]] constexpr bool contains(address in) const {
        return in >= base() && in <= base().offset(static_cast<ptrdiff_t>(size()));
     }

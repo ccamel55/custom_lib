@@ -12,9 +12,7 @@ struct vtable {
 
     //! Create an object that represents the currently set vtable. If the Vtable ptr changes
     //! this will not update.
-    constexpr vtable(address vtable_ptr_address)
-        : table({}) {
-
+    constexpr vtable(address vtable_ptr_address) {
         // Find size by walking the table
         size_t size;
         const auto vtable = vtable_ptr_address.dereference().ptr<uintptr_t>();
