@@ -1,5 +1,5 @@
 target_link_libraries(
-	${PROJECT_NAME} PUBLIC
+	${PROJECT_NAME} INTERFACE
 		glm::glm
 )
 

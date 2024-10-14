@@ -1,1 +1,1 @@
-camel_dependency()
+camel_interface()

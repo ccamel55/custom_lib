@@ -33,8 +33,14 @@ macro(camel_library)
 	)
 
 	# Create alias
+	set(_PROJECT_IS_DEPENDENCY OFF)
 	set(_PROJECT_FORCE_DISABLE "${PROJECT_NAME}_FORCE_DISABLE")
 	set(_PROJECT_DEPENDENCIES "${PROJECT_NAME}_DEPENDENCIES")
+
+	# If folder starts with "dep|dependency" then this is of type dependency
+	if(${PROJECT_NAME} MATCHES "^(dep|dependency)")
+		set(_PROJECT_IS_DEPENDENCY ON)
+	endif()
 
 	# Print out some stats
 	message(STATUS ${_CAMEL_CMAKE_SPACER})
@@ -81,7 +87,10 @@ macro(camel_library)
 
 	target_link_libraries(${_PROJECT_NAME} PUBLIC ${${_PROJECT_DEPENDENCIES}})
 
-	add_installs()
+	# Don't even think about installing if we are wrapping a dependency
+	if (NOT _PROJECT_IS_DEPENDENCY)
+		add_installs()
+	endif ()
 
 	# Call post ops file if it exists which is used to link additional things to the target
 	if(EXISTS ${_POST_OPS_FILE})
@@ -94,6 +103,7 @@ macro(camel_library)
 	add_tests()
 
 	unset(_PROJECT_NAME)
+	unset(_PROJECT_IS_DEPENDENCY)
 	unset(_PROJECT_NAME_UPPER)
 	unset(_PROJECT_DEPENDENCIES)
 	unset(_PRE_OPS_FILE)
