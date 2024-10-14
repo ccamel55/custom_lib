@@ -20,6 +20,6 @@ concept System = requires {
 }
 
 // Alias correct version and make sure concept is satisfied.
-using system = impl::virtual_memory_base<impl::backend::memory::CAMEL_PLATFORM>;
-static_assert(concepts::System<system>, "'system' does not satisfy concept");
+using memory = impl::virtual_memory_base<impl::backend::memory::CAMEL_PLATFORM>;
+static_assert(concepts::System<memory>, "'system' does not satisfy concept");
 }

@@ -3,8 +3,7 @@
 #include <cstdint>
 #include <optional>
 
-#include <unistd.h>
-#include <sys/mman.h>
+#include <Windows.h>
 
 #include <module_memory/type/address.hpp>
 #include <module_memory/type/memory_section.hpp>
@@ -14,35 +13,37 @@
 namespace lib::system::impl {
 namespace backend::memory {
 //! linux implementation
-struct linux : null {};
+struct windows : null {};
 }
 
 namespace detail::memory {
-//! Get mmap flags from 'VmProtectionType' enum
-[[nodiscard]] constexpr int vm_protection_flags_linux(const VmProtectionType protection_type) {
+//! Get flags from 'VmProtectionType' enum
+[[nodiscard]] constexpr DWORD vm_protection_flags_win32(const VmProtectionType protection_type) {
     switch (protection_type) {
         case VmProtectionType::READ:
-            return PROT_READ;
+            return PAGE_READONLY;
         case VmProtectionType::READ_WRITE:
-            return PROT_READ | PROT_WRITE;
+            return PAGE_READWRITE;
         case VmProtectionType::EXECUTE:
-            return PROT_EXEC;
+            return PAGE_EXECUTE;
         case VmProtectionType::EXECUTE_READ:
-            return PROT_EXEC | PROT_READ;
+            return PAGE_EXECUTE_READ;
         case VmProtectionType::EXECUTE_READ_WRITE:
-            return PROT_EXEC | PROT_READ | PROT_WRITE;
-        default:
-            break;
+            return PAGE_EXECUTE_READWRITE;
     }
-    return PROT_READ;
+    return PAGE_READONLY;
 }
 }
 
-//! linux specialization of memory
+//! windows specialization of memory
 template<>
-struct virtual_memory_base<backend::memory::linux> {
+struct virtual_memory_base<backend::memory::windows> {
     [[nodiscard]] static uint64_t vm_page_size() {
-        return sysconf(_SC_PAGESIZE);
+        SYSTEM_INFO system_info = {};
+        GetSystemInfo(&system_info);
+
+        // todo: cache this shit
+        return system_info.dwPageSize;
     }
 
     [[nodiscard]] static std::optional<memory::memory_section> vm_allocate(
@@ -53,8 +54,8 @@ struct virtual_memory_base<backend::memory::linux> {
             return std::nullopt;
         }
 
-        const int flags = detail::memory::vm_protection_flags_linux(protection_type);
-        void* address = mmap(nullptr, size_bytes, flags, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        const DWORD flags = detail::memory::vm_protection_flags_win32(protection_type);
+        LPVOID address = VirtualAlloc(nullptr, size_bytes, MEM_RESERVE, flags);
 
         return memory::memory_section {
             static_cast<std::byte*>(address),
@@ -68,10 +69,7 @@ struct virtual_memory_base<backend::memory::linux> {
             return false;
         }
 
-        return munmap(
-            memory.base().ptr<void>(),
-            memory.size<>()
-        ) == 0;
+        return VirtualFree(memory.base().ptr<void>(), 0, MEM_RELEASE);
     }
 
     [[nodiscard]] static bool vm_commit(const memory::memory_section& memory) {
@@ -80,8 +78,12 @@ struct virtual_memory_base<backend::memory::linux> {
             return false;
         }
 
-        // Linux commits on first write :D
-        return true;
+        return VirtualAlloc(
+            memory.base().ptr<void>(),
+            memory.size(),
+            MEM_COMMIT,
+            PAGE_READWRITE
+        ) != nullptr;
     }
 
     [[nodiscard]] static bool vm_uncommit(const memory::memory_section& memory) {
@@ -90,11 +92,11 @@ struct virtual_memory_base<backend::memory::linux> {
             return false;
         }
 
-        return madvise(
+        return VirtualFree(
             memory.base().ptr<void>(),
             memory.size(),
-            MADV_DONTNEED
-        ) == 0;
+            MEM_DECOMMIT
+        );
     }
 
     [[nodiscard]] static bool vm_protect(
@@ -106,11 +108,15 @@ struct virtual_memory_base<backend::memory::linux> {
             return false;
         }
 
-        return mprotect(
+        DWORD old_protect = 0;
+        const DWORD flags = detail::memory::vm_protection_flags_win32(protection_type);
+
+        return VirtualProtect(
             memory.base().ptr<void>(),
             memory.size(),
-            detail::memory::vm_protection_flags_linux(protection_type)
-        ) == 0;
+            flags,
+            &old_protect
+        );
     }
 
     [[nodiscard]] static bool vm_lock(const memory::memory_section& memory) {
@@ -119,10 +125,10 @@ struct virtual_memory_base<backend::memory::linux> {
             return false;
         }
 
-        return mlock(
+        return VirtualLock(
             memory.base().ptr<void>(),
             memory.size()
-        ) == 0;
+        );
     }
 
     [[nodiscard]] static bool vm_unlock(const memory::memory_section& memory) {
@@ -131,10 +137,10 @@ struct virtual_memory_base<backend::memory::linux> {
             return false;
         }
 
-        return munlock(
+        return VirtualUnlock(
             memory.base().ptr<void>(),
             memory.size()
-        ) == 0;
+        );
     }
 };
 }

@@ -1,11 +1,5 @@
 #pragma once
 
-#include <cstdint>
-#include <optional>
-
-#include <module_memory/type/address.hpp>
-#include <module_memory/type/memory_section.hpp>
-
 namespace lib::system {
 enum class VmProtectionType {
     READ,
