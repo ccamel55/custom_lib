@@ -24,6 +24,3 @@ set(_CAMEL_CMAKE_TOP_LEVEL_DIR "${PROJECT_SOURCE_DIR}")
 
 # Directory of main.cmake
 set(_CAMEL_CMAKE_MAIN_DIR "${CMAKE_CURRENT_LIST_DIR}")
-
-# Check if we are top level project
-set(_CAMEL_IS_TOP_LEVEL ${PROJECT_IS_TOP_LEVEL})
