@@ -7,15 +7,21 @@ endfunction()
 include(cpm)
 include(defines)
 
-include(option/main)
+if (_CAMEL_IS_TOP_LEVEL)
+	include(option/main)
+endif ()
+
 include(system/main)
-include(dependency/main)
-include(module/main)
 
-scan_components()
-add_components()
+if (_CAMEL_IS_TOP_LEVEL)
+	include(dependency/main)
+	include(module/main)
 
-scan_tools()
-add_tools()
+	scan_components()
+	add_components()
+
+	scan_tools()
+	add_tools()
+endif ()
 
 message(STATUS ${_CAMEL_CMAKE_SPACER})
