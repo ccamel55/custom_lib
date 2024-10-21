@@ -16,7 +16,7 @@ endif()
 # Note: this doesn't work for all processor, but it should work well enough
 #
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "(x86)|(X86)|(amd64)|(AMD64)|(x86_64)|(x64)")
-	set(CAMEL_ARCH "amd65")
+	set(CAMEL_ARCH "amd64")
 elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "(arm64)|(aarch64)|(arm64)")
 	set(CAMEL_ARCH "arm64")
 else()

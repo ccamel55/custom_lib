@@ -10,11 +10,6 @@ CPMAddPackage(
 # Add catch 2 cmake scripts
 list(APPEND CMAKE_MODULE_PATH ${Catch2_SOURCE_DIR}/extras)
 
-# Not actually needed since catch2 isn't top level project
-set(CATCH_INSTALL_DOCS OFF)
-set(CATCH_INSTALL_EXTRAS OFF)
-set(CATCH_DEVELOPMENT_BUILD OFF)
-
 include(CTest)
 include(Catch)
 

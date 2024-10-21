@@ -8,8 +8,8 @@ include(cpm)
 include(defines)
 
 include(option/main)
-include(dependency/main)
 include(system/main)
+include(dependency/main)
 include(module/main)
 
 scan_components()
