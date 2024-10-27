@@ -15,7 +15,9 @@ endif()
 # Set architecture
 # Note: this doesn't work for all processor, but it should work well enough
 #
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "(x86)|(X86)|(amd64)|(AMD64)|(x86_64)|(x64)")
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "(x86)|(X86)")
+	set(CAMEL_ARCH "amd32")
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "(amd64)|(AMD64)|(x86_64)|(x64)")
 	set(CAMEL_ARCH "amd64")
 elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "(arm64)|(aarch64)|(arm64)")
 	set(CAMEL_ARCH "arm64")
@@ -37,8 +39,8 @@ set(_PLATFORM_VAR CAMEL_PLATFORM_${CAMEL_PLATFORM_UPPER})
 set(_ARCH_VAR CAMEL_ARCH_${CAMEL_ARCH_UPPER})
 
 # Set and add preprocessor
-set(${_PLATFORM_VAR} 1)
-set(${_ARCH_VAR} 1)
+set(${_PLATFORM_VAR} 1 CACHE INTERNAL "")
+set(${_ARCH_VAR} 1 CACHE INTERNAL "")
 
 add_compile_definitions(${_PLATFORM_VAR})
 add_compile_definitions(${_ARCH_VAR})
@@ -46,8 +48,8 @@ add_compile_definitions(${_ARCH_VAR})
 add_compile_definitions(CAMEL_PLATFORM=${CAMEL_PLATFORM_LOWER})
 add_compile_definitions(CAMEL_ARCH=${CAMEL_ARCH_LOWER})
 
-message("\t\tCAMEL_PLATFORM: ${CAMEL_PLATFORM_UPPER}")
-message("\t\tCAMEL_ARCH: ${CAMEL_ARCH_UPPER}")
+message(STATUS "\t\tCAMEL_PLATFORM: ${CAMEL_PLATFORM_UPPER}")
+message(STATUS "\t\tCAMEL_ARCH: ${CAMEL_ARCH_UPPER}")
 
 unset(_PLATFORM_VAR)
 unset(_ARCH_VAR)
