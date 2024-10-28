@@ -85,7 +85,7 @@ macro(camel_library)
 	target_include_directories(${_PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include)
 	target_include_directories(${_PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_LIST_DIR}/private)
 
-	target_link_libraries(${_PROJECT_NAME} PUBLIC ${${_PROJECT_DEPENDENCIES}})
+	target_link_libraries(${_PROJECT_NAME} PUBLIC ${${_PROJECT_DEPENDENCIES}} camel_defines)
 
 	# Don't even think about installing if we are wrapping a dependency
 	if (NOT _PROJECT_IS_DEPENDENCY)

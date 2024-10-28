@@ -7,6 +7,6 @@ macro(lib_option NAME DESCRIPTION DEFAULT_VALUE)
 
 	# add preprocessor if active
 	if(${${NAME}})
-		add_compile_definitions(${NAME})
+		target_compile_definitions(camel_defines INTERFACE ${NAME})
 	endif()
 endmacro()

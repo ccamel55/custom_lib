@@ -77,7 +77,7 @@ macro(camel_executable)
 	add_executable(${_PROJECT_NAME} ${_SOURCE_FILES})
 
 	target_include_directories(${_PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_LIST_DIR}/include)
-	target_link_libraries(${_PROJECT_NAME} PRIVATE ${${_PROJECT_DEPENDENCIES}})
+	target_link_libraries(${_PROJECT_NAME} PRIVATE ${${_PROJECT_DEPENDENCIES}} camel_defines)
 
 	add_installs()
 

@@ -71,7 +71,7 @@ macro(camel_interface)
 	add_library(${_PROJECT_NAME} INTERFACE)
 
 	target_include_directories(${_PROJECT_NAME} INTERFACE ${CMAKE_CURRENT_LIST_DIR}/include)
-	target_link_libraries(${_PROJECT_NAME} INTERFACE ${${_PROJECT_DEPENDENCIES}})
+	target_link_libraries(${_PROJECT_NAME} INTERFACE ${${_PROJECT_DEPENDENCIES}} camel_defines)
 
 	# Call post ops file if it exists which is used to link additional things to the target
 	if(EXISTS ${_POST_OPS_FILE})

@@ -42,11 +42,11 @@ set(_ARCH_VAR CAMEL_ARCH_${CAMEL_ARCH_UPPER})
 set(${_PLATFORM_VAR} 1 CACHE INTERNAL "")
 set(${_ARCH_VAR} 1 CACHE INTERNAL "")
 
-add_compile_definitions(${_PLATFORM_VAR})
-add_compile_definitions(${_ARCH_VAR})
+target_compile_definitions(camel_defines INTERFACE ${_PLATFORM_VAR})
+target_compile_definitions(camel_defines INTERFACE ${_ARCH_VAR})
 
-add_compile_definitions(CAMEL_PLATFORM=${CAMEL_PLATFORM_LOWER})
-add_compile_definitions(CAMEL_ARCH=${CAMEL_ARCH_LOWER})
+target_compile_definitions(camel_defines INTERFACE CAMEL_PLATFORM=${CAMEL_PLATFORM_LOWER})
+target_compile_definitions(camel_defines INTERFACE CAMEL_ARCH=${CAMEL_ARCH_LOWER})
 
 message(STATUS "\t\tCAMEL_PLATFORM: ${CAMEL_PLATFORM_UPPER}")
 message(STATUS "\t\tCAMEL_ARCH: ${CAMEL_ARCH_UPPER}")

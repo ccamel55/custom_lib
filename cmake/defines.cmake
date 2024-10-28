@@ -24,3 +24,9 @@ set(_CAMEL_CMAKE_TOP_LEVEL_DIR "${PROJECT_SOURCE_DIR}")
 
 # Directory of main.cmake
 set(_CAMEL_CMAKE_MAIN_DIR "${CMAKE_CURRENT_LIST_DIR}")
+
+#
+# Create a define interface that we can propagate to external targets
+#
+
+add_library(camel_defines INTERFACE)
