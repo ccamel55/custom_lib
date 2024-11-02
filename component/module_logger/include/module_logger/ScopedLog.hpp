@@ -2,11 +2,15 @@
 
 #include <module_logger/Logger.hpp>
 
+#ifdef ERROR
+#undef ERROR
+#endif
+
 namespace lib::logger {
     //! Log manager than handles logs in the current scope.
     class ScopeLog {
     public:
-        ScopeLog(const std::shared_ptr<Logger>& logger, const std::string& tag, bool flush_on_scope_leave = false)
+        ScopeLog(const std::weak_ptr<Logger>& logger, const std::string& tag, bool flush_on_scope_leave = false)
             : _logger(logger)
             , _tag(tag)
             , _flush_on_scope_leave(flush_on_scope_leave) {

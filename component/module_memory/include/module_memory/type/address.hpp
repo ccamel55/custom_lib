@@ -64,6 +64,12 @@ struct address_object {
         return reinterpret_cast<T>(raw);
     }
 
+    //! Get different between current address and another address
+    //! \param in address to compare with. this - in
+    constexpr ptrdiff_t diff(const address_object& in) const {
+        return static_cast<ptrdiff_t>(raw) - static_cast<ptrdiff_t>(in.raw);
+    }
+
     constexpr bool operator==(const address_object& in) const {
         return this->raw == in.raw;
     }
@@ -88,7 +94,7 @@ struct address_object {
         return this->offset(in);
     }
 
-    constexpr unsigned int operator-(Ptr in) const {
+    constexpr address_object operator-(Ptr in) const {
         return this->offset(-in);
     }
 
