@@ -1,5 +1,7 @@
 #include <iostream>
 
+#include <RenderUser.hpp>
+
 #include <GLFW/glfw3.h>
 
 #include <module_core/type/point/point2D.hpp>
@@ -12,6 +14,8 @@ using namespace lib;
 namespace {
 // Glfw window handle
 GLFWwindow* window = nullptr;
+
+std::unique_ptr<RenderUser> USER = nullptr;
 
 std::shared_ptr<logger::Logger> LOGGER = nullptr;
 
@@ -122,6 +126,9 @@ int main(
 
     bool minimised = false;
 
+    USER = std::make_unique<RenderUser>();
+    USER->init();
+
     // Main window loop
     while (!glfwWindowShouldClose(window)) {
 
@@ -144,11 +151,11 @@ int main(
                     minimised = false;
                 }
             }
+
+            USER->update_screen_size(window_size, minimised);
         }
 
-        if (!minimised) {
-
-        }
+        USER->on_frame(minimised);
     }
 
     log.v("exited main loop");
