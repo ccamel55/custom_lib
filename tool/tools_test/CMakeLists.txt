@@ -1,1 +1,0 @@
-camel_executable()
