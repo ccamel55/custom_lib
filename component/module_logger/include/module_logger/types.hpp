@@ -19,7 +19,7 @@ namespace lib::logger {
     };
 
     struct log_message_t {
-        std::thread::id thread_id;
+        size_t thread_id;
         std::chrono::system_clock::time_point timestamp;
         log_level level;
         std::string tag;

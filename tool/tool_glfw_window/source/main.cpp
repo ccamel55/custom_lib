@@ -2,12 +2,14 @@
 
 #include <RenderUser.hpp>
 
-#include <GLFW/glfw3.h>
+#define GLFW_INCLUDE_VULKAN
+#include <dep_glfw/glfw.hpp>
 
 #include <module_core/type/point/point2D.hpp>
 #include <module_logger/Logger.hpp>
 #include <module_logger/ScopedLog.hpp>
 #include <module_logger/handler/Std_LogHandler.hpp>
+#include <module_render/backend/Device_Vulkan.hpp>
 
 using namespace lib;
 
@@ -62,6 +64,73 @@ void mouse_button_callback(
 
 }
 }
+
+namespace init {
+#ifdef CAMEL_NVRHI_VULKAN
+// Setup things and populate settings for vulkan render instance
+[[nodiscard]] std::expected<render::device_settings_t, std::string> prepare_api(GLFWwindow* window) {
+
+    if (!glfwVulkanSupported()) {
+        return std::unexpected("Vulkan not supported");
+    }
+
+    render::device_settings_t settings = {};
+    {
+        settings.debug          = true;
+        settings.validation     = true;
+        settings.compute_queue  = false;
+        settings.copy_queue     = false;
+        settings.vsync          = false;
+
+        settings.starting_size  = {};
+        settings.vulkan         = {};
+    }
+
+    glfwGetWindowSize(window, &settings.starting_size.x, &settings.starting_size.y);
+
+    // Get required extensions from GLFW
+    uint32_t glfw_extension_count = 0;
+    const char** glfw_extensions = glfwGetRequiredInstanceExtensions(&glfw_extension_count);
+
+    for (uint32_t i = 0; i < glfw_extension_count; ++i) {
+        settings.vulkan.extra_extension_enabled.instance.emplace(glfw_extensions[i]);
+    }
+
+    // Set callbacks using GLFW
+    settings.vulkan.create_window_surface = [window](void* _param) -> int {
+        const auto param = static_cast<render::vk_create_surface_callback_t*>(_param);
+        return glfwCreateWindowSurface(
+            *param->instance,
+            window, nullptr,
+            reinterpret_cast<VkSurfaceKHR*>(param->surface)
+        );
+    };
+
+    settings.vulkan.get_physical_device_presentation_support = [](void* _param) -> int {
+        const auto param = static_cast<render::vk_get_physical_device_support_t*>(_param);
+        return glfwGetPhysicalDevicePresentationSupport(
+            *param->instance,
+            *param->physical_device,
+            param->queue_family
+        );
+    };
+
+    return settings;
+}
+#endif
+
+#ifdef CAMEL_NVRHI_DX_11
+[[nodiscard]] std::expected<render::device_settings_t, std::string> prepare_api() {
+    return std::unexpected("DX11 not implemented");
+}
+#endif
+
+#ifdef CAMEL_NVRHI_DX_12
+[[nodiscard]] std::expected<render::device_settings_t, std::string> prepare_api() {
+    return std::unexpected("DX12 not implemented");
+}
+#endif
+}
 }
 
 int main(
@@ -99,6 +168,12 @@ int main(
         return 1;
     }
 
+    const auto cleanup_glf = [&] {
+        // Cleanup resources
+        glfwDestroyWindow(window);
+        glfwTerminate();
+    };
+
     // Bring window to context and disable VSync
     glfwMakeContextCurrent(window);
     glfwSwapInterval(0);
@@ -119,15 +194,22 @@ int main(
 
     if (window_size.x == 0 && window_size.y == 0) {
         log.e("window size is [0, 0] something went wrong");
+        cleanup_glf();
         return 1;
     }
 
     log.v("starting main loop");
 
     bool minimised = false;
+    const auto settings = init::prepare_api(window);
 
-    USER = std::make_unique<RenderUser>();
-    USER->init();
+    if (!settings) {
+        log.e("could not prepare api: {}", settings.error());
+        cleanup_glf();
+        return 1;
+    }
+
+    USER = std::make_unique<RenderUser>(LOGGER, settings.value());
 
     // Main window loop
     while (!glfwWindowShouldClose(window)) {
@@ -159,10 +241,6 @@ int main(
     }
 
     log.v("exited main loop");
-
-    // Cleanup resources
-    glfwDestroyWindow(window);
-    glfwTerminate();
 
     return 0;
 }

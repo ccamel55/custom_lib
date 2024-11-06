@@ -6,6 +6,8 @@
 #include <module_core/type/color.hpp>
 #include <module_core/type/point/point2D.hpp>
 
+#include <module_render/backend/Device_Common.hpp>
+
 namespace lib::render
 {
 enum font_flag: lib::bitflag_t

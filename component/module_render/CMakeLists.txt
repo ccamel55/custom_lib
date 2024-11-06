@@ -1,9 +1,8 @@
 camel_library(
-	FORCE_DISABLE
-		${CAMEL_PLATFORM_LINUX}
 	DEPENDENCIES
 		dep_nvrhi
 		module_core
+		module_logger
 )
 
 # Note: you need to set LINUX_DXC_PATH to DXC on linux platforms.
