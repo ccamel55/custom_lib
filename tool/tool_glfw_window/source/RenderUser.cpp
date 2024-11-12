@@ -21,27 +21,16 @@ RenderUser::RenderUser(
     });
 
     // Force update on screen size to invoke callbacks etc.
-    _device->update_screen_size(settings.starting_size);
+    _device->update_screen_size(settings.starting_size, true);
 }
 
-RenderUser::~RenderUser() {
-
-}
-
-void RenderUser::update_screen_size(
-    const point2Di& window_size,
-    [[maybe_unused]] const bool minimised
-) const {
-    // Only call update if screen size changes
-    if (_device->back_buffer_size() == window_size) {
-        return;
-    }
+void RenderUser::update_screen_size(const point2Di& window_size) const {
     _device->update_screen_size(window_size);
 }
 
-void RenderUser::on_frame(const bool minimised) {
+void RenderUser::on_frame() {
 
-    if (!minimised) {
+    if (!_device->is_minimised()) {
         _device->begin_frame();
 
         ///
@@ -53,7 +42,7 @@ void RenderUser::on_frame(const bool minimised) {
         ///
         /// FINISH DRAWING
         ///
-        ///
+
         _device->present();
     }
 

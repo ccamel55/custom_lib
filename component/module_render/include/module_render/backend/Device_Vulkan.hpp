@@ -87,7 +87,7 @@ public:
     [[nodiscard]] nvrhi::ITexture* back_buffer(uint32_t index) const override;
     [[nodiscard]] uint32_t current_back_buffer_index() const override;
     [[nodiscard]] uint32_t back_buffer_count() const override;
-    void update_screen_size(const point2Di& window_size) override;
+    void update_screen_size(const point2Di& window_size, bool force_update) override;
     void begin_frame() override;
     void present() override;
 

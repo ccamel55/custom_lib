@@ -200,7 +200,6 @@ int main(
 
     log.v("starting main loop");
 
-    bool minimised = false;
     const auto settings = init::prepare_api(window);
 
     if (!settings) {
@@ -217,27 +216,11 @@ int main(
         // Update input
         glfwPollEvents();
 
-        // Update window size if needed and visible state
-        {
-            glfwGetWindowSize(window, &window_size.x, &window_size.y);
+        // Draw
+        glfwGetWindowSize(window, &window_size.x, &window_size.y);
 
-            if (window_size.x == 0 || window_size.y == 0) {
-                if (!minimised) {
-                    log.v("window minimised");
-                    minimised = true;
-                }
-            }
-            else {
-                if (minimised) {
-                    log.v("window unminimised");
-                    minimised = false;
-                }
-            }
-
-            USER->update_screen_size(window_size, minimised);
-        }
-
-        USER->on_frame(minimised);
+        USER->update_screen_size(window_size);
+        USER->on_frame();
     }
 
     log.v("exited main loop");

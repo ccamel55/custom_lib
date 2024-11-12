@@ -13,10 +13,8 @@ public:
         const lib::render::device_settings_t& settings
     );
 
-    ~RenderUser();
-
-    void update_screen_size(const lib::point2Di& window_size, bool minimised) const;
-    void on_frame(bool minimised);
+    void update_screen_size(const lib::point2Di& window_size) const;
+    void on_frame();
 
 private:
     std::shared_ptr<lib::logger::Logger> _logger;

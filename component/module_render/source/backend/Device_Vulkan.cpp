@@ -872,6 +872,9 @@ std::expected<void, std::string> Device_Vulkan::create_logical_device() {
             .setImageCubeArray(true)
             .setDualSrcBlend(true);
 
+    auto vulkan11features = vk::PhysicalDeviceVulkan11Features()
+        .setPNext(pNext);
+
     const auto vulkan_1_2_features = vk::PhysicalDeviceVulkan12Features()
         .setDescriptorIndexing(true)
         .setRuntimeDescriptorArray(true)
@@ -880,7 +883,7 @@ std::expected<void, std::string> Device_Vulkan::create_logical_device() {
         .setTimelineSemaphore(true)
         .setShaderSampledImageArrayNonUniformIndexing(true)
         .setBufferDeviceAddress(buffer_device_address_features.bufferDeviceAddress)
-        .setPNext(pNext);
+        .setPNext(&vulkan11features);
 
     if (vulkan_1_2_features.bufferDeviceAddress) {
         _physical_device_features.emplace(PhysicalDeviceFeatures::BufferDeviceAddress);
@@ -980,7 +983,11 @@ uint32_t Device_Vulkan::back_buffer_count() const {
     return _vk_swapchain_images.size();
 }
 
-void Device_Vulkan::update_screen_size(const point2Di& window_size) {
+void Device_Vulkan::update_screen_size(const point2Di& window_size, const bool force_update) {
+
+    if (!force_update && window_size == _back_buffer_size) {
+        return;
+    }
 
     // Call Resizing (pre resizing) callback if it exists
     if (const auto cb = _callback.find(CallbackState::Resizing); cb != _callback.end()) {
@@ -1022,7 +1029,7 @@ void Device_Vulkan::begin_frame() {
         if (res == vk::Result::eErrorOutOfDateKHR) [[unlikely]] {
 
             logger::ScopeLog log(_logger, "Device_Vulkan::begin_frame");
-            log.w("performance - swap chain out date, attempting to resize - please update screen size explicitly");
+            log.w("performance - swap chain out date, attempting to resize");
 
             // Update screen size if needed
             const vk::SurfaceCapabilitiesKHR surface_capabilities = _vk_physical_device.getSurfaceCapabilitiesKHR(_vk_surface);
@@ -1031,7 +1038,7 @@ void Device_Vulkan::begin_frame() {
                 static_cast<int>(surface_capabilities.currentExtent.height)
             };
 
-            update_screen_size(surface_size);
+            update_screen_size(surface_size, true);
         }
         else {
             break;
@@ -1043,7 +1050,6 @@ void Device_Vulkan::begin_frame() {
         throw std::runtime_error("Could not begin frame");
     }
 
-    // Upcast allowed without RTTI here because we create and destroy device from this class!
     _nv_device->queueWaitForSemaphore(nvrhi::CommandQueue::Graphics, semaphore, 0);
 }
 

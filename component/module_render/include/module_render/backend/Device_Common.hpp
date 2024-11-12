@@ -103,6 +103,12 @@ public:
     //! Get number of back buffers we have created
     //! \return number of back buffers we have
     [[nodiscard]] virtual uint32_t back_buffer_count() const = 0;
+
+    //! Whether current screen is minimised.
+    [[nodiscard]] bool is_minimised() const {
+        const point2Di back_buffer = back_buffer_size();
+        return back_buffer.x == 0 || back_buffer.y == 0;
+    }
 };
 
 //! Shared common device type.
@@ -110,7 +116,8 @@ class Device_Common : public DeviceCallback {
 public:
     //! Used to explicitly update screen size
     //! \param window_size size of window in pixels
-    virtual void update_screen_size(const point2Di& window_size) = 0;
+    //! \param force_update force update/recreate swap chain regardless of current screen size.
+    virtual void update_screen_size(const point2Di& window_size, bool force_update = false) = 0;
 
     //! Called before writing to command pool
     virtual void begin_frame() = 0;
