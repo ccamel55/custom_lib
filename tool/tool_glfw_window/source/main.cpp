@@ -1,5 +1,3 @@
-#include <iostream>
-
 #include <RenderUser.hpp>
 
 #define GLFW_INCLUDE_VULKAN

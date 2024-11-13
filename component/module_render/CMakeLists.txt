@@ -9,3 +9,9 @@ camel_library(
 # download: https://github.com/microsoft/DirectXShaderCompiler/releases
 include(cmake/compile_hlsl.cmake)
 
+compile_hlsl(
+    ${PROJECT_NAME}
+        INPUT       "${CMAKE_CURRENT_LIST_DIR}/shader"
+        OUTPUT      "${CMAKE_CURRENT_LIST_DIR}/include/module_render/shader"
+        NAMESPACE   "shader"
+)
