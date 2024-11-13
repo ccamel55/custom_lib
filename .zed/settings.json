@@ -1,0 +1,12 @@
+// Good to have settings for C++ projects
+// - we save them here in case someone doesn't have it saved in global zed settings
+{
+  "file_types": {
+    "CMake": ["CMakeLists.txt"]
+  },
+  "lsp": {
+    "clangd": {
+      "arguments": ["-background-index"]
+    }
+  }
+}

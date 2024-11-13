@@ -19,7 +19,5 @@ scan_tools()
 add_tools()
 
 message(STATUS ${_CAMEL_CMAKE_SPACER})
-
 message(STATUS "Finished configuring ${PROJECT_NAME}")
-
 message(STATUS ${_CAMEL_CMAKE_SPACER})

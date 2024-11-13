@@ -112,3 +112,6 @@ fabric.properties
 # Qt Creator
 **/*.user
 build/
+
+# Other stuff
+.clangd

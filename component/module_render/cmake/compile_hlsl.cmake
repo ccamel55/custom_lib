@@ -2,8 +2,12 @@
 if (CAMEL_PLATFORM_WINDOWS)
 	set(_VULKAN_DXC_PATH "$ENV{VULKAN_SDK}/bin/dxc.exe" CACHE INTERNAL "")
 else ()
-	if (NOT LINUX_DXC_PATH)
+	if (NOT LINUX_DXC_PATH AND NOT DEFINED ENV{LINUX_DXC_PATH})
 		message(FATAL_ERROR "LINUX_DXC_PATH is not set. This must be the absolute path of dxc binary when building for linux.")
+	endif ()
+
+	if (DEFINED ENV{LINUX_DXC_PATH})
+	   set(LINUX_DXC_PATH "$ENV{LINUX_DXC_PATH}")
 	endif ()
 
 	set(_VULKAN_DXC_PATH "${LINUX_DXC_PATH}" CACHE INTERNAL "")
