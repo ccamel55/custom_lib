@@ -97,7 +97,7 @@ template<typename T>
     return ss.str();
 }
 
-vk::DynamicLoader DYNAMIC_LOADER = {};
+vk::detail::DynamicLoader DYNAMIC_LOADER = {};
 }
 
 Device_Vulkan::Device_Vulkan(const std::shared_ptr<logger::Logger>& logger, const device_settings_t& settings)

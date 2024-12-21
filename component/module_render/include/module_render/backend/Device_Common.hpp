@@ -117,7 +117,7 @@ public:
     //! Used to explicitly update screen size
     //! \param window_size size of window in pixels
     //! \param force_update force update/recreate swap chain regardless of current screen size.
-    virtual void update_screen_size(const point2Di& window_size, bool force_update = false) = 0;
+    virtual void update_screen_size(const point2Di& window_size, bool force_update) = 0;
 
     //! Called before writing to command pool
     virtual void begin_frame() = 0;

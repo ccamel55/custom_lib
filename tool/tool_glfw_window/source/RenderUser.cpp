@@ -25,7 +25,7 @@ RenderUser::RenderUser(
 }
 
 void RenderUser::update_screen_size(const point2Di& window_size) const {
-    _device->update_screen_size(window_size);
+    _device->update_screen_size(window_size, false);
 }
 
 void RenderUser::on_frame() {

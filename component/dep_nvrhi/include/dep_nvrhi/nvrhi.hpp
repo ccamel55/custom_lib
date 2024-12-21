@@ -1,8 +1,8 @@
 #pragma once
 
 #ifdef CAMEL_NVRHI_VULKAN
-#include <nvrhi/vulkan.h>
 #include <nvrhi/validation.h>
+#include <nvrhi/vulkan.h>
 
 #define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
 #include <vulkan/vulkan.hpp>
