@@ -2,8 +2,14 @@
 
 #include <module_logger/ScopedLog.hpp>
 #include <module_render/backend/Device_Vulkan.hpp>
+#include <module_system/filesystem.hpp>
+
 
 using namespace lib;
+
+namespace {
+
+}
 
 RenderUser::RenderUser(
     const std::shared_ptr<logger::Logger>& logger,

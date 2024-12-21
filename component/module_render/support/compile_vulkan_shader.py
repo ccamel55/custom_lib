@@ -54,8 +54,8 @@ def main():
     parsed_arguments.add_argument("-o", "--output_directory",
                                   help="Output directory.", required=True)
 
-    parsed_arguments.add_argument("-n", "--namespace",
-                                  help="Namespace the generated string belongs to", required=True)
+    # parsed_arguments.add_argument("-n", "--namespace",
+    #                               help="Namespace the generated string belongs to", required=True)
 
     parsed_arguments.add_argument("-e", "--dxc",
                                   help="Path to DXC executable", required=True)
@@ -121,15 +121,15 @@ def main():
             exit(-1)
 
         # write the binary to a hpp file
-        input_file_handle = open(compiled_shader_path, "rb")
-        write_string = bin_to_array(input_file_handle.read(), args.namespace, generated_file_name)
-
-        input_file_handle.close()
-
-        output_file_handle = open(parsed_shader_path, "w")
-        output_file_handle.write(write_string)
-
-        output_file_handle.close()
+        # input_file_handle = open(compiled_shader_path, "rb")
+        # write_string = bin_to_array(input_file_handle.read(), args.namespace, generated_file_name)
+        #
+        # input_file_handle.close()
+        #
+        # output_file_handle = open(parsed_shader_path, "w")
+        # output_file_handle.write(write_string)
+        #
+        # output_file_handle.close()
 
     return
 

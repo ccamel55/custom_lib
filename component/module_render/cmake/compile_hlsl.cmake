@@ -21,45 +21,28 @@ if (NOT ${Python3_FOUND})
 	message(FATAL_ERROR "Could not find python 3")
 endif ()
 
-macro(compile_hlsl TARGET)
+# This needs to be set when the CMake script file is evaluated otherwise we will have incorrect path
+# when calling this from different `CMakeLists.txt
+set(_SHADER_COMPILE_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/support/compile_vulkan_shader.py" CACHE INTERNAL "")
+
+# Shader main output location
+set(_SHADER_OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/shader_spv CACHE INTERNAL "")
+
+# Make sure output location exists
+file(MAKE_DIRECTORY ${_SHADER_OUTPUT_DIR})
+
+
+# Build shaders from an input directory containing source hlsl code.
+macro(compile_shaders TARGET INPUT)
 	project("hlsl_${TARGET}")
-
-	# Template - defined arguments
-	set(
-		_ARG_DEF
-		"	"
-	)
-
-	# Template - one value arguments
-	set(
-		_ARG_ONE
-			INPUT
-			OUTPUT
-			NAMESPACE
-	)
-
-	# Template - multi value arguments
-	set (
-		_ARG_MULTI
-			""
-	)
-
-	cmake_parse_arguments(
-		${PROJECT_NAME}
-			"${_ARG_DEF}"
-			"${_ARG_ONE}"
-			"${_ARG_MULTI}"
-			${ARGN}
-	)
 
 	add_custom_target(
 		${PROJECT_NAME} ALL
 		COMMAND
-			${Python3_EXECUTABLE} ${CMAKE_CURRENT_LIST_DIR}/support/compile_vulkan_shader.py
+			${Python3_EXECUTABLE} ${_SHADER_COMPILE_SCRIPT}
 				-e ${_VULKAN_DXC_PATH}
-				-i ${${PROJECT_NAME}_INPUT}
-				-o ${${PROJECT_NAME}_OUTPUT}
-				-n ${${PROJECT_NAME}_NAMESPACE}
+				-i ${INPUT}
+				-o ${_SHADER_OUTPUT_DIR}
 				-vk # We will always build in vulkan mode for now
 		COMMENT
 			"Compiling HLSL shaders (${TARGET})"
@@ -67,4 +50,24 @@ macro(compile_hlsl TARGET)
 
 	# Make sure we call this when building a specific target
 	add_dependencies(${TARGET} ${PROJECT_NAME})
+endmacro()
+
+
+# Copy shaders from default build directory into another directory
+macro(copy_shaders TARGET OUTPUT)
+	add_custom_command(
+		TARGET
+			${TARGET} POST_BUILD
+		COMMAND
+			${CMAKE_COMMAND} -E copy_directory
+				${_SHADER_OUTPUT_DIR}
+				${OUTPUT}
+	)
+
+	# Update install with shaders
+	install(
+		DIRECTORY ${OUTPUT}
+		TYPE BIN
+		TYPE LIB
+	)
 endmacro()
