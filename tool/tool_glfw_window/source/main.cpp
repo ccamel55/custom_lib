@@ -1,5 +1,3 @@
-#include <RenderUser.hpp>
-
 #define GLFW_INCLUDE_VULKAN
 #include <dep_glfw/glfw.hpp>
 
@@ -7,6 +5,8 @@
 #include <module_logger/Logger.hpp>
 #include <module_logger/ScopedLog.hpp>
 #include <module_logger/handler/Std_LogHandler.hpp>
+
+#include <module_render/Render.hpp>
 #include <module_render/backend/Device_Vulkan.hpp>
 
 using namespace lib;
@@ -15,8 +15,7 @@ namespace {
 // Glfw window handle
 GLFWwindow* window = nullptr;
 
-std::unique_ptr<RenderUser> USER = nullptr;
-
+std::unique_ptr<render::Render> RENDER = nullptr;
 std::shared_ptr<logger::Logger> LOGGER = nullptr;
 
 namespace callback {
@@ -206,7 +205,7 @@ int main(
         return 1;
     }
 
-    USER = std::make_unique<RenderUser>(LOGGER, settings.value());
+    RENDER = std::make_unique<render::Render>(LOGGER, render::RenderAPI::Vulkan, settings.value());
 
     // Main window loop
     while (!glfwWindowShouldClose(window)) {
@@ -217,8 +216,8 @@ int main(
         // Draw
         glfwGetWindowSize(window, &window_size.x, &window_size.y);
 
-        USER->update_screen_size(window_size);
-        USER->on_frame();
+        RENDER->update_screen_size(window_size);
+        RENDER->on_frame();
     }
 
     log.v("exited main loop");

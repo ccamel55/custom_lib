@@ -5,7 +5,6 @@ camel_executable(
 		module_input
 		module_logger
 		module_render
-		module_system
 )
 
 # Get artifact output directory based on the binary build directory
