@@ -12,5 +12,5 @@ CPMAddPackage(
 	GITHUB_REPOSITORY
 		NVIDIAGameWorks/nvrhi
 	GIT_TAG
-		main
+		14cd30e2c5976a3186ace704bcd26d7d9d1736ea
 )
