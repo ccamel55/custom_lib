@@ -147,13 +147,21 @@ class ExamplePass final : public render::RenderPass {
 public:
     explicit ExamplePass(const nvrhi::DeviceHandle& device)
         : RenderPass(device)
-        , _geometry_2d(std::make_unique<render::Geometry_2D>(_device, EXE_PATH / "shaders", SHADER_FACTORY, TEXTURE_FACTORY)) {
+        , _geometry_2d(std::make_unique<render::Geometry_2D>(
+            _device,
+            EXE_PATH / "shaders",
+            EXE_PATH / "textures",
+            SHADER_FACTORY,
+            TEXTURE_FACTORY
+        )) {
 
     }
 
     void update_frame(const render::FrameInterval& interval) override {
-        _geometry_2d->triangle({200, 200}, 100);
-        _geometry_2d->triangle({250, 200}, 100);
+
+        _geometry_2d->triangle({225, 200}, 200);
+        _geometry_2d->triangle({200, 200}, 100, { 0, 255, 255, 100 });
+        _geometry_2d->triangle({250, 200}, 100, { 255, 0, 255, 100});
     }
 
     void render(nvrhi::IFramebuffer* frame_buffer) override {

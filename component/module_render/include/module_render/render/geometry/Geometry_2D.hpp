@@ -13,6 +13,7 @@ public:
     explicit Geometry_2D(
         const nvrhi::DeviceHandle& device,
         const std::filesystem::path& shader_folder,
+        const std::filesystem::path& texture_folder,
         const std::unique_ptr<ShaderFactory>& shader_factory,
         const std::unique_ptr<TextureFactory>& texture_factory
     );
@@ -22,15 +23,15 @@ public:
 
 public:
     // BAD!! FUCK OFF!
-    void triangle(const point2Df& pos, const size_t size) {
+    void triangle(const point2Df& pos, const size_t size, const std::array<uint8_t, 4> color = { 255, 255, 255, 255 }) {
 
         _num_vertices +=3;
 
         const auto centre_pos = pos;
 
-        _vertices[_num_vertices - 3] = detail::vertex_t{ {  centre_pos.x, centre_pos.y - size / 2 },  { 0.0, 0.0 }, { 1.0, 0.0, 0.0 } };
-        _vertices[_num_vertices - 2] = detail::vertex_t{ {  centre_pos.x + size / 2, centre_pos.y + size / 2 },  { 0.0, 0.0 }, { 0.0, 0.0, 1.0 } };
-        _vertices[_num_vertices - 1] = detail::vertex_t{ {  centre_pos.x - size/ 2, centre_pos.y + size / 2 },  { 0.0, 0.0 }, { 0.0, 1.0, 0.0 } };
+        _vertices[_num_vertices - 3] = detail::vertex_t(centre_pos.x, centre_pos.y - size / 2, 0.0, 0.5, 0.0, color[0], color[1], color[2], color[3]);
+        _vertices[_num_vertices - 2] = detail::vertex_t(centre_pos.x + size / 2, centre_pos.y + size / 2, 0.0, 1.0, 1.0, color[0], color[1], color[2], color[3]);
+        _vertices[_num_vertices - 1] = detail::vertex_t(centre_pos.x - size / 2, centre_pos.y + size / 2, 0.0, 0.0, 1.0, color[0], color[1], color[2], color[3]);
 
         _num_indices +=3;
 
@@ -46,6 +47,9 @@ private:
     nvrhi::BufferHandle _vertex_buffer;
     nvrhi::BufferHandle _index_buffer;
     nvrhi::BufferHandle _constant_buffer;
+
+    nvrhi::SamplerHandle _sampler;
+    nvrhi::TextureHandle _texture;
 
     nvrhi::InputLayoutHandle _vertex_layout;
 

@@ -71,3 +71,26 @@ macro(copy_shaders TARGET OUTPUT)
 		TYPE LIB
 	)
 endmacro()
+
+# Copy textures from texture folder into another directory
+macro(copy_textures TARGET OUTPUT)
+	set(_TEXTURE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/textures)
+
+	if (IS_DIRECTORY ${_TEXTURE_DIR})
+		add_custom_command(
+			TARGET
+				${TARGET} POST_BUILD
+			COMMAND
+				${CMAKE_COMMAND} -E copy_directory
+					${_TEXTURE_DIR}
+					${OUTPUT}
+		)
+
+		# Update install with shaders
+		install(
+			DIRECTORY ${OUTPUT}
+			TYPE BIN
+			TYPE LIB
+		)
+	endif ()
+endmacro()

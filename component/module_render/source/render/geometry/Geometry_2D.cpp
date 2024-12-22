@@ -5,27 +5,36 @@ using namespace lib::render;
 Geometry_2D::Geometry_2D(
     const nvrhi::DeviceHandle& device,
     const std::filesystem::path& shader_folder,
+    const std::filesystem::path& texture_folder,
     const std::unique_ptr<ShaderFactory>& shader_factory,
     const std::unique_ptr<TextureFactory>& texture_factory
 )
     : Geometry_Common(device)
-    , _vertices()
-    , _indices() {
+    , _vertices(detail::MAX_VERTICES)
+    , _indices(detail::MAX_INDICES) {
 
     // Load shaders
     const auto vertex_shader    = shader_factory->create_shader(shader_folder / "geometry_2d_vs.spv", nvrhi::ShaderType::Vertex);
-    const auto pixel_shader     = shader_factory->create_shader(shader_folder / "geometry_2d_ps.spv", nvrhi::ShaderType::Pixel);
-
     if (!vertex_shader.has_value()) {
         throw std::runtime_error("Could not load vertex shaders from disk: " + vertex_shader.error());
     }
 
+    _vertex_shader = vertex_shader.value();
+
+    const auto pixel_shader     = shader_factory->create_shader(shader_folder / "geometry_2d_ps.spv", nvrhi::ShaderType::Pixel);
     if (!pixel_shader.has_value()) {
         throw std::runtime_error("Could not load pixel shaders from disk: " + pixel_shader.error());
     }
 
-    _vertex_shader  = vertex_shader.value();
-    _pixel_shader   = pixel_shader.value();
+    _pixel_shader = pixel_shader.value();
+
+    // Load texture
+    const auto texture = texture_factory->create_texture(texture_folder / "cat.jpg", TextureColor::RGBA);
+    if (!texture.has_value()) {
+        throw std::runtime_error("Could not load texture from disk: " + texture.error());
+    }
+
+    _texture = texture.value();
 
     // Create buffers
     nvrhi::BufferDesc desc;
@@ -99,7 +108,7 @@ Geometry_2D::Geometry_2D(
             auto& attribute = vertex_attributes[2];
 
             attribute.name          = "COLOR";
-            attribute.format        = nvrhi::Format::RGBA32_FLOAT;
+            attribute.format        = nvrhi::Format::RGBA8_UNORM;
             attribute.offset        = 0;
             attribute.bufferIndex   = 2;
             attribute.elementStride = sizeof(detail::vertex_t);
@@ -107,26 +116,22 @@ Geometry_2D::Geometry_2D(
     }
     _vertex_layout = _device->createInputLayout(vertex_attributes, std::size(vertex_attributes), _vertex_shader);
 
-    // Load texture
-
-    _command_list = _device->createCommandList();
-    _command_list->open();
+    // Texture sampler
+    nvrhi::SamplerDesc sampler_desc;
     {
-        // Todo: load texture
+        sampler_desc.setAllFilters(false);
+        sampler_desc.setAllAddressModes(nvrhi::SamplerAddressMode::Wrap);
     }
-    _command_list->close();
-    _device->executeCommandList(_command_list);
+    _sampler = _device->createSampler(sampler_desc);
 
     // Create binding set
 
     nvrhi::BindingSetDesc binding_set_desc;
     {
-        // Todo: add texture
-        // Todo: add sampler
-
         binding_set_desc.bindings = {
-            // Note: using viewIndex to construct a buffer range.
             nvrhi::BindingSetItem::ConstantBuffer(0, _constant_buffer, nvrhi::BufferRange(0, sizeof(detail::constant_buffer_t))),
+            nvrhi::BindingSetItem::Texture_SRV(0, _texture),
+            nvrhi::BindingSetItem::Sampler(0, _sampler)
         };
     }
 
@@ -134,6 +139,8 @@ Geometry_2D::Geometry_2D(
     if (!nvrhi::utils::CreateBindingSetAndLayout(_device, nvrhi::ShaderType::All, 0, binding_set_desc, _binding_layout, _binding_set)) {
         throw std::runtime_error("Could not create binding set or layout");
     }
+
+    _command_list = _device->createCommandList();
 }
 
 void Geometry_2D::draw_geometry(nvrhi::IFramebuffer* frame_buffer) {
@@ -149,7 +156,18 @@ void Geometry_2D::draw_geometry(nvrhi::IFramebuffer* frame_buffer) {
             pipeline_desc.bindingLayouts    = { _binding_layout };
             pipeline_desc.primType          = nvrhi::PrimitiveType::TriangleList;
 
-            pipeline_desc.renderState.depthStencilState.depthTestEnable = false;
+            pipeline_desc.renderState.blendState.targets[0].blendEnable     = true;
+            pipeline_desc.renderState.blendState.targets[0].srcBlend        = nvrhi::BlendFactor::SrcAlpha;
+            pipeline_desc.renderState.blendState.targets[0].destBlend       = nvrhi::BlendFactor::InvSrcAlpha;
+            pipeline_desc.renderState.blendState.targets[0].srcBlendAlpha   = nvrhi::BlendFactor::InvSrcAlpha;
+            pipeline_desc.renderState.blendState.targets[0].destBlendAlpha  = nvrhi::BlendFactor::Zero;
+
+            pipeline_desc.renderState.depthStencilState.depthTestEnable     = false;
+            pipeline_desc.renderState.depthStencilState.depthWriteEnable    = true;
+            pipeline_desc.renderState.depthStencilState.stencilEnable       = false;
+            pipeline_desc.renderState.depthStencilState.depthFunc           = nvrhi::ComparisonFunc::Always;
+
+            pipeline_desc.renderState.rasterState.scissorEnable         = true;
             pipeline_desc.renderState.rasterState.frontCounterClockwise = false;
         }
         _pipeline = _device->createGraphicsPipeline(pipeline_desc, frame_buffer);
@@ -198,7 +216,6 @@ void Geometry_2D::draw_geometry(nvrhi::IFramebuffer* frame_buffer) {
 
             nvrhi::DrawArguments draw_arguments;
             {
-                // Todo: select parts of index buffer to draw respectively
                 draw_arguments.vertexCount = _num_indices;
             }
             _command_list->drawIndexed(draw_arguments);
