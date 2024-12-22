@@ -2,9 +2,16 @@
 
 using namespace lib::render;
 
-void Device_Common::add_callback(const CallbackState state, std::function<void(const DeviceCallback&)> callback) {
-    _callback[state] = std::move(callback);
+Device_Common::Device_Common(
+    const std::shared_ptr<logger::Logger>& logger,
+    const device_settings_t& settings,
+    RenderCallback_Fn cb_resizing,
+    RenderCallback_Fn cb_resized
+)
+    : _logger(logger)
+    , _settings(settings)
+    , _cb_resizing(std::move(cb_resizing))
+    , _cb_resized(std::move(cb_resized)) {
+
 }
-
-
 

@@ -1,50 +1,65 @@
 #pragma once
 
+#include <module_core/type/point/point2D.hpp>
 #include <module_logger/Logger.hpp>
+#include <module_render/RenderPass.hpp>
+#include <module_render/backend/Device_Common.hpp>
 
-#include <module_render/Render.hpp>
-#include <module_render/RenderConsumer.hpp>
-#include <module_render/util/Shader.hpp>
+#include <list>
 
 namespace lib::render
 {
-// Alias correct type
-class Render;
-using RenderConsumer = RenderConsumer_Base<Render>;
-
 enum class RenderAPI {
     DX11,
     DX12,
     Vulkan,
 };
 
-//! Render handler
-class Render : public RenderConsumer {
-    friend class RenderConsumer_Base;
+/*
+    TODO:
+        - multi-threaded rendering support
+        - batch system
+        - create texture atlas for basic types
+        - support custom shader
+        - support custom textures
+        - support custom transforms
+        - use shader specialisation to pick specific draw types (SDF etc.)
+*/
 
+//! Render handler
+class Render {
 public:
     Render(
         const std::shared_ptr<logger::Logger>& logger,
-        RenderAPI render_api,
-        const device_settings_t& settings
+        const device_settings_t& settings,
+        RenderAPI render_api
     );
 
     ~Render();
 
-    void update_screen_size(const point2Di& window_size) const;
-    void on_frame();
+public:
+    [[nodiscard]] const std::unique_ptr<Device_Common>& backend() const;
+    void emplace_render_pass_back(RenderPass* pass);
+    void emplace_render_pass_front(RenderPass* pass);
+    void erase_render_pass(RenderPass* pass);
+
+    void update_screen_size(const point2Di& size);
+    void present_passes();
 
 private:
-    static void FrameBuffer_Resizing(const DeviceCallback& device);
-    static void FrameBuffer_Resized(const DeviceCallback& device);
-
-private:
-    void internal_some_func() {
-
-    }
+    void update_frame() const;
+    void render() const;
+    void back_buffer_resizing();
+    void back_buffer_resized();
 
 private:
     std::shared_ptr<logger::Logger> _logger;
     std::unique_ptr<Device_Common> _device;
+
+    FrameInterval _interval;
+    bool _is_visible = false;
+
+    std::vector<nvrhi::FramebufferHandle> _swap_chain_frame_buffers;
+    std::list<RenderPass*> _render_passes;
 
 };}

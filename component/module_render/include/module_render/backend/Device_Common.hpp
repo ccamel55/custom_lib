@@ -2,12 +2,16 @@
 
 #include <dep_nvrhi/nvrhi.hpp>
 
-#include <functional>
-#include <unordered_map>
-#include <unordered_set>
 #include <module_core/type/point/point2D.hpp>
+#include <module_logger/Logger.hpp>
+
+#include <functional>
+#include <memory>
+#include <unordered_set>
 
 namespace lib::render {
+
+class Render;
 
 //
 // Constants used by each device implementation
@@ -37,7 +41,7 @@ struct device_settings_t {
     bool copy_queue     = false;
     bool vsync          = false;
 
-    point2Di starting_size = {};
+    point2Di back_buffer_size = {};
 
 #ifdef CAMEL_NVRHI_VULKAN
     // Vulkan specific settings
@@ -69,23 +73,29 @@ struct device_settings_t {
 #endif
 };
 
-enum class CallbackState {
-    Resizing,
-    Resized
-};
+using RenderCallback_Fn = std::function<void()>;
 
-//! Base class that defines all callback methods
-class DeviceCallback {
+//! Shared common device type.
+class Device_Common {
+    friend class Render;
+
 public:
-    virtual ~DeviceCallback() = default;
+    Device_Common(
+        const std::shared_ptr<logger::Logger>& logger,
+        const device_settings_t& settings,
+        RenderCallback_Fn cb_resizing = nullptr,
+        RenderCallback_Fn cb_resized = nullptr
+    );
+
+    virtual ~Device_Common() = default;
+
+    //! Get NVRHI device raw ptr
+    //! \return nvrhi device ptr
+    [[nodiscard]] virtual nvrhi::IDevice* device() const = 0;
 
     //! Get NVRHI device handle
     //! \return nvrhi device handle
-    [[nodiscard]] virtual nvrhi::IDevice* device() const = 0;
-
-    //! Get back buffer size in pixels
-    //! \return back buffer size in pixels
-    [[nodiscard]] virtual const point2Di& back_buffer_size() const = 0;
+    [[nodiscard]] virtual nvrhi::DeviceHandle device_handle() const = 0;
 
     //! Get current back buffer texture
     //! \return current back buffer texture
@@ -104,35 +114,20 @@ public:
     //! \return number of back buffers we have
     [[nodiscard]] virtual uint32_t back_buffer_count() const = 0;
 
-    //! Whether current screen is minimised.
-    [[nodiscard]] bool is_minimised() const {
-        const point2Di back_buffer = back_buffer_size();
-        return back_buffer.x == 0 || back_buffer.y == 0;
-    }
-};
-
-//! Shared common device type.
-class Device_Common : public DeviceCallback {
-public:
-    //! Used to explicitly update screen size
-    //! \param window_size size of window in pixels
-    //! \param force_update force update/recreate swap chain regardless of current screen size.
-    virtual void update_screen_size(const point2Di& window_size, bool force_update) = 0;
-
-    //! Called before writing to command pool
+protected:
+    [[nodiscard]] virtual std::expected<void, std::string> create_device() = 0;
+    [[nodiscard]] virtual std::expected<void, std::string> create_swap_chain() = 0;
+    virtual void resize_swap_chain() = 0;
+    virtual void destroy_device_and_swap_chain() = 0;
     virtual void begin_frame() = 0;
-
-    //! Called to draw command pool
     virtual void present() = 0;
 
-public:
-    //! Add a callback for a specific device state
-    //! \param state State to invoke callback
-    //! \param callback callback to invoke
-    void add_callback(CallbackState state, std::function<void(const DeviceCallback&)> callback);
-
 protected:
-    std::unordered_map<CallbackState, std::function<void(const DeviceCallback&)>> _callback = {};
+    std::shared_ptr<logger::Logger> _logger;
+    device_settings_t _settings;
+
+    RenderCallback_Fn _cb_resizing;
+    RenderCallback_Fn _cb_resized;
 
 };
 }

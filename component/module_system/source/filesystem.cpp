@@ -10,7 +10,7 @@ using namespace lib::system;
 #include <unistd.h>
 #endif
 
-std::expected<std::filesystem::path, std::string> lib::system::GetExecutablePath() {
+std::expected<std::filesystem::path, std::string> lib::system::get_executable_path() {
 
 #ifdef CAMEL_PLATFORM_WINDOWS
 
@@ -26,4 +26,35 @@ std::expected<std::filesystem::path, std::string> lib::system::GetExecutablePath
 #endif
 
     return std::filesystem::path(path_buffer);
+}
+
+std::vector<char> lib::system::read_file_as_bytes(const std::filesystem::path& path) {
+
+    std::ifstream file_stream;
+    file_stream.open(path, std::ios::binary);
+
+    if (file_stream.fail()) {
+        return {};
+    }
+
+    std::vector<char> result;
+
+    constexpr size_t CHUNK_SIZE = 1024;
+    std::array<char, CHUNK_SIZE> chunk = {};
+
+    while (true) {
+        const size_t read_size = file_stream.readsome(chunk.data(), CHUNK_SIZE);
+
+        if (read_size <= 0) {
+            break;
+        }
+
+        result.insert(
+            result.end(),
+            chunk.begin(),
+            chunk.begin() + read_size
+        );
+    }
+
+    return result;
 }

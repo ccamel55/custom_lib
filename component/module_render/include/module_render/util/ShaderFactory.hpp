@@ -1,17 +1,14 @@
 #pragma once
 
 #include <dep_nvrhi/nvrhi.hpp>
-#include <module_logger/Logger.hpp>
 
 #include <filesystem>
+#include <unordered_map>
 
 namespace lib::render {
 class ShaderFactory {
 public:
-    ShaderFactory(
-        const std::shared_ptr<logger::Logger>& logger,
-        const nvrhi::DeviceHandle& device
-    );
+    explicit ShaderFactory(const nvrhi::DeviceHandle& device);
 
     //! Create shader from file on disk
     //! \param path path to shader file. must have extension type `.spv`
@@ -22,9 +19,11 @@ public:
         nvrhi::ShaderType type
     ) const;
 
-private:
-    std::shared_ptr<logger::Logger> _logger;
-    nvrhi::DeviceHandle _device;
+    //! Clear in memory shader cache
+    void clear_cache();
 
+private:
+    nvrhi::DeviceHandle _device;
+    mutable std::unordered_map<std::filesystem::path, std::vector<char>> _cache;
 };
 }

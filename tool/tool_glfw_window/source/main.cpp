@@ -8,6 +8,9 @@
 
 #include <module_render/Render.hpp>
 #include <module_render/backend/Device_Vulkan.hpp>
+#include <module_render/render_pass/BasicTriangle.hpp>
+#include <module_render/render_pass/Geometry_2D.hpp>
+#include <module_system/filesystem.hpp>
 
 using namespace lib;
 
@@ -73,17 +76,23 @@ namespace init {
 
     render::device_settings_t settings = {};
     {
+        #if _DEBUG
         settings.debug          = true;
         settings.validation     = true;
+        #else
+        settings.debug          = false;
+        settings.validation     = false;
+        #endif
+
         settings.compute_queue  = false;
         settings.copy_queue     = false;
         settings.vsync          = false;
 
-        settings.starting_size  = {};
-        settings.vulkan         = {};
+        settings.back_buffer_size   = {};
+        settings.vulkan             = {};
     }
 
-    glfwGetWindowSize(window, &settings.starting_size.x, &settings.starting_size.y);
+    glfwGetWindowSize(window, &settings.back_buffer_size.x, &settings.back_buffer_size.y);
 
     // Get required extensions from GLFW
     uint32_t glfw_extension_count = 0;
@@ -205,7 +214,20 @@ int main(
         return 1;
     }
 
-    RENDER = std::make_unique<render::Render>(LOGGER, render::RenderAPI::Vulkan, settings.value());
+    const auto shader_folder = system::get_executable_path().value().parent_path() / "shaders";
+
+    RENDER = std::make_unique<render::Render>(LOGGER, settings.value(), render::RenderAPI::Vulkan);
+
+    const auto shader_factory   = std::make_unique<render::ShaderFactory>(RENDER->backend()->device_handle());
+    const auto texture_factory  = std::make_unique<render::TextureFactory>(RENDER->backend()->device_handle());
+
+    // const auto triangle = std::make_unique<render::BasicTriangle>(RENDER->backend().get());
+    const auto geometry_2d = std::make_unique<render::Geometry_2D>(RENDER->backend().get());
+
+    geometry_2d->init(shader_folder, shader_factory, texture_factory);
+
+    // RENDER->emplace_render_pass_back(triangle.get());
+    RENDER->emplace_render_pass_back(geometry_2d.get());
 
     // Main window loop
     while (!glfwWindowShouldClose(window)) {
@@ -217,7 +239,7 @@ int main(
         glfwGetWindowSize(window, &window_size.x, &window_size.y);
 
         RENDER->update_screen_size(window_size);
-        RENDER->on_frame();
+        RENDER->present_passes();
     }
 
     log.v("exited main loop");

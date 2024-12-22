@@ -1,6 +1,7 @@
 #pragma once
 
 #ifdef CAMEL_NVRHI_VULKAN
+#include <nvrhi/utils.h>
 #include <nvrhi/validation.h>
 #include <nvrhi/vulkan.h>
 

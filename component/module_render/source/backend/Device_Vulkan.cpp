@@ -97,20 +97,25 @@ template<typename T>
     return ss.str();
 }
 
-vk::detail::DynamicLoader DYNAMIC_LOADER = {};
+#if VK_HEADER_VERSION >= 301
+vk::detail::DynamicLoader DYNAMIC_LOADER;
+#else
+vk::DynamicLoader DYNAMIC_LOADER;
+#endif
 }
 
-Device_Vulkan::Device_Vulkan(const std::shared_ptr<logger::Logger>& logger, const device_settings_t& settings)
-    : _settings(settings)
-    , _logger(logger)
+Device_Vulkan::Device_Vulkan(
+    const std::shared_ptr<logger::Logger>& logger,
+    const device_settings_t& settings,
+    RenderCallback_Fn cb_resizing,
+    RenderCallback_Fn cb_resized
+)
+    : Device_Common(logger, settings, std::move(cb_resizing), std::move(cb_resized))
     , _extension_enabled(get_default_enabled_extensions())
     , _extension_optional(get_default_optional_extensions())
     , _nv_callback(std::make_unique<NvrhiMessageCallback>(logger)) {
 
     logger::ScopeLog log(_logger, "Device_Vulkan::Device_Vulkan");
-
-    // Update back buffer to starting size
-    _back_buffer_size = settings.starting_size;
 
     const auto vkGetInstanceProcAddr = DYNAMIC_LOADER
         .getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
@@ -162,7 +167,7 @@ Device_Vulkan::Device_Vulkan(const std::shared_ptr<logger::Logger>& logger, cons
     // Create vulkan instance
     //
 
-    if (const auto res = create_vk_instance(); !res.has_value()) [[unlikely]] {
+    if (const auto res = vk_create_instance(); !res.has_value()) [[unlikely]] {
         throw std::runtime_error(res.error());
     }
 
@@ -181,63 +186,9 @@ Device_Vulkan::Device_Vulkan(const std::shared_ptr<logger::Logger>& logger, cons
             throw std::runtime_error("Could not install debug callback");
         }
     }
-
-    //
-    // Create vulkan device
-    //
-
-    if (const auto res = create_vk_device(); !res.has_value()) [[unlikely]] {
-        throw std::runtime_error(res.error());
-    }
-
-    //
-    // Create vulkan swap chain
-    //
-
-    if (const auto res = create_vk_swapchain(); !res.has_value()) [[unlikely]] {
-        throw std::runtime_error(res.error());
-    }
-
-    // Create memory synchronisation objects
-    _nv_command_list_barrier = _nv_device->createCommandList();
-    _present_semaphores.reserve(MAX_FRAMES_IN_FLIGHT + 1);
-
-    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT + 1; ++i) {
-        vk::SemaphoreCreateInfo semaphore_create_info = {};
-        _present_semaphores.emplace_back(_vk_device.createSemaphore(semaphore_create_info));
-    }
 }
 
 Device_Vulkan::~Device_Vulkan() {
-
-    // This function will wait until vk device is idle
-    destroy_swapchain();
-
-    // Nuke semaphores
-    for (auto& semaphore: _present_semaphores) {
-        if (!semaphore) {
-            continue;
-        }
-
-        _vk_device.destroySemaphore(semaphore);
-        semaphore = vk::Semaphore();
-    }
-
-    // Nuke nvrhi objects
-    _nv_command_list_barrier        = nullptr;
-    _nv_device_validation   = nullptr;
-    _nv_device              = nullptr;
-
-    // Destroy Vulkan objects
-    if (_vk_device) {
-        _vk_device.destroy();
-        _vk_device = nullptr;
-    }
-
-    if (_vk_surface) {
-        _vk_instance.destroySurfaceKHR(_vk_surface);
-        _vk_surface = nullptr;
-    }
 
     if (_debug_report_callback) {
         _vk_instance.destroyDebugReportCallbackEXT(_debug_report_callback);
@@ -249,7 +200,421 @@ Device_Vulkan::~Device_Vulkan() {
     }
 }
 
-std::expected<void, std::string> Device_Vulkan::create_vk_instance() {
+std::expected<vk::PhysicalDevice, std::string> Device_Vulkan::vk_pick_physical_device() const {
+
+    logger::ScopeLog log(_logger, "Device_Vulkan::pick_physical_device");
+
+    // Enumerate physical devices and pick the best match for us
+    // Todo: support picking devices explicitly via settings
+    // Note: we pick a random initial extent size!
+
+    const auto expected_swap_chain_format   = static_cast<vk::Format>(nvrhi::vulkan::convertFormat(SWAP_CHAIN_FORMAT));
+    const auto expected_extent              = vk::Extent2D(_settings.back_buffer_size.x, _settings.back_buffer_size.y);
+
+    const auto devices = _vk_instance.enumeratePhysicalDevices();
+
+    std::vector<vk::PhysicalDevice> device_discrete;
+    std::vector<vk::PhysicalDevice> device_other;
+
+    std::unordered_set<std::string> device_extensions;
+
+    for (const auto& device : devices) {
+
+        // Fresh copy !
+        device_extensions = _extension_enabled.device;
+
+        const vk::PhysicalDeviceProperties properties   = device.getProperties();
+        const vk::PhysicalDeviceFeatures features       = device.getFeatures();
+
+        if (!check_extensions(device.enumerateDeviceExtensionProperties(), {}, device_extensions)) {
+            continue;
+        }
+
+        if (!features.samplerAnisotropy || !features.textureCompressionBC) {
+            continue;
+        }
+
+        if (const auto queue_family = vk_pick_queue_families(device);
+            !queue_family.has_value() ||
+            !device.getSurfaceSupportKHR(queue_family->present_queue, _vk_surface) ||
+            !device.getSurfaceSupportKHR(queue_family->graphics_queue, _vk_surface))
+        {
+            continue;
+        }
+
+        // Ensure device supports expected swap chain creation parameters
+        const vk::SurfaceCapabilitiesKHR surface_capabilities   = device.getSurfaceCapabilitiesKHR(_vk_surface);
+        const std::vector<vk::SurfaceFormatKHR> surface_formats = device.getSurfaceFormatsKHR(_vk_surface);
+
+        if (surface_capabilities.minImageCount > SWAP_CHAIN_BUFFER_COUNT ||
+           (surface_capabilities.maxImageCount < SWAP_CHAIN_BUFFER_COUNT && surface_capabilities.maxImageCount > 0)
+        ) {
+           continue;
+        }
+
+        if (surface_capabilities.minImageExtent.width > expected_extent.width ||
+            surface_capabilities.minImageExtent.height > expected_extent.height ||
+            surface_capabilities.maxImageExtent.width < expected_extent.width ||
+            surface_capabilities.maxImageExtent.height < expected_extent.height
+        ) {
+            continue;
+        }
+
+        bool expected_format_found = false;
+
+        for (const vk::SurfaceFormatKHR& surfaceFmt : surface_formats) {
+            if (surfaceFmt.format == expected_swap_chain_format) {
+                expected_format_found = true;
+                break;
+            }
+        }
+
+        if (!expected_format_found) {
+            continue;
+        }
+
+        if (properties.deviceType == vk::PhysicalDeviceType::eDiscreteGpu) {
+            device_discrete.push_back(device);
+        }
+        else {
+            device_other.push_back(device);
+        }
+    }
+
+    if (device_discrete.empty() && device_other.empty()) [[unlikely]]  {
+        log.e("Could not find any valid devices");
+        return std::unexpected("Could not find any valid devices");
+    }
+
+    vk::PhysicalDevice device;
+
+    if (device_discrete.empty()) {
+        // No discrete - use integrated
+        device = device_other.front();
+    }
+    else {
+        // Use discrete
+        device = device_discrete.front();
+    }
+
+    log.d("Using device - {}", std::string(device.getProperties().deviceName));
+
+    return device;
+}
+
+std::expected<Device_Vulkan::queue_family_properties_t, std::string> Device_Vulkan::vk_pick_queue_families(
+    const vk::PhysicalDevice& device
+) const {
+
+    queue_family_properties_t queue_family;
+    const std::vector<vk::QueueFamilyProperties> properties = device.getQueueFamilyProperties();
+
+    for (size_t i = 0; i < properties.size(); ++i) {
+
+        const vk::QueueFamilyProperties& property = properties.at(i);
+
+        if (queue_family.graphics_queue == -1) {
+            if (property.queueCount > 0 &&
+               (property.queueFlags & vk::QueueFlagBits::eGraphics)
+            ) {
+                queue_family.graphics_queue = static_cast<int>(i);
+            }
+        }
+
+        if (queue_family.compute_queue == -1) {
+            if (property.queueCount > 0 &&
+               (property.queueFlags & vk::QueueFlagBits::eCompute) &&
+              !(property.queueFlags & vk::QueueFlagBits::eGraphics)
+            ) {
+                queue_family.compute_queue = static_cast<int>(i);
+            }
+        }
+
+        if (queue_family.transfer_queue == -1) {
+            if (property.queueCount > 0 &&
+               (property.queueFlags & vk::QueueFlagBits::eTransfer) &&
+              !(property.queueFlags & vk::QueueFlagBits::eCompute) &&
+              !(property.queueFlags & vk::QueueFlagBits::eGraphics)
+            ) {
+                queue_family.transfer_queue = static_cast<int>(i);
+            }
+        }
+
+        if (queue_family.present_queue == -1) {
+
+            // Const cast bad!! but this whole callback system is bad!! so fuck it
+            vk_get_physical_device_support_t cb_params = {
+                const_cast<vk::Instance*>(&_vk_instance),
+                const_cast<vk::PhysicalDevice*>(&device),
+                static_cast<uint32_t>(i)
+            };
+
+            if (property.queueCount > 0 && _settings.vulkan.get_physical_device_presentation_support(&cb_params)) {
+                queue_family.present_queue = static_cast<int>(i);
+            }
+        }
+    }
+
+    if (queue_family.graphics_queue ==  -1 ||
+        queue_family.present_queue ==   -1 ||
+       (queue_family.compute_queue ==   -1 && _settings.compute_queue) ||
+       (queue_family.transfer_queue ==  -1 && _settings.copy_queue)
+    ) [[unlikely]] {
+        return std::unexpected("Could not find any valid queue families");
+    }
+
+    return queue_family;
+}
+
+std::expected<void, std::string> Device_Vulkan::vk_create_logical_device() {
+
+    logger::ScopeLog log(_logger, "Device_Vulkan::create_logical_device");
+
+    // Check extensions!
+    const auto check_ext_res = check_extensions(
+        _vk_physical_device.enumerateDeviceExtensionProperties(),
+        _extension_optional.device,
+        _extension_enabled.device
+    );
+
+    if (!check_ext_res.has_value()) [[unlikely]] {
+        return std::unexpected("Could not find any valid extensions");
+    }
+
+    _extension_enabled.device.insert(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+
+    log.d("{}", check_ext_res.value());
+
+    // Get supported features
+    for (const auto& ext : _extension_enabled.device) {
+        if (ext == VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME) {
+            _physical_device_features.emplace(PhysicalDeviceFeatures::AccelStruct);
+        }
+        else if (ext == VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME) {
+            _physical_device_features.emplace(PhysicalDeviceFeatures::RayPipeline);
+        }
+        else if (ext == VK_KHR_RAY_QUERY_EXTENSION_NAME) {
+            _physical_device_features.emplace(PhysicalDeviceFeatures::RayQueue);
+        }
+        else if (ext == VK_NV_MESH_SHADER_EXTENSION_NAME) {
+            _physical_device_features.emplace(PhysicalDeviceFeatures::Meshlets);
+        }
+        else if (ext == VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME) {
+            _physical_device_features.emplace(PhysicalDeviceFeatures::VRS);
+        }
+        else if (ext == VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME) {
+            _physical_device_features.emplace(PhysicalDeviceFeatures::Interlock);
+        }
+        else if (ext == VK_KHR_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME) {
+            _physical_device_features.emplace(PhysicalDeviceFeatures::Barycentric);
+        }
+        else if (ext == VK_KHR_16BIT_STORAGE_EXTENSION_NAME) {
+            _physical_device_features.emplace(PhysicalDeviceFeatures::Storage16Bit);
+        }
+        else if (ext == VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME) {
+            _physical_device_features.emplace(PhysicalDeviceFeatures::Synchronization2);
+        }
+        else if (ext == VK_KHR_MAINTENANCE_4_EXTENSION_NAME) {
+            _physical_device_features.emplace(PhysicalDeviceFeatures::Maintenance4);
+        }
+        else if (ext == VK_KHR_SWAPCHAIN_MUTABLE_FORMAT_EXTENSION_NAME) {
+            _physical_device_features.emplace(PhysicalDeviceFeatures::SwapChainMutableFormat);
+        }
+    }
+
+    //
+    //  IDK what the fuck this mess is....
+    //
+
+    const vk::PhysicalDeviceProperties properties = _vk_physical_device.getProperties();
+
+    #define APPEND_EXTENSION(condition, desc) if (condition) { (desc).pNext = pNext; pNext = &(desc); }
+    void* pNext = nullptr;
+
+    vk::PhysicalDeviceFeatures2 physical_device_features_2 = {};
+
+    // Determine support for Buffer Device Address, the Vulkan 1.2 way
+    auto buffer_device_address_features = vk::PhysicalDeviceBufferDeviceAddressFeatures();
+
+    // Determine support for maintenance4
+    auto maintenance4Features = vk::PhysicalDeviceMaintenance4Features();
+
+    // Put the user-provided extension structure at the end of the chain
+    pNext = nullptr;
+
+    APPEND_EXTENSION(true, buffer_device_address_features);
+    APPEND_EXTENSION(_physical_device_features.contains(PhysicalDeviceFeatures::Maintenance4), maintenance4Features);
+
+    physical_device_features_2.pNext = pNext;
+    _vk_physical_device.getFeatures2(&physical_device_features_2);
+
+    std::unordered_set unique_queue_families = {
+        _queue_family.graphics_queue,
+        _queue_family.present_queue,
+    };
+
+    if (_settings.compute_queue) {
+        unique_queue_families.insert(_queue_family.compute_queue);
+    }
+
+    if (_settings.copy_queue) {
+        unique_queue_families.insert(_queue_family.transfer_queue);
+    }
+
+    float priority = 1.f;
+
+    std::vector<vk::DeviceQueueCreateInfo> queue_description;
+    queue_description.reserve(unique_queue_families.size());
+
+    for(int queueFamily : unique_queue_families) {
+        queue_description.push_back(vk::DeviceQueueCreateInfo()
+            .setQueueFamilyIndex(queueFamily)
+            .setQueueCount(1)
+            .setPQueuePriorities(&priority));
+    }
+
+    auto acceleration_structure_features = vk::PhysicalDeviceAccelerationStructureFeaturesKHR()
+        .setAccelerationStructure(true);
+
+    // auto ray_pipeline_features = vk::PhysicalDeviceRayTracingPipelineFeaturesKHR()
+    //     .setRayTracingPipeline(true)
+    //     .setRayTraversalPrimitiveCulling(true);
+    //
+    // auto ray_queue_features = vk::PhysicalDeviceRayQueryFeaturesKHR()
+    //     .setRayQuery(true);
+
+    // APPEND_EXTENSION(ray_pipeline_supported, ray_pipeline_features)
+    // APPEND_EXTENSION(ray_queue_supported, ray_queue_features)
+
+    auto meshlet_features = vk::PhysicalDeviceMeshShaderFeaturesNV()
+        .setTaskShader(true)
+        .setMeshShader(true);
+
+    auto interlock_features = vk::PhysicalDeviceFragmentShaderInterlockFeaturesEXT()
+    .setFragmentShaderPixelInterlock(true);
+
+    auto barycentric_features = vk::PhysicalDeviceFragmentShaderBarycentricFeaturesKHR()
+        .setFragmentShaderBarycentric(true);
+
+    auto storage_16_bit_features = vk::PhysicalDevice16BitStorageFeatures()
+        .setStorageBuffer16BitAccess(true);
+
+    auto vrs_features = vk::PhysicalDeviceFragmentShadingRateFeaturesKHR()
+        .setPipelineFragmentShadingRate(true)
+        .setPrimitiveFragmentShadingRate(true)
+        .setAttachmentFragmentShadingRate(true);
+
+    auto vulkan_1_3_features = vk::PhysicalDeviceVulkan13Features()
+        .setSynchronization2(_physical_device_features.contains(PhysicalDeviceFeatures::Synchronization2))
+        .setMaintenance4(maintenance4Features.maintenance4);
+
+    pNext = nullptr;
+
+    APPEND_EXTENSION(_physical_device_features.contains(PhysicalDeviceFeatures::AccelStruct),   acceleration_structure_features)
+    APPEND_EXTENSION(_physical_device_features.contains(PhysicalDeviceFeatures::Meshlets),      meshlet_features)
+    APPEND_EXTENSION(_physical_device_features.contains(PhysicalDeviceFeatures::VRS),           vrs_features)
+    APPEND_EXTENSION(_physical_device_features.contains(PhysicalDeviceFeatures::Interlock),     interlock_features)
+    APPEND_EXTENSION(_physical_device_features.contains(PhysicalDeviceFeatures::Barycentric),   barycentric_features)
+    APPEND_EXTENSION(_physical_device_features.contains(PhysicalDeviceFeatures::Storage16Bit),  storage_16_bit_features)
+    APPEND_EXTENSION(properties.apiVersion >= VK_API_VERSION_1_3,                                 vulkan_1_3_features)
+    APPEND_EXTENSION(properties.apiVersion < VK_API_VERSION_1_3 && _physical_device_features.contains(PhysicalDeviceFeatures::Maintenance4), maintenance4Features);
+
+    #undef APPEND_EXTENSION
+
+    constexpr auto device_features = vk::PhysicalDeviceFeatures()
+            .setShaderImageGatherExtended(true)
+            .setSamplerAnisotropy(true)
+            .setTessellationShader(true)
+            .setTextureCompressionBC(true)
+            .setGeometryShader(true)
+            .setImageCubeArray(true)
+            .setShaderInt16(true)
+            .setFillModeNonSolid(true)
+            .setFragmentStoresAndAtomics(true)
+            .setDualSrcBlend(true);
+
+    auto vulkan11features = vk::PhysicalDeviceVulkan11Features()
+        .setPNext(pNext);
+
+    const auto vulkan_1_2_features = vk::PhysicalDeviceVulkan12Features()
+        .setDescriptorIndexing(true)
+        .setRuntimeDescriptorArray(true)
+        .setDescriptorBindingPartiallyBound(true)
+        .setDescriptorBindingVariableDescriptorCount(true)
+        .setTimelineSemaphore(true)
+        .setShaderSampledImageArrayNonUniformIndexing(true)
+        .setBufferDeviceAddress(buffer_device_address_features.bufferDeviceAddress)
+        .setPNext(&vulkan11features);
+
+    if (vulkan_1_2_features.bufferDeviceAddress) {
+        _physical_device_features.emplace(PhysicalDeviceFeatures::BufferDeviceAddress);
+    }
+
+    const auto enabled_extension_device_vector = _extension_enabled.device
+        | std::views::transform([](const std::string& x) { return x.c_str(); })
+        | std::ranges::to<std::vector>();
+
+    const auto enabled_extension_layer_vector = _extension_enabled.layer
+        | std::views::transform([](const std::string& x) { return x.c_str(); })
+        | std::ranges::to<std::vector>();
+
+    const auto device_description = vk::DeviceCreateInfo()
+        .setPQueueCreateInfos(queue_description.data())
+        .setQueueCreateInfoCount(static_cast<uint32_t>(queue_description.size()))
+        .setPEnabledFeatures(&device_features)
+        .setEnabledExtensionCount(static_cast<uint32_t>(enabled_extension_device_vector.size()))
+        .setPpEnabledExtensionNames(enabled_extension_device_vector.data())
+        .setEnabledLayerCount(static_cast<uint32_t>(enabled_extension_layer_vector.size()))
+        .setPpEnabledLayerNames(enabled_extension_layer_vector.data())
+        .setPNext(&vulkan_1_2_features);
+
+    const vk::Result vk_res = _vk_physical_device.createDevice(&device_description, nullptr, &_vk_device);
+
+    if (vk_res != vk::Result::eSuccess) [[unlikely]] {
+        log.e("Failed to create device, error code - {}", nvrhi::vulkan::resultToString(static_cast<VkResult>(vk_res)));
+        return std::unexpected("Could not create device");
+    }
+
+    VULKAN_HPP_DEFAULT_DISPATCHER.init(_vk_device);
+    log.d("Created device");
+
+    return {};
+}
+
+void Device_Vulkan::vk_destroy_swap_chain() {
+    if (_vk_device) {
+        _vk_device.waitIdle();
+    }
+
+    if (_vk_swapchain) {
+        _vk_device.destroySwapchainKHR(_vk_swapchain);
+        _vk_swapchain = nullptr;
+    }
+
+    _vk_swapchain_images.clear();
+}
+
+VKAPI_ATTR VkBool32 VKAPI_CALL Device_Vulkan::vk_debug_callback(
+    [[maybe_unused]] const VkDebugReportFlagsEXT flags,
+    [[maybe_unused]] const VkDebugReportObjectTypeEXT objType,
+    [[maybe_unused]] const uint64_t obj,
+    const size_t location,
+    const int32_t code,
+    const char* layerPrefix,
+    const char* msg,
+    [[maybe_unused]] void* userData
+) {
+    const auto this_ptr = static_cast<Device_Vulkan*>(userData);
+    this_ptr->_logger->d("vk-debug", "[Vulkan: location=0x{:x} code={}, layerPrefix='{}'] {}", location, code, layerPrefix, msg);
+
+    return VK_FALSE;
+}
+
+//
+// VIRTUAL FUNCTIONS
+//
+
+std::expected<void, std::string> Device_Vulkan::vk_create_instance() {
 
     logger::ScopeLog log(_logger, "Device_Vulkan::create_vk_instance");
 
@@ -320,7 +685,7 @@ std::expected<void, std::string> Device_Vulkan::create_vk_instance() {
     return {};
 }
 
-std::expected<void, std::string> Device_Vulkan::create_vk_device() {
+std::expected<void, std::string> Device_Vulkan::vk_create_device() {
 
     logger::ScopeLog log(_logger, "Device_Vulkan::create_vk_device");
 
@@ -346,7 +711,7 @@ std::expected<void, std::string> Device_Vulkan::create_vk_device() {
     }
 
     {
-        const auto physical_device = pick_physical_device();
+        const auto physical_device = vk_pick_physical_device();
 
         if (!physical_device.has_value()) [[unlikely]] {
             return std::unexpected(physical_device.error());
@@ -356,7 +721,7 @@ std::expected<void, std::string> Device_Vulkan::create_vk_device() {
     }
 
     {
-        const auto queue_family = pick_queue_families(_vk_physical_device);
+        const auto queue_family = vk_pick_queue_families(_vk_physical_device);
 
         if (!queue_family.has_value()) [[unlikely]] {
             return std::unexpected(queue_family.error());
@@ -365,7 +730,7 @@ std::expected<void, std::string> Device_Vulkan::create_vk_device() {
         _queue_family = queue_family.value();
     }
 
-    if (const auto res = create_logical_device(); !res.has_value()) [[unlikely]] {
+    if (const auto res = vk_create_logical_device(); !res.has_value()) [[unlikely]] {
         return res;
     }
 
@@ -435,12 +800,12 @@ std::expected<void, std::string> Device_Vulkan::create_vk_device() {
     return {};
 }
 
-std::expected<void, std::string> Device_Vulkan::create_vk_swapchain() {
+std::expected<void, std::string> Device_Vulkan::vk_create_swap_chain() {
 
     logger::ScopeLog log(_logger, "Device_Vulkan::create_vk_swapchain");
 
     // Destroy current swap chain if it exists.
-    destroy_swapchain();
+    vk_destroy_swap_chain();
 
     _vk_swapchain_formats = {
         static_cast<vk::Format>(nvrhi::vulkan::convertFormat(SWAP_CHAIN_FORMAT)),
@@ -449,7 +814,7 @@ std::expected<void, std::string> Device_Vulkan::create_vk_swapchain() {
 
     // Adjust swap chain to match current device capabilities
     const vk::SurfaceCapabilitiesKHR surface_capabilities   = _vk_physical_device.getSurfaceCapabilitiesKHR(_vk_surface);
-    auto extent                                             = vk::Extent2D(_back_buffer_size.x, _back_buffer_size.y);
+    auto extent                                             = vk::Extent2D(_settings.back_buffer_size.x, _settings.back_buffer_size.y);
 
     if (surface_capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
         extent = surface_capabilities.currentExtent;
@@ -542,8 +907,8 @@ std::expected<void, std::string> Device_Vulkan::create_vk_swapchain() {
 
         nvrhi::TextureDesc textureDesc = {};
         {
-            textureDesc.width = _back_buffer_size.x ;
-            textureDesc.height = _back_buffer_size.y;
+            textureDesc.width = _settings.back_buffer_size.x ;
+            textureDesc.height = _settings.back_buffer_size.y;
             textureDesc.format = SWAP_CHAIN_FORMAT;
             textureDesc.debugName = "Swap chain image";
             textureDesc.initialState = nvrhi::ResourceStates::Present;
@@ -563,448 +928,73 @@ std::expected<void, std::string> Device_Vulkan::create_vk_swapchain() {
     return {};
 }
 
-std::expected<vk::PhysicalDevice, std::string> Device_Vulkan::pick_physical_device() const {
-
-    logger::ScopeLog log(_logger, "Device_Vulkan::pick_physical_device");
-
-    // Enumerate physical devices and pick the best match for us
-    // Todo: support picking devices explicitly via settings
-    // Note: we pick a random initial extent size!
-
-    const auto expected_swap_chain_format   = static_cast<vk::Format>(nvrhi::vulkan::convertFormat(SWAP_CHAIN_FORMAT));
-    const auto expected_extent              = vk::Extent2D(_back_buffer_size.x, _back_buffer_size.y);
-
-    const auto devices = _vk_instance.enumeratePhysicalDevices();
-
-    std::vector<vk::PhysicalDevice> device_discrete;
-    std::vector<vk::PhysicalDevice> device_other;
-
-    std::unordered_set<std::string> device_extensions;
-
-    for (const auto& device : devices) {
-
-        // Fresh copy !
-        device_extensions = _extension_enabled.device;
-
-        const vk::PhysicalDeviceProperties properties   = device.getProperties();
-        const vk::PhysicalDeviceFeatures features       = device.getFeatures();
-
-        if (!check_extensions(device.enumerateDeviceExtensionProperties(), {}, device_extensions)) {
-            continue;
-        }
-
-        if (!features.samplerAnisotropy || !features.textureCompressionBC) {
-            continue;
-        }
-
-        if (const auto queue_family = pick_queue_families(device);
-            !queue_family.has_value() ||
-            !device.getSurfaceSupportKHR(queue_family->present_queue, _vk_surface) ||
-            !device.getSurfaceSupportKHR(queue_family->graphics_queue, _vk_surface))
-        {
-            continue;
-        }
-
-        // Ensure device supports expected swap chain creation parameters
-        const vk::SurfaceCapabilitiesKHR surface_capabilities   = device.getSurfaceCapabilitiesKHR(_vk_surface);
-        const std::vector<vk::SurfaceFormatKHR> surface_formats = device.getSurfaceFormatsKHR(_vk_surface);
-
-        if (surface_capabilities.minImageCount > SWAP_CHAIN_BUFFER_COUNT ||
-           (surface_capabilities.maxImageCount < SWAP_CHAIN_BUFFER_COUNT && surface_capabilities.maxImageCount > 0)
-        ) {
-           continue;
-        }
-
-        if (surface_capabilities.minImageExtent.width > expected_extent.width ||
-            surface_capabilities.minImageExtent.height > expected_extent.height ||
-            surface_capabilities.maxImageExtent.width < expected_extent.width ||
-            surface_capabilities.maxImageExtent.height < expected_extent.height
-        ) {
-            continue;
-        }
-
-        bool expected_format_found = false;
-
-        for (const vk::SurfaceFormatKHR& surfaceFmt : surface_formats) {
-            if (surfaceFmt.format == expected_swap_chain_format) {
-                expected_format_found = true;
-                break;
-            }
-        }
-
-        if (!expected_format_found) {
-            continue;
-        }
-
-        if (properties.deviceType == vk::PhysicalDeviceType::eDiscreteGpu) {
-            device_discrete.push_back(device);
-        }
-        else {
-            device_other.push_back(device);
-        }
-    }
-
-    if (device_discrete.empty() && device_other.empty()) [[unlikely]]  {
-        log.e("Could not find any valid devices");
-        return std::unexpected("Could not find any valid devices");
-    }
-
-    vk::PhysicalDevice device;
-
-    if (device_discrete.empty()) {
-        // No discrete - use integrated
-        device = device_other.front();
-    }
-    else {
-        // Use discrete
-        device = device_discrete.front();
-    }
-
-    log.d("Using device - {}", std::string(device.getProperties().deviceName));
-
-    return device;
+std::expected<void, std::string> Device_Vulkan::create_device() {
+    return vk_create_device();
 }
 
-std::expected<Device_Vulkan::queue_family_properties_t, std::string> Device_Vulkan::pick_queue_families(
-    const vk::PhysicalDevice& device
-) const {
-
-    queue_family_properties_t queue_family;
-    const std::vector<vk::QueueFamilyProperties> properties = device.getQueueFamilyProperties();
-
-    for (size_t i = 0; i < properties.size(); ++i) {
-
-        const vk::QueueFamilyProperties& property = properties.at(i);
-
-        if (queue_family.graphics_queue == -1) {
-            if (property.queueCount > 0 &&
-               (property.queueFlags & vk::QueueFlagBits::eGraphics)
-            ) {
-                queue_family.graphics_queue = static_cast<int>(i);
-            }
-        }
-
-        if (queue_family.compute_queue == -1) {
-            if (property.queueCount > 0 &&
-               (property.queueFlags & vk::QueueFlagBits::eCompute) &&
-              !(property.queueFlags & vk::QueueFlagBits::eGraphics)
-            ) {
-                queue_family.compute_queue = static_cast<int>(i);
-            }
-        }
-
-        if (queue_family.transfer_queue == -1) {
-            if (property.queueCount > 0 &&
-               (property.queueFlags & vk::QueueFlagBits::eTransfer) &&
-              !(property.queueFlags & vk::QueueFlagBits::eCompute) &&
-              !(property.queueFlags & vk::QueueFlagBits::eGraphics)
-            ) {
-                queue_family.transfer_queue = static_cast<int>(i);
-            }
-        }
-
-        if (queue_family.present_queue == -1) {
-
-            // Const cast bad!! but this whole callback system is bad!! so fuck it
-            vk_get_physical_device_support_t cb_params = {
-                const_cast<vk::Instance*>(&_vk_instance),
-                const_cast<vk::PhysicalDevice*>(&device),
-                static_cast<uint32_t>(i)
-            };
-
-            if (property.queueCount > 0 && _settings.vulkan.get_physical_device_presentation_support(&cb_params)) {
-                queue_family.present_queue = static_cast<int>(i);
-            }
-        }
+std::expected<void, std::string> Device_Vulkan::create_swap_chain() {
+    if (const auto res = vk_create_swap_chain(); !res.has_value()) [[unlikely]] {
+        return res;
     }
 
-    if (queue_family.graphics_queue ==  -1 ||
-        queue_family.present_queue ==   -1 ||
-       (queue_family.compute_queue ==   -1 && _settings.compute_queue) ||
-       (queue_family.transfer_queue ==  -1 && _settings.copy_queue)
-    ) [[unlikely]] {
-        return std::unexpected("Could not find any valid queue families");
+    // Create memory synchronisation objects
+    _acquire_semaphores.reserve(MAX_FRAMES_IN_FLIGHT + 1);
+    _present_semaphores.reserve(MAX_FRAMES_IN_FLIGHT + 1);
+
+    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT + 1; ++i) {
+        vk::SemaphoreCreateInfo semaphore_create_info = {};
+        _acquire_semaphores.emplace_back(_vk_device.createSemaphore(semaphore_create_info));
+        _present_semaphores.emplace_back(_vk_device.createSemaphore(semaphore_create_info));
     }
-
-    return queue_family;
-}
-
-std::expected<void, std::string> Device_Vulkan::create_logical_device() {
-
-    logger::ScopeLog log(_logger, "Device_Vulkan::create_logical_device");
-
-    // Check extensions!
-    const auto check_ext_res = check_extensions(
-        _vk_physical_device.enumerateDeviceExtensionProperties(),
-        _extension_optional.device,
-        _extension_enabled.device
-    );
-
-    if (!check_ext_res.has_value()) [[unlikely]] {
-        return std::unexpected("Could not find any valid extensions");
-    }
-
-    _extension_enabled.device.insert(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-
-    log.d("{}", check_ext_res.value());
-
-    // Get supported features
-    for (const auto& ext : _extension_enabled.device) {
-        if (ext == VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME) {
-            _physical_device_features.emplace(PhysicalDeviceFeatures::AccelStruct);
-        }
-        else if (ext == VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME) {
-            _physical_device_features.emplace(PhysicalDeviceFeatures::RayPipeline);
-        }
-        else if (ext == VK_KHR_RAY_QUERY_EXTENSION_NAME) {
-            _physical_device_features.emplace(PhysicalDeviceFeatures::RayQueue);
-        }
-        else if (ext == VK_NV_MESH_SHADER_EXTENSION_NAME) {
-            _physical_device_features.emplace(PhysicalDeviceFeatures::Meshlets);
-        }
-        else if (ext == VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME) {
-            _physical_device_features.emplace(PhysicalDeviceFeatures::VRS);
-        }
-        else if (ext == VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME) {
-            _physical_device_features.emplace(PhysicalDeviceFeatures::Synchronization2);
-        }
-        else if (ext == VK_KHR_MAINTENANCE_4_EXTENSION_NAME) {
-            _physical_device_features.emplace(PhysicalDeviceFeatures::Maintenance4);
-        }
-        else if (ext == VK_KHR_SWAPCHAIN_MUTABLE_FORMAT_EXTENSION_NAME) {
-            _physical_device_features.emplace(PhysicalDeviceFeatures::SwapChainMutableFormat);
-        }
-    }
-
-    //
-    //  IDK what the fuck this mess is....
-    //
-
-    const vk::PhysicalDeviceProperties properties = _vk_physical_device.getProperties();
-
-    #define APPEND_EXTENSION(condition, desc) if (condition) { (desc).pNext = pNext; pNext = &(desc); }
-    void* pNext = nullptr;
-
-    vk::PhysicalDeviceFeatures2 physical_device_features_2 = {};
-
-    // Determine support for Buffer Device Address, the Vulkan 1.2 way
-    auto buffer_device_address_features = vk::PhysicalDeviceBufferDeviceAddressFeatures();
-
-    // Determine support for maintenance4
-    auto maintenance4Features = vk::PhysicalDeviceMaintenance4Features();
-
-    // Put the user-provided extension structure at the end of the chain
-    pNext = nullptr;
-
-    APPEND_EXTENSION(true, buffer_device_address_features);
-    APPEND_EXTENSION(_physical_device_features.contains(PhysicalDeviceFeatures::Maintenance4), maintenance4Features);
-
-    physical_device_features_2.pNext = pNext;
-    _vk_physical_device.getFeatures2(&physical_device_features_2);
-
-    std::unordered_set unique_queue_families = {
-        _queue_family.graphics_queue,
-        _queue_family.present_queue,
-    };
-
-    if (_settings.compute_queue) {
-        unique_queue_families.insert(_queue_family.compute_queue);
-    }
-
-    if (_settings.copy_queue) {
-        unique_queue_families.insert(_queue_family.transfer_queue);
-    }
-
-    float priority = 1.f;
-
-    std::vector<vk::DeviceQueueCreateInfo> queue_description;
-    queue_description.reserve(unique_queue_families.size());
-
-    for(int queueFamily : unique_queue_families) {
-        queue_description.push_back(vk::DeviceQueueCreateInfo()
-            .setQueueFamilyIndex(queueFamily)
-            .setQueueCount(1)
-            .setPQueuePriorities(&priority));
-    }
-
-    auto acceleration_structure_features = vk::PhysicalDeviceAccelerationStructureFeaturesKHR()
-        .setAccelerationStructure(true);
-
-    // auto ray_pipeline_features = vk::PhysicalDeviceRayTracingPipelineFeaturesKHR()
-    //     .setRayTracingPipeline(true)
-    //     .setRayTraversalPrimitiveCulling(true);
-    //
-    // auto ray_queue_features = vk::PhysicalDeviceRayQueryFeaturesKHR()
-    //     .setRayQuery(true);
-
-    // APPEND_EXTENSION(ray_pipeline_supported, ray_pipeline_features)
-    // APPEND_EXTENSION(ray_queue_supported, ray_queue_features)
-
-    auto meshlet_features = vk::PhysicalDeviceMeshShaderFeaturesNV()
-        .setTaskShader(true)
-        .setMeshShader(true);
-
-    auto vrs_features = vk::PhysicalDeviceFragmentShadingRateFeaturesKHR()
-        .setPipelineFragmentShadingRate(true)
-        .setPrimitiveFragmentShadingRate(true)
-        .setAttachmentFragmentShadingRate(true);
-
-    auto vulkan_1_3_features = vk::PhysicalDeviceVulkan13Features()
-        .setSynchronization2(_physical_device_features.contains(PhysicalDeviceFeatures::Synchronization2))
-        .setMaintenance4(maintenance4Features.maintenance4);
-
-    pNext = nullptr;
-
-    APPEND_EXTENSION(_physical_device_features.contains(PhysicalDeviceFeatures::AccelStruct),   acceleration_structure_features)
-    APPEND_EXTENSION(_physical_device_features.contains(PhysicalDeviceFeatures::Meshlets),      meshlet_features)
-    APPEND_EXTENSION(_physical_device_features.contains(PhysicalDeviceFeatures::VRS),           vrs_features)
-    APPEND_EXTENSION(properties.apiVersion >= VK_API_VERSION_1_3,                                 vulkan_1_3_features)
-    APPEND_EXTENSION(properties.apiVersion < VK_API_VERSION_1_3 && _physical_device_features.contains(PhysicalDeviceFeatures::Maintenance4), maintenance4Features);
-
-    #undef APPEND_EXTENSION
-
-    constexpr auto device_features = vk::PhysicalDeviceFeatures()
-            .setShaderImageGatherExtended(true)
-            .setSamplerAnisotropy(true)
-            .setTessellationShader(true)
-            .setTextureCompressionBC(true)
-            .setGeometryShader(true)
-            .setImageCubeArray(true)
-            .setDualSrcBlend(true);
-
-    auto vulkan11features = vk::PhysicalDeviceVulkan11Features()
-        .setPNext(pNext);
-
-    const auto vulkan_1_2_features = vk::PhysicalDeviceVulkan12Features()
-        .setDescriptorIndexing(true)
-        .setRuntimeDescriptorArray(true)
-        .setDescriptorBindingPartiallyBound(true)
-        .setDescriptorBindingVariableDescriptorCount(true)
-        .setTimelineSemaphore(true)
-        .setShaderSampledImageArrayNonUniformIndexing(true)
-        .setBufferDeviceAddress(buffer_device_address_features.bufferDeviceAddress)
-        .setPNext(&vulkan11features);
-
-    if (vulkan_1_2_features.bufferDeviceAddress) {
-        _physical_device_features.emplace(PhysicalDeviceFeatures::BufferDeviceAddress);
-    }
-
-    const auto enabled_extension_device_vector = _extension_enabled.device
-        | std::views::transform([](const std::string& x) { return x.c_str(); })
-        | std::ranges::to<std::vector>();
-
-    const auto enabled_extension_layer_vector = _extension_enabled.layer
-        | std::views::transform([](const std::string& x) { return x.c_str(); })
-        | std::ranges::to<std::vector>();
-
-    const auto device_description = vk::DeviceCreateInfo()
-        .setPQueueCreateInfos(queue_description.data())
-        .setQueueCreateInfoCount(static_cast<uint32_t>(queue_description.size()))
-        .setPEnabledFeatures(&device_features)
-        .setEnabledExtensionCount(static_cast<uint32_t>(enabled_extension_device_vector.size()))
-        .setPpEnabledExtensionNames(enabled_extension_device_vector.data())
-        .setEnabledLayerCount(static_cast<uint32_t>(enabled_extension_layer_vector.size()))
-        .setPpEnabledLayerNames(enabled_extension_layer_vector.data())
-        .setPNext(&vulkan_1_2_features);
-
-    const vk::Result vk_res = _vk_physical_device.createDevice(&device_description, nullptr, &_vk_device);
-
-    if (vk_res != vk::Result::eSuccess) [[unlikely]] {
-        log.e("Failed to create device, error code - {}", nvrhi::vulkan::resultToString(static_cast<VkResult>(vk_res)));
-        return std::unexpected("Could not create device");
-    }
-
-    VULKAN_HPP_DEFAULT_DISPATCHER.init(_vk_device);
-    log.d("Created device");
 
     return {};
 }
 
-void Device_Vulkan::destroy_swapchain() {
+void Device_Vulkan::resize_swap_chain() {
     if (_vk_device) {
-        _vk_device.waitIdle();
-    }
-
-    if (_vk_swapchain) {
-        _vk_device.destroySwapchainKHR(_vk_swapchain);
-        _vk_swapchain = nullptr;
-    }
-
-    _vk_swapchain_images.clear();
-}
-
-VKAPI_ATTR VkBool32 VKAPI_CALL Device_Vulkan::vk_debug_callback(
-    [[maybe_unused]] const VkDebugReportFlagsEXT flags,
-    [[maybe_unused]] const VkDebugReportObjectTypeEXT objType,
-    [[maybe_unused]] const uint64_t obj,
-    const size_t location,
-    const int32_t code,
-    const char* layerPrefix,
-    const char* msg,
-    [[maybe_unused]] void* userData
-) {
-    const auto this_ptr = static_cast<Device_Vulkan*>(userData);
-    this_ptr->_logger->d("vk-debug", "[Vulkan: location=0x{:x} code={}, layerPrefix='{}'] {}", location, code, layerPrefix, msg);
-
-    return VK_FALSE;
-}
-
-//
-// VIRTUAL FUNCTIONS
-//
-
-nvrhi::IDevice* Device_Vulkan::device() const {
-    if (_nv_device_validation) {
-        return _nv_device_validation;
-    }
-    return _nv_device;
-}
-
-const lib::point2Di& Device_Vulkan::back_buffer_size() const {
-    return _back_buffer_size;
-}
-
-nvrhi::ITexture* Device_Vulkan::current_back_buffer() const {
-    return _vk_swapchain_images.at(_vk_swapchain_index).texture;
-}
-
-nvrhi::ITexture* Device_Vulkan::back_buffer([[maybe_unused]] const uint32_t index) const {
-    if (index >= _vk_swapchain_images.size()) [[unlikely]] {
-        return nullptr;
-    }
-    return _vk_swapchain_images.at(index).texture;
-}
-
-uint32_t Device_Vulkan::current_back_buffer_index() const {
-    return _vk_swapchain_index;
-}
-
-uint32_t Device_Vulkan::back_buffer_count() const {
-    return _vk_swapchain_images.size();
-}
-
-void Device_Vulkan::update_screen_size(const point2Di& window_size, const bool force_update) {
-
-    if (!force_update && window_size == _back_buffer_size) {
-        return;
-    }
-
-    // Call Resizing (pre resizing) callback if it exists
-    if (const auto cb = _callback.find(CallbackState::Resizing); cb != _callback.end()) {
-        cb->second(*this);
-    }
-
-    _back_buffer_size = window_size;
-
-    if (_vk_device) {
-        if (const auto res = create_vk_swapchain(); !res) [[unlikely]] {
+        if (const auto res = vk_create_swap_chain(); !res) [[unlikely]] {
             throw std::runtime_error(res.error());
         }
     }
+}
 
-    // Call resized callback if it exists
-    if (const auto cb = _callback.find(CallbackState::Resized); cb != _callback.end()) {
-        cb->second(*this);
+void Device_Vulkan::destroy_device_and_swap_chain() {
+
+    // This function will wait until vk device is idle
+    vk_destroy_swap_chain();
+
+    // Nuke semaphores
+    for (auto& semaphore: _acquire_semaphores) {
+        if (!semaphore) {
+            continue;
+        }
+
+        _vk_device.destroySemaphore(semaphore);
+        semaphore = vk::Semaphore();
+    }
+
+    for (auto& semaphore: _present_semaphores) {
+        if (!semaphore) {
+            continue;
+        }
+
+        _vk_device.destroySemaphore(semaphore);
+        semaphore = vk::Semaphore();
+    }
+
+    // Nuke nvrhi objects
+    _nv_device_validation       = nullptr;
+    _nv_device                  = nullptr;
+
+    // Destroy Vulkan objects
+    if (_vk_device) {
+        _vk_device.destroy();
+        _vk_device = nullptr;
+    }
+
+    if (_vk_surface) {
+        _vk_instance.destroySurfaceKHR(_vk_surface);
+        _vk_surface = nullptr;
     }
 }
 
@@ -1014,7 +1004,7 @@ void Device_Vulkan::begin_frame() {
     constexpr size_t MAX_BEGIN_ATTEMPTS = 3;
 
     vk::Result res = {};
-    const vk::Semaphore& semaphore = _present_semaphores[_present_semaphore_index];
+    const vk::Semaphore& semaphore = _acquire_semaphores[_acquire_semaphore_index];
 
     for (size_t i = 0; i < MAX_BEGIN_ATTEMPTS; ++i) {
 
@@ -1032,13 +1022,16 @@ void Device_Vulkan::begin_frame() {
             log.w("performance - swap chain out date, attempting to resize");
 
             // Update screen size if needed
-            const vk::SurfaceCapabilitiesKHR surface_capabilities = _vk_physical_device.getSurfaceCapabilitiesKHR(_vk_surface);
-            const point2Di surface_size = {
-                static_cast<int>(surface_capabilities.currentExtent.width),
-                static_cast<int>(surface_capabilities.currentExtent.height)
-            };
+            _cb_resizing();
+            {
+                const vk::SurfaceCapabilitiesKHR surface_capabilities = _vk_physical_device.getSurfaceCapabilitiesKHR(_vk_surface);
 
-            update_screen_size(surface_size, true);
+                _settings.back_buffer_size.x = static_cast<int>(surface_capabilities.currentExtent.width);
+                _settings.back_buffer_size.y = static_cast<int>(surface_capabilities.currentExtent.height);
+
+                resize_swap_chain();
+            }
+            _cb_resized();
         }
         else {
             break;
@@ -1050,6 +1043,9 @@ void Device_Vulkan::begin_frame() {
         throw std::runtime_error("Could not begin frame");
     }
 
+    _acquire_semaphore_index = (_acquire_semaphore_index + 1) % _acquire_semaphores.size();
+
+    // Schedule wait. Wait operation will be submitted when app executes any command list.
     _nv_device->queueWaitForSemaphore(nvrhi::CommandQueue::Graphics, semaphore, 0);
 }
 
@@ -1058,10 +1054,8 @@ void Device_Vulkan::present() {
     const vk::Semaphore& semaphore = _present_semaphores[_present_semaphore_index];
     _nv_device->queueSignalSemaphore(nvrhi::CommandQueue::Graphics, semaphore, 0);
 
-    _nv_command_list_barrier->open();
-    _nv_command_list_barrier->close();
-
-    _nv_device->executeCommandList(_nv_command_list_barrier);
+    // Call 'executeCommandLists' with no command lists to actually signal the semaphore.
+    _nv_device->executeCommandLists(nullptr, 0);
 
     const auto info = vk::PresentInfoKHR()
         .setWaitSemaphoreCount(1)
@@ -1105,6 +1099,36 @@ void Device_Vulkan::present() {
     _nv_device->setEventQuery(query, nvrhi::CommandQueue::Graphics);
 
     _nv_frames_in_flight.push(query);
+}
+
+nvrhi::IDevice* Device_Vulkan::device() const {
+    return device_handle();
+}
+
+nvrhi::DeviceHandle Device_Vulkan::device_handle() const {
+    if (_nv_device_validation) {
+        return _nv_device_validation;
+    }
+    return _nv_device;
+}
+
+nvrhi::ITexture* Device_Vulkan::current_back_buffer() const {
+    return _vk_swapchain_images.at(_vk_swapchain_index).texture;
+}
+
+nvrhi::ITexture* Device_Vulkan::back_buffer([[maybe_unused]] const uint32_t index) const {
+    if (index >= _vk_swapchain_images.size()) [[unlikely]] {
+        return nullptr;
+    }
+    return _vk_swapchain_images.at(index).texture;
+}
+
+uint32_t Device_Vulkan::current_back_buffer_index() const {
+    return _vk_swapchain_index;
+}
+
+uint32_t Device_Vulkan::back_buffer_count() const {
+    return _vk_swapchain_images.size();
 }
 
 #endif

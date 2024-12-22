@@ -4,7 +4,6 @@
 
 #include <queue>
 
-#include <module_logger/Logger.hpp>
 #include <module_render/backend/Device_Common.hpp>
 
 namespace lib::render {
@@ -65,6 +64,9 @@ class Device_Vulkan final : public Device_Common {
         RayQueue,
         Meshlets,
         VRS,
+        Interlock,
+        Barycentric,
+        Storage16Bit,
         Synchronization2,
         Maintenance4,
         SwapChainMutableFormat,
@@ -77,30 +79,38 @@ class Device_Vulkan final : public Device_Common {
     };
 
 public:
-    Device_Vulkan(const std::shared_ptr<logger::Logger>& logger, const device_settings_t& settings);
+    Device_Vulkan(
+        const std::shared_ptr<logger::Logger>& logger,
+        const device_settings_t& settings,
+        RenderCallback_Fn cb_resizing = nullptr,
+        RenderCallback_Fn cb_resized = nullptr
+    );
+
     ~Device_Vulkan() override;
 
 public:
     [[nodiscard]] nvrhi::IDevice* device() const override;
-    [[nodiscard]] const point2Di& back_buffer_size() const override;
+    [[nodiscard]] nvrhi::DeviceHandle device_handle() const override;
     [[nodiscard]] nvrhi::ITexture* current_back_buffer() const override;
     [[nodiscard]] nvrhi::ITexture* back_buffer(uint32_t index) const override;
     [[nodiscard]] uint32_t current_back_buffer_index() const override;
     [[nodiscard]] uint32_t back_buffer_count() const override;
-    void update_screen_size(const point2Di& window_size, bool force_update) override;
+
+    [[nodiscard]] std::expected<void, std::string> create_device() override;
+    [[nodiscard]] std::expected<void, std::string> create_swap_chain() override;
+    void resize_swap_chain() override;
+    void destroy_device_and_swap_chain() override;
     void begin_frame() override;
     void present() override;
 
 private:
-    [[nodiscard]] std::expected<void, std::string> create_vk_instance();
-    [[nodiscard]] std::expected<void, std::string> create_vk_device();
-    [[nodiscard]] std::expected<void, std::string> create_vk_swapchain();
-    [[nodiscard]] std::expected<void, std::string> create_logical_device();
-
-    [[nodiscard]] std::expected<vk::PhysicalDevice, std::string> pick_physical_device() const;
-    [[nodiscard]] std::expected<queue_family_properties_t, std::string> pick_queue_families(const vk::PhysicalDevice& device) const;
-
-    void destroy_swapchain();
+    [[nodiscard]] std::expected<vk::PhysicalDevice, std::string> vk_pick_physical_device() const;
+    [[nodiscard]] std::expected<queue_family_properties_t, std::string> vk_pick_queue_families(const vk::PhysicalDevice& device) const;
+    [[nodiscard]] std::expected<void, std::string> vk_create_logical_device();
+    [[nodiscard]] std::expected<void, std::string> vk_create_instance();
+    [[nodiscard]] std::expected<void, std::string> vk_create_device();
+    [[nodiscard]] std::expected<void, std::string> vk_create_swap_chain();
+    void vk_destroy_swap_chain();
 
     // Internal vulkan callback - don't push to consumer because it's vulkan specific
     static VKAPI_ATTR VkBool32 VKAPI_CALL vk_debug_callback(
@@ -115,9 +125,6 @@ private:
     );
 
 private:
-    device_settings_t _settings;
-    std::shared_ptr<logger::Logger> _logger;
-
     vulkan_extension_set_t _extension_enabled;
     vulkan_extension_set_t _extension_optional;
 
@@ -137,17 +144,17 @@ private:
     queue_family_properties_t _queue_family = {};
     std::unordered_set<PhysicalDeviceFeatures> _physical_device_features = {};
 
-    point2Di _back_buffer_size = {};
     std::unique_ptr<NvrhiMessageCallback> _nv_callback;
 
     nvrhi::vulkan::DeviceHandle _nv_device              = nullptr;
     nvrhi::DeviceHandle _nv_device_validation           = nullptr;
-    nvrhi::CommandListHandle _nv_command_list_barrier   = nullptr;
 
     std::queue<nvrhi::EventQueryHandle> _nv_frames_in_flight    = {};
     std::vector<nvrhi::EventQueryHandle> _nv_query_pool         = {};
 
+    std::vector<vk::Semaphore> _acquire_semaphores      = {};
     std::vector<vk::Semaphore> _present_semaphores      = {};
+    uint32_t _acquire_semaphore_index                   = 0;
     uint32_t _present_semaphore_index                   = 0;
 
     vk::SurfaceFormatKHR _vk_swapchain_formats  = {};
