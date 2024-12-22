@@ -1,21 +1,20 @@
-#include <module_render/render_pass/BasicTriangle.hpp>
-
+#include <module_render/pass/BasicTriangle.hpp>
 #include <module_system/filesystem.hpp>
 
 using namespace lib::render;
 
-BasicTriangle::BasicTriangle(Device_Common* backend)
-    : RenderPass(backend) {
+BasicTriangle::BasicTriangle(const nvrhi::DeviceHandle& device)
+    : RenderPass(device) {
 
     // Todo: populate with actual render things, not just bogus test stuff
     const auto shader_directory = system::get_executable_path().value().parent_path() / "shaders";
 
-    const ShaderFactory shaders_factory(backend->device());
+    const ShaderFactory shaders_factory(_device);
 
     m_VertexShader  = shaders_factory.create_shader(shader_directory / "main_vs.spv", nvrhi::ShaderType::Vertex).value();
     m_PixelShader   = shaders_factory.create_shader(shader_directory / "main_ps.spv", nvrhi::ShaderType::Pixel).value();
 
-    m_CommandList = backend->device()->createCommandList();
+    m_CommandList = _device->createCommandList();
 }
 
 void BasicTriangle::update_frame(const FrameInterval& interval) {
@@ -31,7 +30,7 @@ void BasicTriangle::render(nvrhi::IFramebuffer* frame_buffer) {
             psoDesc.primType = nvrhi::PrimitiveType::TriangleList;
             psoDesc.renderState.depthStencilState.depthTestEnable = false;
         }
-        m_Pipeline = _backend->device()->createGraphicsPipeline(psoDesc, frame_buffer);
+        m_Pipeline = _device->createGraphicsPipeline(psoDesc, frame_buffer);
     }
 
     m_CommandList->open();
@@ -48,7 +47,7 @@ void BasicTriangle::render(nvrhi::IFramebuffer* frame_buffer) {
     m_CommandList->draw(args);
 
     m_CommandList->close();
-    _backend->device()->executeCommandList(m_CommandList);
+    _device->executeCommandList(m_CommandList);
 }
 
 void BasicTriangle::back_buffer_resizing() {

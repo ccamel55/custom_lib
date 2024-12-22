@@ -7,7 +7,7 @@ namespace lib::render {
 
 class BasicTriangle final : public RenderPass {
 public:
-    explicit BasicTriangle(Device_Common* backend);
+    explicit BasicTriangle(const nvrhi::DeviceHandle& device);
 
     void update_frame(const FrameInterval& interval) override;
     void render(nvrhi::IFramebuffer* frame_buffer) override;

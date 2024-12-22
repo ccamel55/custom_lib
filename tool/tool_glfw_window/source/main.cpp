@@ -8,8 +8,8 @@
 
 #include <module_render/Render.hpp>
 #include <module_render/backend/Device_Vulkan.hpp>
-#include <module_render/render_pass/BasicTriangle.hpp>
-#include <module_render/render_pass/Geometry_2D.hpp>
+#include <module_render/pass/BasicTriangle.hpp>
+#include <module_render/render/geometry/Geometry_2D.hpp>
 #include <module_system/filesystem.hpp>
 
 using namespace lib;
@@ -18,8 +18,13 @@ namespace {
 // Glfw window handle
 GLFWwindow* window = nullptr;
 
+const std::filesystem::path EXE_PATH = system::get_executable_path().value().parent_path();
+
 std::unique_ptr<render::Render> RENDER = nullptr;
 std::shared_ptr<logger::Logger> LOGGER = nullptr;
+
+std::unique_ptr<render::ShaderFactory> SHADER_FACTORY   = nullptr;
+std::unique_ptr<render::TextureFactory> TEXTURE_FACTORY = nullptr;
 
 namespace callback {
 void window_size_callback(
@@ -137,6 +142,34 @@ namespace init {
 }
 #endif
 }
+
+class ExamplePass final : public render::RenderPass {
+public:
+    explicit ExamplePass(const nvrhi::DeviceHandle& device)
+        : RenderPass(device)
+        , _geometry_2d(std::make_unique<render::Geometry_2D>(_device, EXE_PATH / "shaders", SHADER_FACTORY, TEXTURE_FACTORY)) {
+
+    }
+
+    void update_frame(const render::FrameInterval& interval) override {
+        _geometry_2d->triangle({200, 200}, 100);
+        _geometry_2d->triangle({250, 200}, 100);
+    }
+
+    void render(nvrhi::IFramebuffer* frame_buffer) override {
+        _geometry_2d->draw_geometry(frame_buffer);
+    }
+
+    void back_buffer_resizing() override {
+        _geometry_2d->back_buffer_resizing();
+    }
+
+    void back_buffer_resized(const point2Di& size) override {
+    }
+
+private:
+    std::unique_ptr<render::Geometry_2D> _geometry_2d;
+};
 }
 
 int main(
@@ -214,20 +247,16 @@ int main(
         return 1;
     }
 
-    const auto shader_folder = system::get_executable_path().value().parent_path() / "shaders";
-
     RENDER = std::make_unique<render::Render>(LOGGER, settings.value(), render::RenderAPI::Vulkan);
 
-    const auto shader_factory   = std::make_unique<render::ShaderFactory>(RENDER->backend()->device_handle());
-    const auto texture_factory  = std::make_unique<render::TextureFactory>(RENDER->backend()->device_handle());
+    SHADER_FACTORY  = std::make_unique<render::ShaderFactory>(RENDER->backend()->device_handle());
+    TEXTURE_FACTORY = std::make_unique<render::TextureFactory>(RENDER->backend()->device_handle());
 
-    // const auto triangle = std::make_unique<render::BasicTriangle>(RENDER->backend().get());
-    const auto geometry_2d = std::make_unique<render::Geometry_2D>(RENDER->backend().get());
+    const auto triangle_pass    = std::make_unique<render::BasicTriangle>(RENDER->backend()->device_handle());
+    const auto example_pass     = std::make_unique<ExamplePass>(RENDER->backend()->device_handle());
 
-    geometry_2d->init(shader_folder, shader_factory, texture_factory);
-
-    // RENDER->emplace_render_pass_back(triangle.get());
-    RENDER->emplace_render_pass_back(geometry_2d.get());
+    RENDER->emplace_render_pass_back(triangle_pass.get());
+    RENDER->emplace_render_pass_back(example_pass.get());
 
     // Main window loop
     while (!glfwWindowShouldClose(window)) {
@@ -239,7 +268,7 @@ int main(
         glfwGetWindowSize(window, &window_size.x, &window_size.y);
 
         RENDER->update_screen_size(window_size);
-        RENDER->present_passes();
+        RENDER->present();
     }
 
     log.v("exited main loop");

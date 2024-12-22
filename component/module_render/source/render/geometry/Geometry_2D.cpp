@@ -1,21 +1,17 @@
-#include <module_render/render_pass/Geometry_2D.hpp>
+#include <module_render/render/geometry/Geometry_2D.hpp>
 
 using namespace lib::render;
 
-namespace {
-
-}
-
-Geometry_2D::Geometry_2D(Device_Common* backend)
-    : RenderPass(backend) {
-
-}
-
-void Geometry_2D::init(
+Geometry_2D::Geometry_2D(
+    const nvrhi::DeviceHandle& device,
     const std::filesystem::path& shader_folder,
     const std::unique_ptr<ShaderFactory>& shader_factory,
     const std::unique_ptr<TextureFactory>& texture_factory
-) {
+)
+    : Geometry_Common(device)
+    , _vertices()
+    , _indices() {
+
     // Load shaders
     const auto vertex_shader    = shader_factory->create_shader(shader_folder / "geometry_2d_vs.spv", nvrhi::ShaderType::Vertex);
     const auto pixel_shader     = shader_factory->create_shader(shader_folder / "geometry_2d_ps.spv", nvrhi::ShaderType::Pixel);
@@ -46,7 +42,7 @@ void Geometry_2D::init(
         desc.keepInitialState   = true;
     }
 
-    _vertex_buffer = device()->createBuffer(desc);
+    _vertex_buffer = _device->createBuffer(desc);
 
     // Index Buffer
     {
@@ -60,7 +56,7 @@ void Geometry_2D::init(
         desc.keepInitialState   = true;
     }
 
-    _index_buffer = device()->createBuffer(desc);
+    _index_buffer = _device->createBuffer(desc);
 
     // Constant Buffer
     {
@@ -74,7 +70,7 @@ void Geometry_2D::init(
         desc.keepInitialState   = true;
     }
 
-    _constant_buffer = device()->createBuffer(desc);
+    _constant_buffer = _device->createBuffer(desc);
 
     // Create vertex layout
     nvrhi::VertexAttributeDesc vertex_attributes[3];
@@ -109,17 +105,17 @@ void Geometry_2D::init(
             attribute.elementStride = sizeof(detail::vertex_t);
         }
     }
-    _vertex_layout = device()->createInputLayout(vertex_attributes, std::size(vertex_attributes), _vertex_shader);
+    _vertex_layout = _device->createInputLayout(vertex_attributes, std::size(vertex_attributes), _vertex_shader);
 
     // Load texture
 
-    _command_list = device()->createCommandList();
+    _command_list = _device->createCommandList();
     _command_list->open();
     {
         // Todo: load texture
     }
     _command_list->close();
-    device()->executeCommandList(_command_list);
+    _device->executeCommandList(_command_list);
 
     // Create binding set
 
@@ -135,16 +131,12 @@ void Geometry_2D::init(
     }
 
     // Create the binding layout (if it's empty -- so, on the first iteration) and the binding set.
-    if (!nvrhi::utils::CreateBindingSetAndLayout(device(), nvrhi::ShaderType::All, 0, binding_set_desc, _binding_layout, _binding_set)) {
+    if (!nvrhi::utils::CreateBindingSetAndLayout(_device, nvrhi::ShaderType::All, 0, binding_set_desc, _binding_layout, _binding_set)) {
         throw std::runtime_error("Could not create binding set or layout");
     }
 }
 
-void Geometry_2D::update_frame(const FrameInterval& interval) {
-
-}
-
-void Geometry_2D::render(nvrhi::IFramebuffer* frame_buffer) {
+void Geometry_2D::draw_geometry(nvrhi::IFramebuffer* frame_buffer) {
 
     const nvrhi::FramebufferInfoEx& frame_buffer_info = frame_buffer->getFramebufferInfo();
 
@@ -156,78 +148,71 @@ void Geometry_2D::render(nvrhi::IFramebuffer* frame_buffer) {
             pipeline_desc.inputLayout       = _vertex_layout;
             pipeline_desc.bindingLayouts    = { _binding_layout };
             pipeline_desc.primType          = nvrhi::PrimitiveType::TriangleList;
+
             pipeline_desc.renderState.depthStencilState.depthTestEnable = false;
+            pipeline_desc.renderState.rasterState.frontCounterClockwise = false;
         }
-        _pipeline = device()->createGraphicsPipeline(pipeline_desc, frame_buffer);
+        _pipeline = _device->createGraphicsPipeline(pipeline_desc, frame_buffer);
     }
 
     _command_list->open();
     {
-        nvrhi::utils::ClearColorAttachment(_command_list, frame_buffer, 0, nvrhi::Color(0.f));
+        if (_num_indices != 0 && _num_vertices != 0) {
 
-        _command_list->writeBuffer(_vertex_buffer, _vertices.data(), std::size(_vertices));
-        _command_list->writeBuffer(_index_buffer, _indices.data(), std::size(_indices));
-        _command_list->writeBuffer(_constant_buffer, &_constants, sizeof(_constants));
+            _command_list->writeBuffer(_vertex_buffer, _vertices.data(), _num_vertices * sizeof(detail::vertex_t));
+            _command_list->writeBuffer(_index_buffer, _indices.data(), _num_indices * sizeof(detail::index_t));
 
-        nvrhi::GraphicsState state;
-        {
-            state.bindings      = { _binding_set };
-            state.indexBuffer   = { _index_buffer, nvrhi::Format::R32_UINT, 0 };
+            detail::constant_buffer_t constants;
+            {
+                constants.view_matrix = glm::ortho(
+                   0.0, static_cast<double>(frame_buffer_info.width),
+                   static_cast<double>(frame_buffer_info.height), 0.0
+               );
+            }
+            _command_list->writeBuffer(_constant_buffer, &constants, sizeof(constants));
 
-            // Bind the vertex buffers in reverse order to test the NVRHI implementation of binding slots
-            state.vertexBuffers = {
-                { _vertex_buffer, 0, offsetof(detail::vertex_t, position) },
-                { _vertex_buffer, 1, offsetof(detail::vertex_t, uv) },
-                { _vertex_buffer, 2, offsetof(detail::vertex_t, color) },
-            };
+            nvrhi::GraphicsState state;
+            {
+                state.bindings      = { _binding_set };
+                state.indexBuffer   = { _index_buffer, nvrhi::Format::R32_UINT, 0 };
 
-            state.pipeline      = _pipeline;
-            state.framebuffer   = frame_buffer;
+                // Bind the vertex buffers in reverse order to test the NVRHI implementation of binding slots
+                state.vertexBuffers = {
+                    { _vertex_buffer, 0, offsetof(detail::vertex_t, position) },
+                    { _vertex_buffer, 1, offsetof(detail::vertex_t, uv) },
+                    { _vertex_buffer, 2, offsetof(detail::vertex_t, color) },
+                };
 
-            // Construct the viewport so that all viewports form a grid.
-            const nvrhi::Viewport viewport = nvrhi::Viewport(
-                0, static_cast<float>(frame_buffer_info.width),
-                0, static_cast<float>(frame_buffer_info.height),
-                0.f, 1.f
-            );
-            state.viewport.addViewportAndScissorRect(viewport);
+                state.pipeline      = _pipeline;
+                state.framebuffer   = frame_buffer;
+
+                // Construct the viewport so that all viewports form a grid.
+                const nvrhi::Viewport viewport = nvrhi::Viewport(
+                    0, static_cast<float>(frame_buffer_info.width),
+                    0, static_cast<float>(frame_buffer_info.height),
+                    0.f, 1.f
+                );
+                state.viewport.addViewportAndScissorRect(viewport);
+            }
+            _command_list->setGraphicsState(state);
+
+            nvrhi::DrawArguments draw_arguments;
+            {
+                // Todo: select parts of index buffer to draw respectively
+                draw_arguments.vertexCount = _num_indices;
+            }
+            _command_list->drawIndexed(draw_arguments);
+
+            _num_vertices   = 0;
+            _num_indices    = 0;
         }
-        _command_list->setGraphicsState(state);
-
-        nvrhi::DrawArguments draw_arguments;
-        {
-            draw_arguments.vertexCount = _indices.size();
-        }
-        _command_list->drawIndexed(draw_arguments);
     }
     _command_list->close();
-    device()->executeCommandList(_command_list);
+    _device->executeCommandList(_command_list);
 }
 
 void Geometry_2D::back_buffer_resizing() {
+    // setting this to null will re-create pipelines on next render
     _pipeline = nullptr;
 }
-
-void Geometry_2D::back_buffer_resized(const point2Di& size) {
-
-    // Temporary draw shit
-    // todo: implement properly
-
-    _constants.view_projection = glm::ortho(
-        -2.0, 2.0,
-        -2.0, 2.0
-    );
-
-    _vertices = {
-        detail::vertex_t{ { -0.5, -0.5 },  { 0.0, 0.0 }, { 1.0, 0.0, 0.0 } },
-        detail::vertex_t{ {  0.0,  0.5 },  { 0.0, 0.0 }, { 0.0, 1.0, 0.0 } },
-        detail::vertex_t{ {  0.5, -0.5 },  { 0.0, 0.0 }, { 0.0, 0.0, 1.0 } },
-    };
-
-    _indices = {
-        0, 1, 2,
-    };
-}
-
-
 

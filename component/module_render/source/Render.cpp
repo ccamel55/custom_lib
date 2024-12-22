@@ -51,7 +51,7 @@ const std::unique_ptr<Device_Common>& Render::backend() const {
 
 void Render::emplace_render_pass_back(RenderPass* pass) {
     _render_passes.remove(pass);
-    _render_passes.push_front(pass);
+    _render_passes.push_back(pass);
 
     pass->back_buffer_resizing();
     pass->back_buffer_resized(_device->_settings.back_buffer_size);
@@ -69,12 +69,12 @@ void Render::erase_render_pass(RenderPass* pass) {
     _render_passes.remove(pass);
 }
 
-void Render::present_passes() {
+void Render::present() {
 
     if (_is_visible) {
-        update_frame();
+        passes_update_frame();
         _device->begin_frame();
-        render();
+        passes_render();
         _device->present();
     }
 
@@ -101,13 +101,13 @@ void Render::update_screen_size(const point2Di& size) {
     }
 }
 
-void Render::update_frame() const {
+void Render::passes_update_frame() const {
     for (const auto pass : _render_passes) {
         pass->update_frame(_interval);
     }
 }
 
-void Render::render() const {
+void Render::passes_render() const {
     nvrhi::IFramebuffer* frame_buffer = _swap_chain_frame_buffers[_device->current_back_buffer_index()];
 
     for (const auto pass : _render_passes) {

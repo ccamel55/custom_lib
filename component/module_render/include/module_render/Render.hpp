@@ -44,11 +44,11 @@ public:
     void erase_render_pass(RenderPass* pass);
 
     void update_screen_size(const point2Di& size);
-    void present_passes();
+    void present();
 
 private:
-    void update_frame() const;
-    void render() const;
+    void passes_update_frame() const;
+    void passes_render() const;
     void back_buffer_resizing();
     void back_buffer_resized();
 
