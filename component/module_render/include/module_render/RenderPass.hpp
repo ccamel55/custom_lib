@@ -2,15 +2,16 @@
 
 #include <dep_nvrhi/nvrhi.hpp>
 
+#include <module_core/NoCopy.hpp>
 #include <module_core/type/point/point2D.hpp>
 #include <module_render/FrameInterval.hpp>
 
 namespace lib::render {
 
-class RenderPass {
+class RenderPass : public NoCopy {
 public:
-    explicit RenderPass(const nvrhi::DeviceHandle& device)
-        : _device(device) {
+    explicit RenderPass(nvrhi::DeviceHandle device)
+        : _device(std::move(device)) {
 
     }
     virtual ~RenderPass() = default;

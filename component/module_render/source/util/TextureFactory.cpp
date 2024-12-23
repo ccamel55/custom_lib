@@ -81,6 +81,7 @@ std::expected<nvrhi::TextureHandle, std::string> TextureFactory::create_texture(
         command_list->beginTrackingTextureState(texture, nvrhi::AllSubresources, nvrhi::ResourceStates::Common);
         command_list->writeTexture(texture, 0, 0, image_data, width * required_channels);
         command_list->setPermanentTextureState(texture, nvrhi::ResourceStates::ShaderResource);
+        command_list->commitBarriers();
     }
     command_list->close();
     _device->executeCommandList(command_list);

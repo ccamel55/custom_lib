@@ -2,6 +2,7 @@
 
 #include <dep_nvrhi/nvrhi.hpp>
 
+#include <module_core/NoCopy.hpp>
 #include <module_core/type/point/point2D.hpp>
 #include <module_logger/Logger.hpp>
 
@@ -76,7 +77,7 @@ struct device_settings_t {
 using RenderCallback_Fn = std::function<void()>;
 
 //! Shared common device type.
-class Device_Common {
+class Device_Common : public NoCopy {
     friend class Render;
 
 public:

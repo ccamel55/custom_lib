@@ -1,12 +1,13 @@
 #pragma once
 
 #include <dep_nvrhi/nvrhi.hpp>
+#include <module_core/NoCopy.hpp>
 
 #include <filesystem>
 #include <unordered_map>
 
 namespace lib::render {
-class ShaderFactory {
+class ShaderFactory : public NoCopy {
 public:
     explicit ShaderFactory(const nvrhi::DeviceHandle& device);
 

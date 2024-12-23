@@ -3,8 +3,12 @@
 #include <module_render/render/geometry/Geometry_Common.hpp>
 #include <module_render/render/geometry/types/constant_buffer.hpp>
 #include <module_render/render/geometry/types/vertex.hpp>
+
+#include <module_render/types/buffer_object.hpp>
+
 #include <module_render/util/ShaderFactory.hpp>
 #include <module_render/util/TextureFactory.hpp>
+
 
 namespace lib::render {
 

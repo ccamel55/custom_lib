@@ -12,6 +12,7 @@ using index_t = uint32_t;
 
 // Vertex type for 2d and 3d geometry
 struct vertex_t {
+
     constexpr vertex_t() = default;
     constexpr vertex_t(
         const glm::float32_t x,
@@ -37,9 +38,9 @@ struct vertex_t {
         color[3] = a;
     }
 
-    glm::float32_t position[3];
-    glm::float32_t uv[2];
-    glm::uint8_t color[4];
+    glm::float32_t position[3] = {};
+    glm::float32_t uv[2] = {};
+    glm::uint8_t color[4] = {};
 };
 
 using vertex_array_t    = std::vector<vertex_t>;

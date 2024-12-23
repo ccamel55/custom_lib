@@ -1,6 +1,7 @@
 #pragma once
 
 #include <dep_nvrhi/nvrhi.hpp>
+#include <module_core/NoCopy.hpp>
 
 #include <filesystem>
 
@@ -11,7 +12,7 @@ enum class TextureColor {
     RGBA,
 };
 
-class TextureFactory {
+class TextureFactory : public NoCopy {
 public:
     explicit TextureFactory(const nvrhi::DeviceHandle& device);
 

@@ -89,8 +89,9 @@ Geometry_2D::Geometry_2D(
 
             attribute.name          = "POSITION";
             attribute.format        = nvrhi::Format::RGB32_FLOAT;
-            attribute.offset        = 0;
+            attribute.arraySize     = 1;
             attribute.bufferIndex   = 0;
+            attribute.offset        = offsetof(detail::vertex_t, position);
             attribute.elementStride = sizeof(detail::vertex_t);
         }
 
@@ -99,8 +100,9 @@ Geometry_2D::Geometry_2D(
 
             attribute.name          = "UV";
             attribute.format        = nvrhi::Format::RG32_FLOAT;
-            attribute.offset        = 0;
-            attribute.bufferIndex   = 1;
+            attribute.arraySize     = 1;
+            attribute.bufferIndex   = 0;
+            attribute.offset        = offsetof(detail::vertex_t, uv);
             attribute.elementStride = sizeof(detail::vertex_t);
         }
 
@@ -109,8 +111,9 @@ Geometry_2D::Geometry_2D(
 
             attribute.name          = "COLOR";
             attribute.format        = nvrhi::Format::RGBA8_UNORM;
-            attribute.offset        = 0;
-            attribute.bufferIndex   = 2;
+            attribute.arraySize     = 1;
+            attribute.bufferIndex   = 0;
+            attribute.offset        = offsetof(detail::vertex_t, color);
             attribute.elementStride = sizeof(detail::vertex_t);
         }
     }
@@ -193,13 +196,7 @@ void Geometry_2D::draw_geometry(nvrhi::IFramebuffer* frame_buffer) {
             {
                 state.bindings      = { _binding_set };
                 state.indexBuffer   = { _index_buffer, nvrhi::Format::R32_UINT, 0 };
-
-                // Bind the vertex buffers in reverse order to test the NVRHI implementation of binding slots
-                state.vertexBuffers = {
-                    { _vertex_buffer, 0, offsetof(detail::vertex_t, position) },
-                    { _vertex_buffer, 1, offsetof(detail::vertex_t, uv) },
-                    { _vertex_buffer, 2, offsetof(detail::vertex_t, color) },
-                };
+                state.vertexBuffers = { { _vertex_buffer, 0, 0 } };
 
                 state.pipeline      = _pipeline;
                 state.framebuffer   = frame_buffer;
