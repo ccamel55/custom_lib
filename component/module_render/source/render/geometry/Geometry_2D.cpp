@@ -51,7 +51,7 @@ Geometry_2D::Geometry_2D(
         desc.keepInitialState   = true;
     }
 
-    _vertex_buffer = _device->createBuffer(desc);
+    _vertex_buffer = buffer_object_t::create(_device, desc);
 
     // Index Buffer
     {
@@ -65,7 +65,7 @@ Geometry_2D::Geometry_2D(
         desc.keepInitialState   = true;
     }
 
-    _index_buffer = _device->createBuffer(desc);
+    _index_buffer = buffer_object_t::create(_device, desc);
 
     // Constant Buffer
     {
@@ -79,7 +79,7 @@ Geometry_2D::Geometry_2D(
         desc.keepInitialState   = true;
     }
 
-    _constant_buffer = _device->createBuffer(desc);
+    _constant_buffer = buffer_object_t::create(_device, desc);
 
     // Create vertex layout
     nvrhi::VertexAttributeDesc vertex_attributes[3];
@@ -117,7 +117,7 @@ Geometry_2D::Geometry_2D(
             attribute.elementStride = sizeof(detail::vertex_t);
         }
     }
-    _vertex_layout = _device->createInputLayout(vertex_attributes, std::size(vertex_attributes), _vertex_shader);
+    _input_layout = _device->createInputLayout(vertex_attributes, std::size(vertex_attributes), _vertex_shader);
 
     // Texture sampler
     nvrhi::SamplerDesc sampler_desc;
@@ -132,7 +132,7 @@ Geometry_2D::Geometry_2D(
     nvrhi::BindingSetDesc binding_set_desc;
     {
         binding_set_desc.bindings = {
-            nvrhi::BindingSetItem::ConstantBuffer(0, _constant_buffer, nvrhi::BufferRange(0, sizeof(detail::constant_buffer_t))),
+            nvrhi::BindingSetItem::ConstantBuffer(0, _constant_buffer.buffer(), nvrhi::BufferRange(0, sizeof(detail::constant_buffer_t))),
             nvrhi::BindingSetItem::Texture_SRV(0, _texture),
             nvrhi::BindingSetItem::Sampler(0, _sampler)
         };
@@ -150,12 +150,15 @@ void Geometry_2D::draw_geometry(nvrhi::IFramebuffer* frame_buffer) {
 
     const nvrhi::FramebufferInfoEx& frame_buffer_info = frame_buffer->getFramebufferInfo();
 
+    buffer_object_t vertex_buffer_1 = buffer_object_t::create(_vertex_buffer, sizeof(detail::vertex_t), 12).value();
+    buffer_object_t index_buffer_1  = buffer_object_t::create(_index_buffer, sizeof(detail::index_t), 12).value();
+
     if (!_pipeline) {
         nvrhi::GraphicsPipelineDesc pipeline_desc;
         {
             pipeline_desc.VS                = _vertex_shader;
             pipeline_desc.PS                = _pixel_shader;
-            pipeline_desc.inputLayout       = _vertex_layout;
+            pipeline_desc.inputLayout       = _input_layout;
             pipeline_desc.bindingLayouts    = { _binding_layout };
             pipeline_desc.primType          = nvrhi::PrimitiveType::TriangleList;
 
@@ -180,8 +183,8 @@ void Geometry_2D::draw_geometry(nvrhi::IFramebuffer* frame_buffer) {
     {
         if (_num_indices != 0 && _num_vertices != 0) {
 
-            _command_list->writeBuffer(_vertex_buffer, _vertices.data(), _num_vertices * sizeof(detail::vertex_t));
-            _command_list->writeBuffer(_index_buffer, _indices.data(), _num_indices * sizeof(detail::index_t));
+            vertex_buffer_1.write(_command_list, _vertices.data(), _num_vertices * sizeof(detail::vertex_t));
+            index_buffer_1.write(_command_list, _indices.data(), _num_indices * sizeof(detail::index_t));
 
             detail::constant_buffer_t constants;
             {
@@ -190,13 +193,13 @@ void Geometry_2D::draw_geometry(nvrhi::IFramebuffer* frame_buffer) {
                    static_cast<double>(frame_buffer_info.height), 0.0
                );
             }
-            _command_list->writeBuffer(_constant_buffer, &constants, sizeof(constants));
+            _constant_buffer.write(_command_list, &constants, sizeof(detail::constant_buffer_t));
 
             nvrhi::GraphicsState state;
             {
                 state.bindings      = { _binding_set };
-                state.indexBuffer   = { _index_buffer, nvrhi::Format::R32_UINT, 0 };
-                state.vertexBuffers = { { _vertex_buffer, 0, 0 } };
+                state.indexBuffer   = { index_buffer_1.buffer(), nvrhi::Format::R32_UINT, 0 };
+                state.vertexBuffers = { { vertex_buffer_1.buffer(), 0, 0 } };
 
                 state.pipeline      = _pipeline;
                 state.framebuffer   = frame_buffer;
@@ -213,6 +216,8 @@ void Geometry_2D::draw_geometry(nvrhi::IFramebuffer* frame_buffer) {
 
             nvrhi::DrawArguments draw_arguments;
             {
+                draw_arguments.startVertexLocation = 1;
+                draw_arguments.startIndexLocation = 1;
                 draw_arguments.vertexCount = _num_indices;
             }
             _command_list->drawIndexed(draw_arguments);

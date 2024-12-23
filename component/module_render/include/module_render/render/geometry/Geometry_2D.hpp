@@ -48,14 +48,14 @@ private:
     nvrhi::ShaderHandle _vertex_shader;
     nvrhi::ShaderHandle _pixel_shader;
 
-    nvrhi::BufferHandle _vertex_buffer;
-    nvrhi::BufferHandle _index_buffer;
-    nvrhi::BufferHandle _constant_buffer;
+    nvrhi::InputLayoutHandle _input_layout;
+
+    buffer_object_t _vertex_buffer;
+    buffer_object_t _index_buffer;
+    buffer_object_t _constant_buffer;
 
     nvrhi::SamplerHandle _sampler;
     nvrhi::TextureHandle _texture;
-
-    nvrhi::InputLayoutHandle _vertex_layout;
 
     nvrhi::BindingLayoutHandle _binding_layout;
     nvrhi::BindingSetHandle _binding_set;
