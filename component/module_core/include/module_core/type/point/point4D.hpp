@@ -1,7 +1,6 @@
 #pragma once
 
-#include <glm/vec4.hpp>
-#include <glm/fwd.hpp>
+#include <dep_glm/glm.hpp>
 
 namespace lib
 {
