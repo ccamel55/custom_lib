@@ -12,7 +12,7 @@ namespace {
     }
 }
 
-ShaderFactory::ShaderFactory(const nvrhi::DeviceHandle& device)
+ShaderFactory::ShaderFactory(nvrhi::IDevice* device)
     : _device(device) {
 
 }

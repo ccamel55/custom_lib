@@ -4,7 +4,10 @@
 #include <module_render/render/geometry/types/constant_buffer.hpp>
 #include <module_render/render/geometry/types/vertex.hpp>
 
+#include <module_render/types/bindings.hpp>
 #include <module_render/types/buffer_object.hpp>
+#include <module_render/types/draw_list.hpp>
+#include <module_render/types/shader_program.hpp>
 
 #include <module_render/util/ShaderFactory.hpp>
 #include <module_render/util/TextureFactory.hpp>
@@ -29,47 +32,29 @@ public:
     // BAD!! FUCK OFF!
     void triangle(const point2Df& pos, const size_t size, const std::array<uint8_t, 4> color = { 255, 255, 255, 255 }) {
 
-        _num_vertices +=3;
-
         const auto centre_pos = pos;
 
-        _vertices[_num_vertices - 3] = detail::vertex_t(centre_pos.x, centre_pos.y - size / 2, 0.0, 0.5, 0.0, color[0], color[1], color[2], color[3]);
-        _vertices[_num_vertices - 2] = detail::vertex_t(centre_pos.x + size / 2, centre_pos.y + size / 2, 0.0, 1.0, 1.0, color[0], color[1], color[2], color[3]);
-        _vertices[_num_vertices - 1] = detail::vertex_t(centre_pos.x - size / 2, centre_pos.y + size / 2, 0.0, 0.0, 1.0, color[0], color[1], color[2], color[3]);
+        _draw.backing_vertices.emplace_back(centre_pos.x, centre_pos.y - size / 2, 0.0, 0.5, 0.0, color[0], color[1], color[2], color[3]);
+        _draw.backing_vertices.emplace_back(centre_pos.x + size / 2, centre_pos.y + size / 2, 0.0, 1.0, 1.0, color[0], color[1], color[2], color[3]);
+        _draw.backing_vertices.emplace_back(centre_pos.x - size / 2, centre_pos.y + size / 2, 0.0, 0.0, 1.0, color[0], color[1], color[2], color[3]);
 
-        _num_indices +=3;
-
-        _indices[_num_indices - 3] = _num_indices - 3;
-        _indices[_num_indices - 2] = _num_indices - 2;
-        _indices[_num_indices - 1] = _num_indices - 1;
+        _draw.backing_indices.emplace_back(_draw.backing_indices.size());
+        _draw.backing_indices.emplace_back(_draw.backing_indices.size());
+        _draw.backing_indices.emplace_back(_draw.backing_indices.size());
     }
 
 private:
-    nvrhi::ShaderHandle _vertex_shader;
-    nvrhi::ShaderHandle _pixel_shader;
-
-    nvrhi::InputLayoutHandle _input_layout;
-
-    buffer_object_t _vertex_buffer;
-    buffer_object_t _index_buffer;
-    buffer_object_t _constant_buffer;
-
+    nvrhi::CommandListHandle _command_list;
     nvrhi::SamplerHandle _sampler;
     nvrhi::TextureHandle _texture;
+    buffer_object_t _constant_buffer;
 
-    nvrhi::BindingLayoutHandle _binding_layout;
-    nvrhi::BindingSetHandle _binding_set;
+    draw_list_t<detail::vertex_t, detail::index_t> _draw;
 
-    nvrhi::CommandListHandle _command_list;
+    shader_program_t _shader;
+    bindings_t _binding;
+
     nvrhi::GraphicsPipelineHandle _pipeline;
-
-    // Our stuff:
-
-    size_t _num_vertices    = 0;
-    size_t _num_indices     = 0;
-
-    detail::vertex_array_t _vertices;
-    detail::index_array_t _indices;
 };
 
 }

@@ -7,7 +7,7 @@
 
 TEST_CASE("Render - Buffer object valid", "[render]") {
 
-    const lib::render::buffer_object_t original_buffer(nullptr, nullptr, nullptr, 0, 100);
+    const lib::render::buffer_object_t original_buffer(nullptr, nullptr, 0, 100);
 
     //
     // Create a new buffers
@@ -60,7 +60,7 @@ TEST_CASE("Render - Buffer object valid", "[render]") {
 
 TEST_CASE("Render - Buffer object invalid", "[render]") {
 
-    const lib::render::buffer_object_t original_buffer(nullptr, nullptr, nullptr, 0, 10);
+    const lib::render::buffer_object_t original_buffer(nullptr, nullptr, 0, 10);
 
     {
         const auto buffer_1 = lib::render::buffer_object_t::create(

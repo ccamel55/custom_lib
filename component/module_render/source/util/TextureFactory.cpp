@@ -26,7 +26,7 @@ namespace {
 
 }
 
-TextureFactory::TextureFactory(const nvrhi::DeviceHandle& device)
+TextureFactory::TextureFactory(nvrhi::IDevice* device)
     : _device(device) {
 
 }

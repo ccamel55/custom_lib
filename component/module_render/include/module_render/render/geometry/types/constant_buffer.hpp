@@ -1,18 +1,22 @@
 #pragma once
 
-#include <dep_glm/glm.hpp>
 #include <dep_nvrhi/nvrhi.hpp>
+
+#include <module_core/type/matrix/matrix4x4.hpp>
 
 namespace lib::render::detail {
 
 // Constant buffer used to render geometry
+// Note: DON'T FUCK WITH THE ORDERING
 struct constant_buffer_t {
-    glm::f32mat4x4 view_matrix;
-    float _padding[4 * 4 * 3] = {};
+    matrix4x4f mvp_matrix           = {};
+    matrix4x4f model_matrix         = {};
+    matrix4x4f view_matrix          = {};
+    matrix4x4f projection_matrix    = {};
 };
 
 static_assert(
-    sizeof(constant_buffer_t) == nvrhi::c_ConstantBufferOffsetSizeAlignment,
+    sizeof(constant_buffer_t) % nvrhi::c_ConstantBufferOffsetSizeAlignment == 0,
     "sizeof(ConstantBufferEntry) must be 256 bytes"
 );
 

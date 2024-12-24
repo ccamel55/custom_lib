@@ -159,7 +159,6 @@ public:
     }
 
     void update_frame(const render::FrameInterval& interval) override {
-
         _geometry_2d->triangle({225, 200}, 200);
         _geometry_2d->triangle({200, 200}, 100, { 0, 255, 255, 100 });
         _geometry_2d->triangle({250, 200}, 100, { 255, 0, 255, 100});

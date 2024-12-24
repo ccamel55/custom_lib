@@ -14,7 +14,7 @@ enum class TextureColor {
 
 class TextureFactory : public NoCopy {
 public:
-    explicit TextureFactory(const nvrhi::DeviceHandle& device);
+    explicit TextureFactory(nvrhi::IDevice* device);
 
     [[nodiscard]] std::expected<nvrhi::TextureHandle, std::string> create_texture(
         const std::filesystem::path& path,
@@ -22,7 +22,7 @@ public:
     ) const;
 
 private:
-    nvrhi::DeviceHandle _device;
+    nvrhi::IDevice* _device;
 
 };
 
