@@ -45,13 +45,18 @@ public:
 
         const auto centre_pos = pos;
 
-        _draw.backing_vertices.emplace_back(centre_pos.x, centre_pos.y - size / 2, 0.0, 0.5, 0.0, color[0], color[1], color[2], color[3]);
-        _draw.backing_vertices.emplace_back(centre_pos.x + size / 2, centre_pos.y + size / 2, 0.0, 1.0, 1.0, color[0], color[1], color[2], color[3]);
-        _draw.backing_vertices.emplace_back(centre_pos.x - size / 2, centre_pos.y + size / 2, 0.0, 0.0, 1.0, color[0], color[1], color[2], color[3]);
+        size_t first_vertex_index;
+        std::span<detail::vertex_t> vertices = _draw.emplace_vertices(first_vertex_index, 3);
 
-        _draw.backing_indices.emplace_back(_draw.backing_indices.size());
-        _draw.backing_indices.emplace_back(_draw.backing_indices.size());
-        _draw.backing_indices.emplace_back(_draw.backing_indices.size());
+        vertices[0] = detail::vertex_t(centre_pos.x, centre_pos.y - size / 2, 0.0, 0.5, 0.0, color[0], color[1], color[2], color[3]);
+        vertices[1] = detail::vertex_t(centre_pos.x + size / 2, centre_pos.y + size / 2, 0.0, 1.0, 1.0, color[0], color[1], color[2], color[3]);
+        vertices[2] = detail::vertex_t(centre_pos.x - size / 2, centre_pos.y + size / 2, 0.0, 0.0, 1.0, color[0], color[1], color[2], color[3]);
+
+        std::span<detail::index_t> indices = _draw.emplace_indices(3);
+
+        indices[0] = first_vertex_index + 0;
+        indices[1] = first_vertex_index + 1;
+        indices[2] = first_vertex_index + 2;
     }
 
 private:
