@@ -5,14 +5,6 @@ using namespace lib::render;
 // GLM BASICS:
 // http://www.c-jump.com/bcc/common/Talk3/Math/GLM/GLM.html#W01_0040_identity_matrix
 
-namespace {
-
-enum class Blit_ID: uint32_t {
-    Color_To_FrameBuffer
-};
-
-}
-
 Geometry_2D::Geometry_2D(
     const nvrhi::DeviceHandle& device,
     const std::unique_ptr<ShaderFactory>& shader_factory,
@@ -223,7 +215,7 @@ void Geometry_2D::draw_geometry(nvrhi::IFramebuffer* frame_buffer) {
     // This must be called here, it will blit the color target to our currently presented frame buffer
     _command_list_blit->open();
     {
-        _blit.blit(Blit_ID::Color_To_FrameBuffer, _command_list_blit, _color_buffer, frame_buffer);
+        _blit.blit(detail::Blit_Id::Color_To_FrameBuffer, _command_list_blit, _color_buffer, frame_buffer);
     }
     _command_list_blit->close();
 
@@ -246,6 +238,9 @@ void Geometry_2D::back_buffer_resizing() {
 }
 
 void Geometry_2D::back_buffer_resized(const point2Di& size) {
+
+    // Force constant buffer to be re-calculated using the current frambe buffer size
+    update_constant = true;
 
     // Recreate color target and frame buffer
     nvrhi::TextureDesc texture_desc;

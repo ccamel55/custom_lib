@@ -13,8 +13,17 @@
 #include <module_render/util/TextureBlit.hpp>
 #include <module_render/util/TextureFactory.hpp>
 
-
 namespace lib::render {
+namespace detail {
+
+enum class Blit_Id: uint32_t {
+    Color_To_FrameBuffer,
+
+    // Must always be last
+    Num_Blit_Id
+};
+
+}
 
 class Geometry_2D final : Geometry_Common {
 public:
@@ -33,7 +42,6 @@ public:
     void triangle(const point2Df& pos, const size_t size, const std::array<uint8_t, 4> color = { 255, 255, 255, 255 }) {
 
         update_vertex   = true;
-        update_constant = true;
 
         const auto centre_pos = pos;
 
@@ -55,7 +63,7 @@ private:
     nvrhi::TextureHandle _color_buffer;
     nvrhi::FramebufferHandle _color_frame_buffer; // TODO: Create framebuffer object
 
-    TextureBlit _blit;
+    TextureBlit<detail::Blit_Id, static_cast<size_t>(detail::Blit_Id::Num_Blit_Id)> _blit;
 
     buffer_object_t _constant_buffer;
     shader_program_t _shader;
