@@ -32,6 +32,9 @@ public:
     // BAD!! FUCK OFF!
     void triangle(const point2Df& pos, const size_t size, const std::array<uint8_t, 4> color = { 255, 255, 255, 255 }) {
 
+        update_vertex   = true;
+        update_constant = true;
+
         const auto centre_pos = pos;
 
         _draw.backing_vertices.emplace_back(centre_pos.x, centre_pos.y - size / 2, 0.0, 0.5, 0.0, color[0], color[1], color[2], color[3]);
@@ -45,6 +48,8 @@ public:
 
 private:
     nvrhi::CommandListHandle _command_list;
+    nvrhi::CommandListHandle _command_list_blit;
+
     nvrhi::GraphicsPipelineHandle _pipeline;
 
     nvrhi::TextureHandle _color_buffer;
@@ -61,8 +66,10 @@ private:
     nvrhi::SamplerHandle _sampler; // TODO: cache sampler
     nvrhi::TextureHandle _texture;
 
-    // Render target
-
+    // Write states
+    bool update_vertex      = false;
+    bool update_constant    = false;
+    size_t _vertex_count    = 0;
 
 };
 

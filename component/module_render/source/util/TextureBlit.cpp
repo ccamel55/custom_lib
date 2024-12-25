@@ -85,17 +85,11 @@ void TextureBlit::blit(
         throw std::runtime_error("Attempted to blit a texture with unsupported dimensions");
     }
 
-    const bool is_array = is_texture_array(source_texture_desc.dimension);
-
-    const nvrhi::FramebufferInfoEx& frame_buffer_info = dest_frame_buffer->getFramebufferInfo();
-    const nvrhi::Viewport viewport = nvrhi::Viewport(
-        static_cast<float>(frame_buffer_info.width),
-        static_cast<float>(frame_buffer_info.height)
-    );
-
     blit_instance_t& instance = _instances[id];
 
     if (!instance) {
+        const bool is_array = is_texture_array(source_texture_desc.dimension);
+
         nvrhi::BindingSetDesc binding_set_desc;
         {
             nvrhi::TextureDimension source_dimension = source_texture_desc.dimension;
@@ -132,16 +126,20 @@ void TextureBlit::blit(
         instance.pipeline = _device->createGraphicsPipeline(desc, dest_frame_buffer);
     }
 
+    const nvrhi::FramebufferInfoEx& frame_buffer_info = dest_frame_buffer->getFramebufferInfo();
+    const nvrhi::Viewport viewport = nvrhi::Viewport(
+        static_cast<float>(frame_buffer_info.width),
+        static_cast<float>(frame_buffer_info.height)
+    );
+
     nvrhi::GraphicsState state;
     {
-        state.pipeline      = instance.pipeline;
-        state.framebuffer   = dest_frame_buffer;
-        state.bindings      = { instance.binding_set };
+        state.pipeline              = instance.pipeline;
+        state.framebuffer           = dest_frame_buffer;
+        state.bindings              = { instance.binding_set };
+        state.blendConstantColor    = blend_color;
 
-        state.viewport.addViewport(viewport);
-        state.viewport.addScissorRect(nvrhi::Rect(viewport));
-
-        state.blendConstantColor = blend_color;
+        state.viewport.addViewportAndScissorRect(viewport);
     }
     command_list->setGraphicsState(state);
 

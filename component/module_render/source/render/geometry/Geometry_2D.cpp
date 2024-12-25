@@ -119,12 +119,12 @@ Geometry_2D::Geometry_2D(
     }
 
     _binding = std::move(bindings.value());
-    _command_list = _device->createCommandList();
+
+    _command_list       = _device->createCommandList();
+    _command_list_blit  = _device->createCommandList();
 }
 
 void Geometry_2D::draw_geometry(nvrhi::IFramebuffer* frame_buffer) {
-
-    const nvrhi::FramebufferInfoEx& frame_buffer_info = _color_frame_buffer->getFramebufferInfo();
 
     if (!_pipeline) {
         nvrhi::GraphicsPipelineDesc pipeline_desc;
@@ -141,7 +141,7 @@ void Geometry_2D::draw_geometry(nvrhi::IFramebuffer* frame_buffer) {
             pipeline_desc.renderState.blendState.targets[0].srcBlendAlpha   = nvrhi::BlendFactor::One;
 
             pipeline_desc.renderState.blendState.targets[0].destBlend       = nvrhi::BlendFactor::OneMinusSrcAlpha;
-            pipeline_desc.renderState.blendState.targets[0].destBlendAlpha  = nvrhi::BlendFactor::Zero;
+            pipeline_desc.renderState.blendState.targets[0].destBlendAlpha  = nvrhi::BlendFactor::OneMinusSrcAlpha;
 
             pipeline_desc.renderState.depthStencilState.depthTestEnable     = false;
             pipeline_desc.renderState.depthStencilState.depthWriteEnable    = false;
@@ -154,62 +154,89 @@ void Geometry_2D::draw_geometry(nvrhi::IFramebuffer* frame_buffer) {
         _pipeline = _device->createGraphicsPipeline(pipeline_desc, _color_frame_buffer);
     }
 
-    _command_list->open();
-    // Draw to our color target
-    {
-        detail::constant_buffer_t constants;
+    // All this shit can be done somewhere else since it writes to our color buffer texture, not the frame buffer
+    // Note: yes this even means multithreaded rendering using different command lists
+    const bool command_list_update = update_vertex || update_constant;
+
+    if (command_list_update) {
+
+        const nvrhi::FramebufferInfoEx& frame_buffer_info = _color_frame_buffer->getFramebufferInfo();
+
+        _command_list->open();
         {
-            // 2D doesn't need any model or view matrix changes
-            constants.model_matrix      = matrix4x4f(1.0);
-            constants.view_matrix       = matrix4x4f(1.0);
-            constants.projection_matrix = glm::ortho(
-               0.0, static_cast<double>(frame_buffer_info.width),
-               static_cast<double>(frame_buffer_info.height), 0.0
-            );
+            if (update_vertex) {
+                _vertex_count = _draw.update_buffers(_command_list);
+            }
 
-            // Do multiplication once here, can use in vertex shader later
-            constants.mvp_matrix = constants.projection_matrix
-                * constants.view_matrix
-                * constants.model_matrix;
+            if (update_constant) {
+                detail::constant_buffer_t constants;
+                {
+                    // 2D doesn't need any model or view matrix changes
+                    constants.model_matrix      = matrix4x4f(1.0);
+                    constants.view_matrix       = matrix4x4f(1.0);
+                    constants.projection_matrix = glm::ortho(
+                       0.0, static_cast<double>(frame_buffer_info.width),
+                       static_cast<double>(frame_buffer_info.height), 0.0
+                    );
+
+                    // Do multiplication once here, can use in vertex shader later
+                    constants.mvp_matrix = constants.projection_matrix
+                        * constants.view_matrix
+                        * constants.model_matrix;
+                }
+                _constant_buffer.write(_command_list, &constants, sizeof(detail::constant_buffer_t));
+            }
+
+            nvrhi::GraphicsState state;
+            {
+                state.bindings      = { _binding.set };
+                state.indexBuffer   = { _draw.index_buffer.buffer(), _draw.index_format(), 0 };
+                state.vertexBuffers = { { _draw.vertex_buffer.buffer(), 0, 0 } };
+
+                state.pipeline      = _pipeline;
+                state.framebuffer   = _color_frame_buffer;
+
+                // Construct the viewport so that all viewports form a grid.
+                const nvrhi::Viewport viewport = nvrhi::Viewport(
+                    0, static_cast<float>(frame_buffer_info.width),
+                    0, static_cast<float>(frame_buffer_info.height),
+                    0.f, 1.f
+                );
+                state.viewport.addViewportAndScissorRect(viewport);
+            }
+            _command_list->setGraphicsState(state);
+
+            nvrhi::DrawArguments draw_arguments;
+            {
+                draw_arguments.startVertexLocation  = 0;
+                draw_arguments.startIndexLocation   = 0;
+                draw_arguments.vertexCount          = _vertex_count;
+            }
+            _command_list->drawIndexed(draw_arguments);
         }
-        _constant_buffer.write(_command_list, &constants, sizeof(detail::constant_buffer_t));
+        _command_list->close();
 
-        const auto draw_indices = _draw.update_buffers(_command_list);
-
-        nvrhi::GraphicsState state;
-        {
-            state.bindings      = { _binding.set };
-            state.indexBuffer   = { _draw.index_buffer.buffer(), _draw.index_format(), 0 };
-            state.vertexBuffers = { { _draw.vertex_buffer.buffer(), 0, 0 } };
-
-            state.pipeline      = _pipeline;
-            state.framebuffer   = _color_frame_buffer;
-
-            // Construct the viewport so that all viewports form a grid.
-            const nvrhi::Viewport viewport = nvrhi::Viewport(
-                0, static_cast<float>(frame_buffer_info.width),
-                0, static_cast<float>(frame_buffer_info.height),
-                0.f, 1.f
-            );
-            state.viewport.addViewportAndScissorRect(viewport);
-        }
-        _command_list->setGraphicsState(state);
-
-        nvrhi::DrawArguments draw_arguments;
-        {
-            draw_arguments.startVertexLocation  = 0;
-            draw_arguments.startIndexLocation   = 0;
-            draw_arguments.vertexCount          = draw_indices;
-        }
-        _command_list->drawIndexed(draw_arguments);
+        update_vertex   = false;
+        update_constant = false;
     }
-    // Blit current draw state to frame buffer
+
+    // This must be called here, it will blit the color target to our currently presented frame buffer
+    _command_list_blit->open();
     {
-        // BS DRAW HERE
-        _blit.blit(static_cast<uint32_t>(Blit_ID::Color_To_FrameBuffer), _command_list, _color_buffer, frame_buffer);
+        _blit.blit(Blit_ID::Color_To_FrameBuffer, _command_list_blit, _color_buffer, frame_buffer);
     }
-    _command_list->close();
-    _device->executeCommandList(_command_list);
+    _command_list_blit->close();
+
+    if (command_list_update) {
+        const std::array<nvrhi::ICommandList*, 2> command_lists = {
+            _command_list,
+            _command_list_blit
+        };
+        _device->executeCommandLists(command_lists.data(), command_lists.size());
+    }
+    else {
+        _device->executeCommandList(_command_list_blit);
+    }
 }
 
 void Geometry_2D::back_buffer_resizing() {
