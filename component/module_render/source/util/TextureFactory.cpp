@@ -15,6 +15,7 @@ namespace {
             case TextureColor::RGBA:
                 return STBI_rgb_alpha;
         }
+        return STBI_default;
     }
 
     [[nodiscard]] nvrhi::Format texture_format(const TextureColor color) {
@@ -22,19 +23,24 @@ namespace {
             case TextureColor::RGBA:
                 return nvrhi::Format::SRGBA8_UNORM;
         }
+        return nvrhi::Format::UNKNOWN;
     }
 
 }
 
-TextureFactory::TextureFactory(nvrhi::IDevice* device)
-    : _device(device) {
+TextureFactory::TextureFactory(nvrhi::IDevice* device, const std::filesystem::path& texture_folder)
+    : _device(device)
+    , _texture_folder(texture_folder) {
 
 }
 
 std::expected<nvrhi::TextureHandle, std::string> TextureFactory::create_texture(
-    const std::filesystem::path& path,
+    std::filesystem::path path,
     const TextureColor color
 ) const {
+
+    path = _texture_folder / path;
+
     if (!exists(path) || is_directory(path)) {
         return std::unexpected("Texture file does not exist: " + path.string());
     }

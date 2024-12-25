@@ -10,6 +10,7 @@
 #include <module_render/types/shader_program.hpp>
 
 #include <module_render/util/ShaderFactory.hpp>
+#include <module_render/util/TextureBlit.hpp>
 #include <module_render/util/TextureFactory.hpp>
 
 
@@ -19,14 +20,13 @@ class Geometry_2D final : Geometry_Common {
 public:
     explicit Geometry_2D(
         const nvrhi::DeviceHandle& device,
-        const std::filesystem::path& shader_folder,
-        const std::filesystem::path& texture_folder,
         const std::unique_ptr<ShaderFactory>& shader_factory,
         const std::unique_ptr<TextureFactory>& texture_factory
     );
 
     void draw_geometry(nvrhi::IFramebuffer* frame_buffer) override;
     void back_buffer_resizing() override;
+    void back_buffer_resized(const point2Di& size) override;
 
 public:
     // BAD!! FUCK OFF!
@@ -45,16 +45,25 @@ public:
 
 private:
     nvrhi::CommandListHandle _command_list;
-    nvrhi::SamplerHandle _sampler;
-    nvrhi::TextureHandle _texture;
+    nvrhi::GraphicsPipelineHandle _pipeline;
+
+    nvrhi::TextureHandle _color_buffer;
+    nvrhi::FramebufferHandle _color_frame_buffer; // TODO: Create framebuffer object
+
+    TextureBlit _blit;
+
     buffer_object_t _constant_buffer;
-
-    draw_list_t<detail::vertex_t, detail::index_t> _draw;
-
     shader_program_t _shader;
     bindings_t _binding;
+    draw_list_t<detail::vertex_t, detail::index_t> _draw;
 
-    nvrhi::GraphicsPipelineHandle _pipeline;
+    // Image
+    nvrhi::SamplerHandle _sampler; // TODO: cache sampler
+    nvrhi::TextureHandle _texture;
+
+    // Render target
+
+
 };
 
 }

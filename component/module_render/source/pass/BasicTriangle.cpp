@@ -9,10 +9,10 @@ BasicTriangle::BasicTriangle(const nvrhi::DeviceHandle& device)
     // Todo: populate with actual render things, not just bogus test stuff
     const auto shader_directory = system::get_executable_path().value().parent_path() / "shaders";
 
-    const ShaderFactory shaders_factory(_device);
+    const ShaderFactory shaders_factory(_device, shader_directory);
 
-    m_VertexShader  = shaders_factory.create_shader(shader_directory / "main_vs.spv", nvrhi::ShaderType::Vertex).value();
-    m_PixelShader   = shaders_factory.create_shader(shader_directory / "main_ps.spv", nvrhi::ShaderType::Pixel).value();
+    m_VertexShader  = shaders_factory.create_shader("main_vs.spv", nvrhi::ShaderType::Vertex).value();
+    m_PixelShader   = shaders_factory.create_shader("main_ps.spv", nvrhi::ShaderType::Pixel).value();
 
     m_CommandList = _device->createCommandList();
 }

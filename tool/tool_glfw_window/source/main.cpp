@@ -150,8 +150,6 @@ public:
         : RenderPass(device)
         , _geometry_2d(std::make_unique<render::Geometry_2D>(
             _device,
-            EXE_PATH / "shaders",
-            EXE_PATH / "textures",
             SHADER_FACTORY,
             TEXTURE_FACTORY
         )) {
@@ -173,6 +171,7 @@ public:
     }
 
     void back_buffer_resized(const point2Di& size) override {
+        _geometry_2d->back_buffer_resized(size);
     }
 
 private:
@@ -257,8 +256,8 @@ int main(
 
     RENDER = std::make_unique<render::Render>(LOGGER, settings.value(), render::RenderAPI::Vulkan);
 
-    SHADER_FACTORY  = std::make_unique<render::ShaderFactory>(RENDER->backend()->device_handle());
-    TEXTURE_FACTORY = std::make_unique<render::TextureFactory>(RENDER->backend()->device_handle());
+    SHADER_FACTORY  = std::make_unique<render::ShaderFactory>(RENDER->backend()->device_handle(), EXE_PATH / "shaders");
+    TEXTURE_FACTORY = std::make_unique<render::TextureFactory>(RENDER->backend()->device_handle(), EXE_PATH / "textures");
 
     const auto triangle_pass    = std::make_unique<render::BasicTriangle>(RENDER->backend()->device_handle());
     const auto example_pass     = std::make_unique<ExamplePass>(RENDER->backend()->device_handle());

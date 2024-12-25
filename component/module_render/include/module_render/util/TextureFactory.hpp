@@ -14,15 +14,16 @@ enum class TextureColor {
 
 class TextureFactory : public NoCopy {
 public:
-    explicit TextureFactory(nvrhi::IDevice* device);
+    explicit TextureFactory(nvrhi::IDevice* device, const std::filesystem::path& texture_folder);
 
     [[nodiscard]] std::expected<nvrhi::TextureHandle, std::string> create_texture(
-        const std::filesystem::path& path,
+        std::filesystem::path path,
         TextureColor color
     ) const;
 
 private:
     nvrhi::IDevice* _device;
+    std::filesystem::path _texture_folder;
 
 };
 

@@ -9,14 +9,14 @@
 namespace lib::render {
 class ShaderFactory : public NoCopy {
 public:
-    explicit ShaderFactory(nvrhi::IDevice* device);
+    explicit ShaderFactory(nvrhi::IDevice* device, std::filesystem::path  shader_folder);
 
     //! Create shader from file on disk
     //! \param path path to shader file. must have extension type `.spv`
     //! \param type shader type
     //! \return handle to nvrhi shader
     [[nodiscard]] std::expected<nvrhi::ShaderHandle, std::string> create_shader(
-        const std::filesystem::path& path,
+        std::filesystem::path path,
         nvrhi::ShaderType type
     ) const;
 
@@ -25,6 +25,8 @@ public:
 
 private:
     nvrhi::IDevice* _device;
-    mutable std::unordered_map<std::filesystem::path, std::vector<char>> _cache;
+    std::filesystem::path _shader_folder;
+
+    mutable std::unordered_map<std::filesystem::path, nvrhi::ShaderHandle> _cache;
 };
 }

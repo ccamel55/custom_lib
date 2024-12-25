@@ -34,7 +34,7 @@ file(MAKE_DIRECTORY ${_SHADER_OUTPUT_DIR})
 
 # Build shaders from an input directory containing source hlsl code.
 macro(compile_shaders TARGET INPUT)
-	project("hlsl_${TARGET}")
+	project("compile_shaders_${TARGET}")
 
 	add_custom_target(
 		${PROJECT_NAME} ALL

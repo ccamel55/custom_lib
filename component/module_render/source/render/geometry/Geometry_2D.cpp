@@ -5,14 +5,21 @@ using namespace lib::render;
 // GLM BASICS:
 // http://www.c-jump.com/bcc/common/Talk3/Math/GLM/GLM.html#W01_0040_identity_matrix
 
+namespace {
+
+enum class Blit_ID: uint32_t {
+    Color_To_FrameBuffer
+};
+
+}
+
 Geometry_2D::Geometry_2D(
     const nvrhi::DeviceHandle& device,
-    const std::filesystem::path& shader_folder,
-    const std::filesystem::path& texture_folder,
     const std::unique_ptr<ShaderFactory>& shader_factory,
     const std::unique_ptr<TextureFactory>& texture_factory
 )
-    : Geometry_Common(device) {
+    : Geometry_Common(device)
+    , _blit(device, shader_factory, "rect_vs.spv", "blit_ps.spv", "blit_array_ps.spv") {
 
     // Create buffers
     nvrhi::BufferDesc desc;
@@ -49,20 +56,20 @@ Geometry_2D::Geometry_2D(
 
     // Create shader
     {
-        const auto vertex_shader    = shader_factory->create_shader(shader_folder / "geometry_2d_vs.spv", nvrhi::ShaderType::Vertex);
+        auto vertex_shader = shader_factory->create_shader("geometry_2d_vs.spv", nvrhi::ShaderType::Vertex);
         if (!vertex_shader.has_value()) {
             throw std::runtime_error("Could not load vertex shaders from disk: " + vertex_shader.error());
         }
 
-        const auto pixel_shader     = shader_factory->create_shader(shader_folder / "geometry_2d_ps.spv", nvrhi::ShaderType::Pixel);
+        auto pixel_shader = shader_factory->create_shader("geometry_2d_ps.spv", nvrhi::ShaderType::Pixel);
         if (!pixel_shader.has_value()) {
             throw std::runtime_error("Could not load pixel shaders from disk: " + pixel_shader.error());
         }
 
         _shader = shader_program_t::create(
             _device,
-            vertex_shader.value(),
-            pixel_shader.value(),
+            std::move(vertex_shader.value()),
+            std::move(pixel_shader.value()),
             detail::vertex_t::attributes()
         );
     }
@@ -82,7 +89,7 @@ Geometry_2D::Geometry_2D(
     _constant_buffer = buffer_object_t::create(_device, desc);
 
     // Load texture
-    auto texture = texture_factory->create_texture(texture_folder / "cat.jpg", TextureColor::RGBA);
+    auto texture = texture_factory->create_texture("cat.jpg", TextureColor::RGBA);
     if (!texture.has_value()) {
         throw std::runtime_error("Could not load texture from disk: " + texture.error());
     }
@@ -112,13 +119,12 @@ Geometry_2D::Geometry_2D(
     }
 
     _binding = std::move(bindings.value());
-
     _command_list = _device->createCommandList();
 }
 
 void Geometry_2D::draw_geometry(nvrhi::IFramebuffer* frame_buffer) {
 
-    const nvrhi::FramebufferInfoEx& frame_buffer_info = frame_buffer->getFramebufferInfo();
+    const nvrhi::FramebufferInfoEx& frame_buffer_info = _color_frame_buffer->getFramebufferInfo();
 
     if (!_pipeline) {
         nvrhi::GraphicsPipelineDesc pipeline_desc;
@@ -130,23 +136,26 @@ void Geometry_2D::draw_geometry(nvrhi::IFramebuffer* frame_buffer) {
             pipeline_desc.primType          = nvrhi::PrimitiveType::TriangleList;
 
             pipeline_desc.renderState.blendState.targets[0].blendEnable     = true;
+
             pipeline_desc.renderState.blendState.targets[0].srcBlend        = nvrhi::BlendFactor::SrcAlpha;
-            pipeline_desc.renderState.blendState.targets[0].destBlend       = nvrhi::BlendFactor::InvSrcAlpha;
-            pipeline_desc.renderState.blendState.targets[0].srcBlendAlpha   = nvrhi::BlendFactor::InvSrcAlpha;
+            pipeline_desc.renderState.blendState.targets[0].srcBlendAlpha   = nvrhi::BlendFactor::One;
+
+            pipeline_desc.renderState.blendState.targets[0].destBlend       = nvrhi::BlendFactor::OneMinusSrcAlpha;
             pipeline_desc.renderState.blendState.targets[0].destBlendAlpha  = nvrhi::BlendFactor::Zero;
 
             pipeline_desc.renderState.depthStencilState.depthTestEnable     = false;
-            pipeline_desc.renderState.depthStencilState.depthWriteEnable    = true;
+            pipeline_desc.renderState.depthStencilState.depthWriteEnable    = false;
             pipeline_desc.renderState.depthStencilState.stencilEnable       = false;
-            pipeline_desc.renderState.depthStencilState.depthFunc           = nvrhi::ComparisonFunc::Always;
+            pipeline_desc.renderState.depthStencilState.depthFunc           = nvrhi::ComparisonFunc::Less;
 
             pipeline_desc.renderState.rasterState.scissorEnable         = true;
             pipeline_desc.renderState.rasterState.frontCounterClockwise = false;
         }
-        _pipeline = _device->createGraphicsPipeline(pipeline_desc, frame_buffer);
+        _pipeline = _device->createGraphicsPipeline(pipeline_desc, _color_frame_buffer);
     }
 
     _command_list->open();
+    // Draw to our color target
     {
         detail::constant_buffer_t constants;
         {
@@ -174,7 +183,7 @@ void Geometry_2D::draw_geometry(nvrhi::IFramebuffer* frame_buffer) {
             state.vertexBuffers = { { _draw.vertex_buffer.buffer(), 0, 0 } };
 
             state.pipeline      = _pipeline;
-            state.framebuffer   = frame_buffer;
+            state.framebuffer   = _color_frame_buffer;
 
             // Construct the viewport so that all viewports form a grid.
             const nvrhi::Viewport viewport = nvrhi::Viewport(
@@ -194,6 +203,11 @@ void Geometry_2D::draw_geometry(nvrhi::IFramebuffer* frame_buffer) {
         }
         _command_list->drawIndexed(draw_arguments);
     }
+    // Blit current draw state to frame buffer
+    {
+        // BS DRAW HERE
+        _blit.blit(static_cast<uint32_t>(Blit_ID::Color_To_FrameBuffer), _command_list, _color_buffer, frame_buffer);
+    }
     _command_list->close();
     _device->executeCommandList(_command_list);
 }
@@ -201,5 +215,27 @@ void Geometry_2D::draw_geometry(nvrhi::IFramebuffer* frame_buffer) {
 void Geometry_2D::back_buffer_resizing() {
     // setting this to null will re-create pipelines on next render
     _pipeline = nullptr;
+    _blit.back_buffer_resizing();
 }
 
+void Geometry_2D::back_buffer_resized(const point2Di& size) {
+
+    // Recreate color target and frame buffer
+    nvrhi::TextureDesc texture_desc;
+    {
+        texture_desc.debugName  = "ColorTarget";
+        texture_desc.format     = SWAP_CHAIN_FORMAT;
+        texture_desc.width      = std::max(size.x, 1);
+        texture_desc.height     = std::max(size.y, 1);
+
+        texture_desc.isRenderTarget     = true;
+        texture_desc.keepInitialState   = true;
+        texture_desc.initialState       = nvrhi::ResourceStates::RenderTarget;
+    }
+    _color_buffer = _device->createTexture(texture_desc);
+
+    nvrhi::FramebufferDesc frame_buffer_desc;
+    frame_buffer_desc.addColorAttachment(_color_buffer);
+
+    _color_frame_buffer = _device->createFramebuffer(frame_buffer_desc);
+}
