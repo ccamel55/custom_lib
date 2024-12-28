@@ -1,10 +1,11 @@
 #include <module_system/filesystem.hpp>
 
+#include <array>
+
 using namespace lib::system;
 
 #ifdef CAMEL_PLATFORM_WINDOWS
-# error Implement for windows
-// https://stackoverflow.com/questions/1528298/get-path-of-executable
+#include <Windows.h>
 #else
 #include <climits>
 #include <unistd.h>
@@ -13,7 +14,10 @@ using namespace lib::system;
 std::expected<std::filesystem::path, std::string> lib::system::get_executable_path() {
 
 #ifdef CAMEL_PLATFORM_WINDOWS
-
+    char path_buffer[MAX_PATH];
+    if (GetModuleFileNameA(nullptr, &path_buffer[0], std::size(path_buffer)) == 0) {
+        return std::unexpected("Could not get executable path");
+    }
 #else
     char path_buffer[PATH_MAX] = {};
 

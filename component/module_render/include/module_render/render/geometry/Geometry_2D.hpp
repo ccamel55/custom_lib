@@ -9,6 +9,7 @@
 #include <module_render/types/shader_program.hpp>
 
 #include <module_render/util/ShaderFactory.hpp>
+#include <module_render/util/TextureBlit.hpp>
 #include <module_render/util/TextureFactory.hpp>
 
 namespace lib::render {
@@ -50,13 +51,13 @@ private:
     nvrhi::CommandListHandle _command_list;
     nvrhi::CommandListHandle _command_list_blit;
 
-    Geometry_TextureBlit _blit;
+    TextureBlit _blit;
     Geometry_Image _image;
     Geometry_FrameBuffer _frame_buffer;
     Geometry_Pipeline _pipeline;
 
     nvrhi::BindingLayoutHandle _binding_layout;
-    std::unordered_map<nvrhi::BindingSetDesc, nvrhi::BindingSetHandle, detail::binding_set_hash> _binding_set;
+    std::unordered_map<detail::binding_set_desc_key, nvrhi::BindingSetHandle, detail::binding_set_desc_key::hash> _binding_set;
 
     buffer_object_t _constant_buffer;
     shader_program_t _shader;

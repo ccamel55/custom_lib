@@ -51,7 +51,7 @@ std::expected<nvrhi::ShaderHandle, std::string> ShaderFactory::create_shader(
         shader_description.shaderType = type;
 
         shader_description.entryName    = "main";
-        shader_description.debugName    = path.filename();
+        shader_description.debugName    = path.filename().string();
     }
 
     return _cache[absolute_path] = _device->createShader(shader_description, shader_bytes.data(), shader_bytes.size());

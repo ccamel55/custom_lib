@@ -3,8 +3,61 @@
 #include <dep_nvrhi/nvrhi.hpp>
 #include <module_render/util/ShaderFactory.hpp>
 
+#include <unordered_map>
+
 namespace lib::render {
 namespace detail {
+
+struct binding_set_desc_key {
+    nvrhi::BindingSetDesc description;
+
+    bool operator==(const binding_set_desc_key& other) const {
+        return description == other.description;
+
+    }
+    bool operator!=(const binding_set_desc_key& other) const {
+        return !( *this == other );
+    }
+
+    struct hash {
+        size_t operator ()(const binding_set_desc_key& desc) const
+        {
+            size_t hash = 0;
+            hash_combine(hash, desc.description);
+            return hash;
+        }
+    };
+};
+
+struct pipeline_desc_key {
+    uint32_t width;
+    uint32_t height;
+    nvrhi::FramebufferInfo frame_buffer_info;
+    nvrhi::BlendState::RenderTarget blend_state;
+    bool is_array_shader;
+
+    bool operator==(const pipeline_desc_key& other) const {
+        return frame_buffer_info == other.frame_buffer_info
+            && blend_state == other.blend_state
+            && is_array_shader == other.is_array_shader;
+
+    }
+    bool operator!=(const pipeline_desc_key& other) const {
+        return !( *this == other );
+    }
+
+    struct hash  {
+        size_t operator()(const pipeline_desc_key& desc) const {
+            size_t hash = 0;
+            nvrhi::hash_combine(hash, desc.width);
+            nvrhi::hash_combine(hash, desc.height);
+            nvrhi::hash_combine(hash, desc.frame_buffer_info);
+            nvrhi::hash_combine(hash, desc.blend_state);
+            nvrhi::hash_combine(hash, desc.is_array_shader);
+            return hash;
+        }
+    };
+};
 
 constexpr nvrhi::BlendState::RenderTarget DEFAULT_BLEND_STATE = nvrhi::BlendState::RenderTarget()
     .enableBlend()
@@ -14,33 +67,9 @@ constexpr nvrhi::BlendState::RenderTarget DEFAULT_BLEND_STATE = nvrhi::BlendStat
     .setDestBlendAlpha(nvrhi::BlendFactor::OneMinusSrcAlpha)
     .setBlendOp(nvrhi::BlendOp::Add);
 
-[[nodiscard]] inline bool is_supported_blit_dimension(const nvrhi::TextureDimension dimension) {
-    return dimension == nvrhi::TextureDimension::Texture2D
-        || dimension == nvrhi::TextureDimension::Texture2DArray
-        || dimension == nvrhi::TextureDimension::TextureCube
-        || dimension == nvrhi::TextureDimension::TextureCubeArray;
 }
 
-[[nodiscard]] inline bool is_texture_array(const nvrhi::TextureDimension dimension) {
-    return dimension == nvrhi::TextureDimension::Texture2DArray
-        || dimension == nvrhi::TextureDimension::TextureCube
-        || dimension == nvrhi::TextureDimension::TextureCubeArray;
-}
-
-}
-
-template<typename Blit_Id, size_t Num_Ids>
-requires std::is_scoped_enum_v<Blit_Id>
 class TextureBlit {
-    struct blit_instance_t {
-        bool operator!() const {
-            return !binding_set || !pipeline;
-        }
-
-        nvrhi::BindingSetHandle binding_set;
-        nvrhi::GraphicsPipelineHandle pipeline;
-    };
-
 public:
     TextureBlit(
         nvrhi::IDevice* device,
@@ -48,56 +77,12 @@ public:
         const std::filesystem::path& rect_shader_path,
         const std::filesystem::path& blit_shader_path,
         const std::filesystem::path& blit_shader_array_path
-    )
-        : _device(device) {
-
-        auto rect_shader = shader_factory->create_shader(rect_shader_path, nvrhi::ShaderType::Vertex);
-        if (!rect_shader.has_value()) {
-            throw std::runtime_error("Could not load rect shader: " + rect_shader.error());
-        }
-
-        auto blit_shader = shader_factory->create_shader(blit_shader_path, nvrhi::ShaderType::Pixel);
-        if (!blit_shader.has_value()) {
-            throw std::runtime_error("Could not load blit shader: " + blit_shader.error());
-        }
-
-        auto blit_shader_array = shader_factory->create_shader(blit_shader_array_path, nvrhi::ShaderType::Pixel);
-        if (!blit_shader_array.has_value()) {
-            throw std::runtime_error("Could not load blit array shader: " + blit_shader_array.error());
-        }
-
-        _rect_shader        = std::move(rect_shader.value());
-        _blit_shader        = std::move(blit_shader.value());
-        _blit_shader_array  = std::move(blit_shader_array.value());
-
-        nvrhi::SamplerDesc sampler_desc;
-
-        sampler_desc.setAllFilters(true);
-        sampler_desc.setAllAddressModes(nvrhi::SamplerAddressMode::Clamp);
-
-        _linear_sampler = device->createSampler(sampler_desc);
-
-        nvrhi::BindingLayoutDesc layout_desc;
-
-        layout_desc.visibility = nvrhi::ShaderType::All;
-        layout_desc.bindings = {
-            nvrhi::BindingLayoutItem::Texture_SRV(0),
-            nvrhi::BindingLayoutItem::Sampler(0)
-        };
-
-        _blit_layout = device->createBindingLayout(layout_desc);
-    }
+    );
 
     //! Reset pipeline and binding set so we can rebind to new frame buffer texture
-    void back_buffer_resizing() {
-        for (auto& i : _instances) {
-            i.binding_set   = nullptr;
-            i.pipeline      = nullptr;
-        }
-    }
+    void back_buffer_resizing();
 
     //! Blit texture from given parameters
-    //! \param id blit id, must be convertable to uint32_t
     //! \param command_list command list that will execute the blit
     //! \param source_texture source texture that we want to copy
     //! \param dest_frame_buffer frame buffer we will use to write the source texture
@@ -106,86 +91,14 @@ public:
     //! \param blend_state blend state to use when blitting
     //! \param blend_color blend color
     void blit(
-        const Blit_Id id,
         nvrhi::ICommandList* command_list,
         nvrhi::ITexture* source_texture,
         nvrhi::IFramebuffer* dest_frame_buffer,
-        const uint32_t source_array_slice = 0,
-        const uint32_t source_mip_level = 0,
+        uint32_t source_array_slice = 0,
+        uint32_t source_mip_level = 0,
         const nvrhi::BlendState::RenderTarget& blend_state = detail::DEFAULT_BLEND_STATE,
         const nvrhi::Color& blend_color = nvrhi::Color(0.0)
-    ) {
-       const nvrhi::TextureDesc& source_texture_desc = source_texture->getDesc();
-
-        if (!detail::is_supported_blit_dimension(source_texture_desc.dimension)) [[unlikely]] {
-            throw std::runtime_error("Attempted to blit a texture with unsupported dimensions");
-        }
-
-        blit_instance_t& instance = _instances[static_cast<size_t>(id)];
-
-        if (!instance) {
-            const bool is_array = detail::is_texture_array(source_texture_desc.dimension);
-
-            nvrhi::BindingSetDesc binding_set_desc;
-            {
-                nvrhi::TextureDimension source_dimension = source_texture_desc.dimension;
-
-                if (source_dimension == nvrhi::TextureDimension::TextureCube ||
-                    source_dimension == nvrhi::TextureDimension::TextureCubeArray
-                ) {
-                    source_dimension = nvrhi::TextureDimension::Texture2DArray;
-                }
-
-                const nvrhi::TextureSubresourceSet source_sub_resource(source_mip_level, 1, source_array_slice, 1);
-
-                binding_set_desc.bindings = {
-                    nvrhi::BindingSetItem::Texture_SRV(0, source_texture, nvrhi::Format::UNKNOWN, source_sub_resource, source_dimension),
-                    nvrhi::BindingSetItem::Sampler(0, _linear_sampler)
-                };
-            }
-            instance.binding_set = _device->createBindingSet(binding_set_desc, _blit_layout);
-
-            nvrhi::GraphicsPipelineDesc desc;
-            {
-                desc.VS                 = _rect_shader;
-                desc.PS                 = is_array ? _blit_shader_array : _blit_shader;
-                desc.primType           = nvrhi::PrimitiveType::TriangleStrip;
-                desc.bindingLayouts     = { _blit_layout };
-
-                desc.renderState.rasterState.setCullNone();
-
-                desc.renderState.depthStencilState.depthTestEnable  = false;
-                desc.renderState.depthStencilState.stencilEnable    = false;
-
-                desc.renderState.blendState.targets[0] = blend_state;
-            }
-            instance.pipeline = _device->createGraphicsPipeline(desc, dest_frame_buffer);
-        }
-
-        const nvrhi::FramebufferInfoEx& frame_buffer_info = dest_frame_buffer->getFramebufferInfo();
-        const nvrhi::Viewport viewport = nvrhi::Viewport(
-            static_cast<float>(frame_buffer_info.width),
-            static_cast<float>(frame_buffer_info.height)
-        );
-
-        nvrhi::GraphicsState state;
-        {
-            state.pipeline              = instance.pipeline;
-            state.framebuffer           = dest_frame_buffer;
-            state.bindings              = { instance.binding_set };
-            state.blendConstantColor    = blend_color;
-
-            state.viewport.addViewportAndScissorRect(viewport);
-        }
-        command_list->setGraphicsState(state);
-
-        nvrhi::DrawArguments args;
-        {
-            args.instanceCount = 1;
-            args.vertexCount = 4;
-        }
-        command_list->draw(args);
-    }
+    );
 
 private:
     nvrhi::IDevice* _device;
@@ -197,7 +110,8 @@ private:
     nvrhi::SamplerHandle _linear_sampler;
     nvrhi::BindingLayoutHandle _blit_layout;
 
-    std::array<blit_instance_t, Num_Ids> _instances;
+    std::unordered_map<detail::binding_set_desc_key, nvrhi::BindingSetHandle, detail::binding_set_desc_key::hash> _binding_set;
+    std::unordered_map<detail::pipeline_desc_key, nvrhi::GraphicsPipelineHandle, detail::pipeline_desc_key::hash> _pipeline;
 };
 
 }

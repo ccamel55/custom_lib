@@ -6,7 +6,6 @@
 #include <module_render/util/FrameBuffer.hpp>
 #include <module_render/util/Image.hpp>
 #include <module_render/util/Pipeline.hpp>
-#include <module_render/util/TextureBlit.hpp>
 
 namespace lib::render {
 
@@ -32,28 +31,9 @@ enum class Pipeline_Id: uint32_t {
     Num_Pipeline_Id
 };
 
-enum class Blit_Id: uint32_t {
-    Color_To_FrameBuffer,
-
-    // Must always be last
-    Num_Blit_Id
-};
-
 using Geometry_FrameBuffer  = FrameBuffer<FrameBuffer_Id, static_cast<size_t>(FrameBuffer_Id::Num_FrameBuffer_Id)>;
 using Geometry_Image        = Image<Image_Id, static_cast<size_t>(Image_Id::Num_Image_Id)>;
 using Geometry_Pipeline     = Pipeline<Pipeline_Id, static_cast<size_t>(Pipeline_Id::Num_Pipeline_Id)>;
-using Geometry_TextureBlit  = TextureBlit<Blit_Id, static_cast<size_t>(Blit_Id::Num_Blit_Id)>;
-
-namespace detail {
-    struct binding_set_hash {
-        size_t operator ()(const nvrhi::BindingSetDesc& desc) const
-        {
-            size_t hash = 0;
-            hash_combine(hash, desc);
-            return hash;
-        }
-    };
-}
 
 class Geometry_Common : public NoCopy {
 public:

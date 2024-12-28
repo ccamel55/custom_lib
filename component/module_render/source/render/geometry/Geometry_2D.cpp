@@ -132,7 +132,7 @@ void Geometry_2D::draw_geometry(nvrhi::IFramebuffer* frame_buffer) {
             };
         }
 
-        nvrhi::BindingSetHandle& binding_set = _binding_set[binding_set_desc];
+        nvrhi::BindingSetHandle& binding_set = _binding_set[detail::binding_set_desc_key(binding_set_desc)];
         if (!binding_set) {
             binding_set = _device->createBindingSet(binding_set_desc, _binding_layout);
         }
@@ -200,7 +200,7 @@ void Geometry_2D::draw_geometry(nvrhi::IFramebuffer* frame_buffer) {
     // This must be called here, it will blit the color target to our currently presented frame buffer
     _command_list_blit->open();
     {
-        _blit.blit(Blit_Id::Color_To_FrameBuffer, _command_list_blit, _image[Image_Id::Geometry_ColorTarget], frame_buffer);
+        _blit.blit(_command_list_blit, _image[Image_Id::Geometry_ColorTarget], frame_buffer);
     }
     _command_list_blit->close();
 

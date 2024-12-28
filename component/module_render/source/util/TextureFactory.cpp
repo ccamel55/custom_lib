@@ -56,7 +56,7 @@ std::expected<nvrhi::TextureHandle, std::string> TextureFactory::create_texture(
     const int required_channels = stb_color_type(color);
 
     uint8_t* image_data = stbi_load(
-        absolute_path.c_str(),
+        absolute_path.string().c_str(),
         &width,
         &height,
         &channels,
@@ -70,7 +70,7 @@ std::expected<nvrhi::TextureHandle, std::string> TextureFactory::create_texture(
     // Create render API texture
     nvrhi::TextureDesc desc;
     {
-        desc.debugName          = path.filename();
+        desc.debugName          = path.filename().string();
         desc.dimension          = nvrhi::TextureDimension::Texture2D;
         desc.width              = width;
         desc.height             = height;
