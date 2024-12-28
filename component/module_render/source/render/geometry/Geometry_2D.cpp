@@ -11,7 +11,10 @@ Geometry_2D::Geometry_2D(
     const std::unique_ptr<TextureFactory>& texture_factory
 )
     : Geometry_Common(device)
-    , _blit(device, shader_factory, "rect_vs.spv", "blit_ps.spv", "blit_array_ps.spv") {
+    , _blit(device, shader_factory, "rect_vs.spv", "blit_ps.spv", "blit_array_ps.spv")
+    , _image(device)
+    , _frame_buffer(device)
+    , _pipeline(_device) {
 
     // Create buffers
     nvrhi::BufferDesc desc;
@@ -96,21 +99,16 @@ Geometry_2D::Geometry_2D(
     }
     _sampler = _device->createSampler(sampler_desc);
 
-    nvrhi::BindingSetDesc binding_set_desc;
+    nvrhi::BindingLayoutDesc binding_layout_desc;
     {
-        binding_set_desc.bindings = {
-            nvrhi::BindingSetItem::ConstantBuffer(0, _constant_buffer.buffer(), nvrhi::BufferRange(0, sizeof(detail::constant_buffer_t))),
-            nvrhi::BindingSetItem::Texture_SRV(0, _texture),
-            nvrhi::BindingSetItem::Sampler(0, _sampler)
+        binding_layout_desc.visibility = nvrhi::ShaderType::All;
+        binding_layout_desc.bindings = {
+            nvrhi::BindingLayoutItem::ConstantBuffer(0),
+            nvrhi::BindingLayoutItem::Texture_SRV(0),
+            nvrhi::BindingLayoutItem::Sampler(0)
         };
     }
-
-    auto bindings = bindings_t::create(_device, binding_set_desc);
-    if (!bindings.has_value()) {
-        throw std::runtime_error("Could not create binding set or layout");
-    }
-
-    _binding = std::move(bindings.value());
+    _binding_layout = _device->createBindingLayout(binding_layout_desc);
 
     _command_list       = _device->createCommandList();
     _command_list_blit  = _device->createCommandList();
@@ -118,41 +116,28 @@ Geometry_2D::Geometry_2D(
 
 void Geometry_2D::draw_geometry(nvrhi::IFramebuffer* frame_buffer) {
 
-    if (!_pipeline) {
-        nvrhi::GraphicsPipelineDesc pipeline_desc;
-        {
-            pipeline_desc.VS                = _shader.vertex_shader;
-            pipeline_desc.PS                = _shader.pixel_shader;
-            pipeline_desc.inputLayout       = _shader.vertex_layout;
-            pipeline_desc.bindingLayouts    = { _binding.layout };
-            pipeline_desc.primType          = nvrhi::PrimitiveType::TriangleList;
-
-            pipeline_desc.renderState.blendState.targets[0].blendEnable     = true;
-
-            pipeline_desc.renderState.blendState.targets[0].srcBlend        = nvrhi::BlendFactor::SrcAlpha;
-            pipeline_desc.renderState.blendState.targets[0].srcBlendAlpha   = nvrhi::BlendFactor::One;
-
-            pipeline_desc.renderState.blendState.targets[0].destBlend       = nvrhi::BlendFactor::OneMinusSrcAlpha;
-            pipeline_desc.renderState.blendState.targets[0].destBlendAlpha  = nvrhi::BlendFactor::OneMinusSrcAlpha;
-
-            pipeline_desc.renderState.depthStencilState.depthTestEnable     = false;
-            pipeline_desc.renderState.depthStencilState.depthWriteEnable    = false;
-            pipeline_desc.renderState.depthStencilState.stencilEnable       = false;
-            pipeline_desc.renderState.depthStencilState.depthFunc           = nvrhi::ComparisonFunc::Less;
-
-            pipeline_desc.renderState.rasterState.scissorEnable         = true;
-            pipeline_desc.renderState.rasterState.frontCounterClockwise = false;
-        }
-        _pipeline = _device->createGraphicsPipeline(pipeline_desc, _color_frame_buffer);
-    }
-
     // All this shit can be done somewhere else since it writes to our color buffer texture, not the frame buffer
     // Note: yes this even means multithreaded rendering using different command lists
     const bool command_list_update = update_vertex || update_constant;
 
     if (command_list_update) {
 
-        const nvrhi::FramebufferInfoEx& frame_buffer_info = _color_frame_buffer->getFramebufferInfo();
+        // Get binding set from cache or build it
+        nvrhi::BindingSetDesc binding_set_desc;
+        {
+            binding_set_desc.bindings = {
+                nvrhi::BindingSetItem::ConstantBuffer(0, _constant_buffer.buffer(), nvrhi::BufferRange(0, sizeof(detail::constant_buffer_t))),
+                nvrhi::BindingSetItem::Texture_SRV(0, _texture),
+                nvrhi::BindingSetItem::Sampler(0, _sampler)
+            };
+        }
+
+        nvrhi::BindingSetHandle& binding_set = _binding_set[binding_set_desc];
+        if (!binding_set) {
+            binding_set = _device->createBindingSet(binding_set_desc, _binding_layout);
+        }
+
+        const nvrhi::FramebufferInfoEx& frame_buffer_info = _frame_buffer[FrameBuffer_Id::Geometry]->getFramebufferInfo();
 
         _command_list->open();
         {
@@ -181,12 +166,12 @@ void Geometry_2D::draw_geometry(nvrhi::IFramebuffer* frame_buffer) {
 
             nvrhi::GraphicsState state;
             {
-                state.bindings      = { _binding.set };
+                state.bindings      = { binding_set };
                 state.indexBuffer   = { _draw.index_buffer.buffer(), _draw.index_format(), 0 };
                 state.vertexBuffers = { { _draw.vertex_buffer.buffer(), 0, 0 } };
 
-                state.pipeline      = _pipeline;
-                state.framebuffer   = _color_frame_buffer;
+                state.pipeline      = _pipeline[Pipeline_Id::Geometry_Texture];
+                state.framebuffer   = _frame_buffer[FrameBuffer_Id::Geometry];
 
                 // Construct the viewport so that all viewports form a grid.
                 const nvrhi::Viewport viewport = nvrhi::Viewport(
@@ -215,7 +200,7 @@ void Geometry_2D::draw_geometry(nvrhi::IFramebuffer* frame_buffer) {
     // This must be called here, it will blit the color target to our currently presented frame buffer
     _command_list_blit->open();
     {
-        _blit.blit(detail::Blit_Id::Color_To_FrameBuffer, _command_list_blit, _color_buffer, frame_buffer);
+        _blit.blit(Blit_Id::Color_To_FrameBuffer, _command_list_blit, _image[Image_Id::Geometry_ColorTarget], frame_buffer);
     }
     _command_list_blit->close();
 
@@ -233,31 +218,82 @@ void Geometry_2D::draw_geometry(nvrhi::IFramebuffer* frame_buffer) {
 
 void Geometry_2D::back_buffer_resizing() {
     // setting this to null will re-create pipelines on next render
-    _pipeline = nullptr;
     _blit.back_buffer_resizing();
 }
 
 void Geometry_2D::back_buffer_resized(const point2Di& size) {
 
-    // Force constant buffer to be re-calculated using the current frambe buffer size
+    // Force constant buffer to be re-calculated using the current frame buffer size
     update_constant = true;
 
-    // Recreate color target and frame buffer
-    nvrhi::TextureDesc texture_desc;
-    {
-        texture_desc.debugName  = "ColorTarget";
-        texture_desc.format     = SWAP_CHAIN_FORMAT;
-        texture_desc.width      = std::max(size.x, 1);
-        texture_desc.height     = std::max(size.y, 1);
+    _image.back_buffer_resized([&](auto& image) {
+        image[static_cast<size_t>(Image_Id::Geometry_ColorTarget)] = _device->createTexture(
+            nvrhi::TextureDesc()
+                .setDebugName("ColorTarget")
+                .setFormat(SWAP_CHAIN_FORMAT)
+                .setWidth(std::max(size.x, 1))
+                .setHeight(std::max(size.y, 1))
+                .setIsRenderTarget(true)
+                .setKeepInitialState(true)
+                .setInitialState(nvrhi::ResourceStates::RenderTarget)
+        );
 
-        texture_desc.isRenderTarget     = true;
-        texture_desc.keepInitialState   = true;
-        texture_desc.initialState       = nvrhi::ResourceStates::RenderTarget;
-    }
-    _color_buffer = _device->createTexture(texture_desc);
+        image[static_cast<size_t>(Image_Id::Geometry_DepthTarget)] = _device->createTexture(
+            nvrhi::TextureDesc()
+                .setDebugName("DepthTarget")
+                .setFormat(nvrhi::Format::D32)
+                .setWidth(std::max(size.x, 1))
+                .setHeight(std::max(size.y, 1))
+                .setIsRenderTarget(true)
+                .setKeepInitialState(true)
+                .setInitialState(nvrhi::ResourceStates::DepthWrite)
+        );
+    });
 
-    nvrhi::FramebufferDesc frame_buffer_desc;
-    frame_buffer_desc.addColorAttachment(_color_buffer);
+    _frame_buffer.back_buffer_resized([&](auto& frame_buffer) {
+        frame_buffer[static_cast<size_t>(FrameBuffer_Id::Geometry)] = _device->createFramebuffer(
+            nvrhi::FramebufferDesc()
+                .addColorAttachment(_image[Image_Id::Geometry_ColorTarget])
+                .setDepthAttachment(_image[Image_Id::Geometry_DepthTarget])
+        );
+    });
 
-    _color_frame_buffer = _device->createFramebuffer(frame_buffer_desc);
+    _pipeline.back_buffer_resized([&](auto& pipeline) {
+        pipeline[static_cast<size_t>(Pipeline_Id::Geometry_Texture)] = _device->createGraphicsPipeline(
+            nvrhi::GraphicsPipelineDesc()
+                .setVertexShader(_shader.vertex_shader)
+                .setPixelShader(_shader.pixel_shader)
+                .setInputLayout(_shader.vertex_layout)
+                .addBindingLayout(_binding_layout)
+                .setPrimType(nvrhi::PrimitiveType::TriangleList)
+                .setRenderState(
+                    nvrhi::RenderState()
+                        .setBlendState(
+                            nvrhi::BlendState()
+                                .setRenderTarget(
+                                    0,
+                                    nvrhi::BlendState::RenderTarget()
+                                        .setBlendEnable(true)
+                                        .setSrcBlend(nvrhi::BlendFactor::SrcAlpha)
+                                        .setSrcBlendAlpha(nvrhi::BlendFactor::One)
+                                        .setDestBlend(nvrhi::BlendFactor::OneMinusSrcAlpha)
+                                        .setDestBlendAlpha(nvrhi::BlendFactor::OneMinusSrcAlpha)
+                                )
+                        )
+                        .setDepthStencilState(
+                            nvrhi::DepthStencilState()
+                                .disableDepthWrite()
+                                .setDepthTestEnable(false)
+                                .setStencilEnable(false)
+                                .setDepthFunc(nvrhi::ComparisonFunc::Less)
+                        )
+                        .setRasterState(
+                            nvrhi::RasterState()
+                                .setScissorEnable(true)
+                                .setFrontCounterClockwise(false)
+                        )
+                ),
+                _frame_buffer[FrameBuffer_Id::Geometry]
+        );
+    });
 }

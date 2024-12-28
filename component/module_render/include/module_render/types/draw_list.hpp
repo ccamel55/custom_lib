@@ -2,8 +2,6 @@
 
 #include <module_render/types/buffer_object.hpp>
 
-#include <memory>
-
 namespace lib::render {
 
 template<typename vertex, typename index>

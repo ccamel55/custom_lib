@@ -4,27 +4,14 @@
 #include <module_render/render/geometry/types/constant_buffer.hpp>
 #include <module_render/render/geometry/types/vertex.hpp>
 
-#include <module_render/types/bindings.hpp>
 #include <module_render/types/buffer_object.hpp>
 #include <module_render/types/draw_list.hpp>
 #include <module_render/types/shader_program.hpp>
 
 #include <module_render/util/ShaderFactory.hpp>
-#include <module_render/util/TextureBlit.hpp>
 #include <module_render/util/TextureFactory.hpp>
 
 namespace lib::render {
-namespace detail {
-
-enum class Blit_Id: uint32_t {
-    Color_To_FrameBuffer,
-
-    // Must always be last
-    Num_Blit_Id
-};
-
-}
-
 class Geometry_2D final : Geometry_Common {
 public:
     explicit Geometry_2D(
@@ -63,16 +50,16 @@ private:
     nvrhi::CommandListHandle _command_list;
     nvrhi::CommandListHandle _command_list_blit;
 
-    nvrhi::GraphicsPipelineHandle _pipeline;
+    Geometry_TextureBlit _blit;
+    Geometry_Image _image;
+    Geometry_FrameBuffer _frame_buffer;
+    Geometry_Pipeline _pipeline;
 
-    nvrhi::TextureHandle _color_buffer;
-    nvrhi::FramebufferHandle _color_frame_buffer; // TODO: Create framebuffer object
-
-    TextureBlit<detail::Blit_Id, static_cast<size_t>(detail::Blit_Id::Num_Blit_Id)> _blit;
+    nvrhi::BindingLayoutHandle _binding_layout;
+    std::unordered_map<nvrhi::BindingSetDesc, nvrhi::BindingSetHandle, detail::binding_set_hash> _binding_set;
 
     buffer_object_t _constant_buffer;
     shader_program_t _shader;
-    bindings_t _binding;
     draw_list_t<detail::vertex_t, detail::index_t> _draw;
 
     // Image
