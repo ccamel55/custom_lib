@@ -14,14 +14,13 @@ Geometry_2D::Geometry_2D(
     , _blit(device, shader_factory)
     , _image(device)
     , _frame_buffer(device)
-    , _pipeline(_device) {
+    , _pipeline(_device)
+    , _draw(detail::MAX_VERTICES, detail::MAX_INDICES) {
 
     // Create buffers
     nvrhi::BufferDesc desc;
-
-    // Vertex Buffer
     {
-        desc.byteSize           = sizeof(detail::vertex_t) * detail::MAX_VERTICES;
+        desc.byteSize           = _draw.max_vertices() * sizeof(detail::vertex_t);
         desc.debugName          = "VertexBuffer";
         desc.isVertexBuffer     = true;
         desc.isIndexBuffer      = false;
@@ -30,12 +29,9 @@ Geometry_2D::Geometry_2D(
         desc.initialState       = nvrhi::ResourceStates::CopyDest;
         desc.keepInitialState   = true;
     }
-
-    const auto vertex_buffer = buffer_object_t::create(_device, desc);
-
-    // Index Buffer
+    _vertex_buffer = buffer_object_t::create(_device, desc);
     {
-        desc.byteSize           = sizeof(detail::index_t) * detail::MAX_INDICES;
+        desc.byteSize           = _draw.max_indices() * sizeof(detail::index_t);
         desc.debugName          = "IndexBuffer";
         desc.isVertexBuffer     = false;
         desc.isIndexBuffer      = true;
@@ -44,12 +40,20 @@ Geometry_2D::Geometry_2D(
         desc.initialState       = nvrhi::ResourceStates::CopyDest;
         desc.keepInitialState   = true;
     }
+    _index_buffer = buffer_object_t::create(_device, desc);
+    {
+        desc.byteSize           = sizeof(detail::constant_buffer_t);
+        desc.debugName          = "ConstantBuffer";
+        desc.isVertexBuffer     = false;
+        desc.isIndexBuffer      = false;
+        desc.isConstantBuffer   = true;
+        desc.isVolatile         = false;
+        desc.initialState       = nvrhi::ResourceStates::ConstantBuffer;
+        desc.keepInitialState   = true;
+    }
+    _constant_buffer = buffer_object_t::create(_device, desc);
 
-    const auto index_buffer = buffer_object_t::create(_device, desc);
-
-    _draw = draw_list_t<detail::vertex_t, detail::index_t>::create(vertex_buffer, index_buffer);
-
-    // Create shader
+    // Create shaders
     {
         auto vertex_shader = shader_factory->create_shader("geometry_2d_vs", nvrhi::ShaderType::Vertex);
         if (!vertex_shader.has_value()) {
@@ -69,20 +73,6 @@ Geometry_2D::Geometry_2D(
             _vertex_shader
         );
     }
-
-    // Create binding set
-    {
-        desc.byteSize           = sizeof(detail::constant_buffer_t);
-        desc.debugName          = "ConstantBuffer";
-        desc.isVertexBuffer     = false;
-        desc.isIndexBuffer      = false;
-        desc.isConstantBuffer   = true;
-        desc.isVolatile         = false;
-        desc.initialState       = nvrhi::ResourceStates::ConstantBuffer;
-        desc.keepInitialState   = true;
-    }
-
-    _constant_buffer = buffer_object_t::create(_device, desc);
 
     // Load texture
     auto texture = texture_factory->create_texture("cat.jpg", TextureColor::RGBA);
@@ -117,86 +107,87 @@ Geometry_2D::Geometry_2D(
 
 void Geometry_2D::draw_geometry(nvrhi::IFramebuffer* frame_buffer) {
 
-    // All this shit can be done somewhere else since it writes to our color buffer texture, not the frame buffer
-    // Note: yes this even means multithreaded rendering using different command lists
-    const bool command_list_update = _update_vertex || _update_constant;
+    const nvrhi::FramebufferInfoEx& frame_buffer_info = _frame_buffer[FrameBuffer_Id::Geometry]->getFramebufferInfo();
 
-    if (command_list_update) {
-
-        // Get binding set from cache or build it
-        nvrhi::BindingSetDesc binding_set_desc;
+    _command_list->open();
+    {
+        // Write constant buffer
         {
-            binding_set_desc.bindings = {
-                nvrhi::BindingSetItem::ConstantBuffer(0, _constant_buffer.buffer(), nvrhi::BufferRange(0, sizeof(detail::constant_buffer_t))),
-                nvrhi::BindingSetItem::Texture_SRV(0, _texture),
-                nvrhi::BindingSetItem::Sampler(0, _sampler)
-            };
-        }
-
-        nvrhi::BindingSetHandle& binding_set = _binding_set[detail::binding_set_desc_key(binding_set_desc)];
-        if (!binding_set) {
-            binding_set = _device->createBindingSet(binding_set_desc, _binding_layout);
-        }
-
-        const nvrhi::FramebufferInfoEx& frame_buffer_info = _frame_buffer[FrameBuffer_Id::Geometry]->getFramebufferInfo();
-
-        _command_list->open();
-        {
-            if (_update_vertex) {
-                _vertex_count = _draw.update_buffers(_command_list);
-            }
-
-            if (_update_constant) {
-                detail::constant_buffer_t constants;
-                {
-                    // 2D doesn't need any model or view matrix changes
-                    constants.model_matrix      = matrix4x4f(1.0);
-                    constants.view_matrix       = matrix4x4f(1.0);
-                    constants.projection_matrix = glm::ortho(
-                       0.0, static_cast<double>(frame_buffer_info.width),
-                       static_cast<double>(frame_buffer_info.height), 0.0
-                    );
-
-                    // Do multiplication once here, can use in vertex shader later
-                    constants.mvp_matrix = constants.projection_matrix
-                        * constants.view_matrix
-                        * constants.model_matrix;
-                }
-                _constant_buffer.write(_command_list, &constants, sizeof(detail::constant_buffer_t));
-            }
-
-            nvrhi::GraphicsState state;
+            detail::constant_buffer_t constants;
             {
-                state.bindings      = { binding_set };
-                state.indexBuffer   = { _draw.index_buffer.buffer(), _draw.index_format(), 0 };
-                state.vertexBuffers = { { _draw.vertex_buffer.buffer(), 0, 0 } };
-
-                state.pipeline      = _pipeline[Pipeline_Id::Geometry_Texture];
-                state.framebuffer   = _frame_buffer[FrameBuffer_Id::Geometry];
-
-                // Construct the viewport so that all viewports form a grid.
-                const nvrhi::Viewport viewport = nvrhi::Viewport(
-                    0, static_cast<float>(frame_buffer_info.width),
-                    0, static_cast<float>(frame_buffer_info.height),
-                    0.f, 1.f
+                // 2D doesn't need any model or view matrix changes
+                constants.model_matrix      = matrix4x4f(1.0);
+                constants.view_matrix       = matrix4x4f(1.0);
+                constants.projection_matrix = glm::ortho(
+                   0.0, static_cast<double>(frame_buffer_info.width),
+                   static_cast<double>(frame_buffer_info.height), 0.0
                 );
-                state.viewport.addViewportAndScissorRect(viewport);
-            }
-            _command_list->setGraphicsState(state);
 
-            nvrhi::DrawArguments draw_arguments;
-            {
-                draw_arguments.startVertexLocation  = 0;
-                draw_arguments.startIndexLocation   = 0;
-                draw_arguments.vertexCount          = _vertex_count;
+                // Do multiplication once here, can use in vertex shader later
+                constants.mvp_matrix = constants.projection_matrix
+                    * constants.view_matrix
+                    * constants.model_matrix;
             }
-            _command_list->drawIndexed(draw_arguments);
+            _constant_buffer.write(_command_list, &constants, sizeof(detail::constant_buffer_t));
         }
-        _command_list->close();
 
-        _update_vertex   = false;
-        _update_constant = false;
+        // Write draw list
+        {
+            _vertex_buffer.write(_command_list, _draw.backing_vertices.data(), _draw.num_vertices * sizeof(detail::vertex_t), 0);
+            _index_buffer.write(_command_list, _draw.backing_indices.data(), _draw.num_indices * sizeof(detail::index_t), 0);
+
+            for (const auto& batch: _draw.draw_commands) {
+
+                // Get binding set from cache or build it
+                nvrhi::BindingSetDesc binding_set_desc;
+                {
+                    binding_set_desc.bindings = {
+                        nvrhi::BindingSetItem::ConstantBuffer(0, _constant_buffer.buffer(), nvrhi::BufferRange(0, sizeof(detail::constant_buffer_t))),
+                        nvrhi::BindingSetItem::Texture_SRV(0, _texture),
+                        nvrhi::BindingSetItem::Sampler(0, _sampler)
+                    };
+                }
+
+                nvrhi::BindingSetHandle& binding_set = _binding_set[detail::binding_set_desc_key(binding_set_desc)];
+                if (!binding_set) {
+                    binding_set = _device->createBindingSet(binding_set_desc, _binding_layout);
+                }
+
+                nvrhi::GraphicsState state;
+                {
+                    state.bindings      = { binding_set };
+                    state.indexBuffer   = { _index_buffer.buffer(), nvrhi::Format::R32_UINT, 0 };
+                    state.vertexBuffers = { { _vertex_buffer.buffer(), 0, 0 } };
+
+                    state.pipeline      = _pipeline[batch.pipeline];
+                    state.framebuffer   = _frame_buffer[FrameBuffer_Id::Geometry];
+
+                    // Construct the viewport so that all viewports form a grid.
+                    const nvrhi::Viewport viewport = nvrhi::Viewport(
+                        0, static_cast<float>(frame_buffer_info.width),
+                        0, static_cast<float>(frame_buffer_info.height),
+                        0.f, 1.f
+                    );
+                    state.viewport.addViewportAndScissorRect(viewport);
+                }
+                _command_list->setGraphicsState(state);
+
+                nvrhi::DrawArguments draw_arguments;
+                {
+                    draw_arguments.startVertexLocation  = 0;
+                    draw_arguments.startIndexLocation   = batch.offset;
+                    draw_arguments.vertexCount          = batch.count;
+                }
+                _command_list->drawIndexed(draw_arguments);
+            }
+
+            _draw.draw_commands.clear();
+
+            _draw.num_vertices  = 0;
+            _draw.num_indices   = 0;
+        }
     }
+    _command_list->close();
 
     // This must be called here, it will blit the color target to our currently presented frame buffer
     _command_list_blit->open();
@@ -205,16 +196,11 @@ void Geometry_2D::draw_geometry(nvrhi::IFramebuffer* frame_buffer) {
     }
     _command_list_blit->close();
 
-    if (command_list_update) {
-        const std::array<nvrhi::ICommandList*, 2> command_lists = {
-            _command_list,
-            _command_list_blit
-        };
-        _device->executeCommandLists(command_lists.data(), command_lists.size());
-    }
-    else {
-        _device->executeCommandList(_command_list_blit);
-    }
+    const std::array<nvrhi::ICommandList*, 2> command_lists = {
+        _command_list,
+        _command_list_blit
+    };
+    _device->executeCommandLists(command_lists.data(), command_lists.size());
 }
 
 void Geometry_2D::back_buffer_resizing() {
@@ -223,9 +209,6 @@ void Geometry_2D::back_buffer_resizing() {
 }
 
 void Geometry_2D::back_buffer_resized(const point2Di& size) {
-
-    // Force constant buffer to be re-calculated using the current frame buffer size
-    _update_constant = true;
 
     _image.back_buffer_resized([&](auto& image) {
         image[static_cast<size_t>(Image_Id::Geometry_ColorTarget)] = _device->createTexture(
