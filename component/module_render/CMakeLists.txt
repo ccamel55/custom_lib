@@ -6,8 +6,5 @@ camel_library(
 		module_system
 )
 
-# Note: you need to set LINUX_DXC_PATH to DXC on linux platforms.
-# download: https://github.com/microsoft/DirectXShaderCompiler/releases
-include(cmake/compile_hlsl.cmake)
-
-compile_shaders(${PROJECT_NAME} "${CMAKE_CURRENT_SOURCE_DIR}/shaders")
+include(cmake/compile_shaders.cmake)
+compile_shaders(${PROJECT_NAME} "${CMAKE_CURRENT_SOURCE_DIR}/include/module_render/shaders")

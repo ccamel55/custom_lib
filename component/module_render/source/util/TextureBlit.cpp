@@ -21,24 +21,27 @@ namespace {
 
 TextureBlit::TextureBlit(
     nvrhi::IDevice* device,
-    const std::unique_ptr<ShaderFactory>& shader_factory,
-    const std::filesystem::path& rect_shader_path,
-    const std::filesystem::path& blit_shader_path,
-    const std::filesystem::path& blit_shader_array_path
+    const std::unique_ptr<ShaderFactory>& shader_factory
 )
     : _device(device) {
 
-    auto rect_shader = shader_factory->create_shader(rect_shader_path, nvrhi::ShaderType::Vertex);
+    auto rect_shader = shader_factory->create_shader("blit_vs", nvrhi::ShaderType::Vertex);
     if (!rect_shader.has_value()) {
         throw std::runtime_error("Could not load rect shader: " + rect_shader.error());
     }
 
-    auto blit_shader = shader_factory->create_shader(blit_shader_path, nvrhi::ShaderType::Pixel);
+    std::vector<ShaderMake::ShaderConstant> constants = {
+        { "TEXTURE_ARRAY", "0" }
+    };
+
+    auto blit_shader = shader_factory->create_shader("blit_ps", nvrhi::ShaderType::Pixel);
     if (!blit_shader.has_value()) {
         throw std::runtime_error("Could not load blit shader: " + blit_shader.error());
     }
 
-    auto blit_shader_array = shader_factory->create_shader(blit_shader_array_path, nvrhi::ShaderType::Pixel);
+    constants[0].value = "1";
+
+    auto blit_shader_array = shader_factory->create_shader("blit_ps", nvrhi::ShaderType::Pixel);
     if (!blit_shader_array.has_value()) {
         throw std::runtime_error("Could not load blit array shader: " + blit_shader_array.error());
     }

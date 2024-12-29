@@ -6,7 +6,6 @@
 
 #include <module_render/types/buffer_object.hpp>
 #include <module_render/types/draw_list.hpp>
-#include <module_render/types/shader_program.hpp>
 
 #include <module_render/util/ShaderFactory.hpp>
 #include <module_render/util/TextureBlit.hpp>
@@ -29,7 +28,7 @@ public:
     // BAD!! FUCK OFF!
     void triangle(const point2Df& pos, const size_t size, const std::array<uint8_t, 4> color = { 255, 255, 255, 255 }) {
 
-        update_vertex   = true;
+        _update_vertex   = true;
 
         const auto centre_pos = pos;
 
@@ -60,7 +59,10 @@ private:
     std::unordered_map<detail::binding_set_desc_key, nvrhi::BindingSetHandle, detail::binding_set_desc_key::hash> _binding_set;
 
     buffer_object_t _constant_buffer;
-    shader_program_t _shader;
+    nvrhi::ShaderHandle _vertex_shader;
+    nvrhi::ShaderHandle _pixel_shader;
+    nvrhi::InputLayoutHandle _vertex_layout;
+
     draw_list_t<detail::vertex_t, detail::index_t> _draw;
 
     // Image
@@ -68,8 +70,8 @@ private:
     nvrhi::TextureHandle _texture;
 
     // Write states
-    bool update_vertex      = false;
-    bool update_constant    = false;
+    bool _update_vertex      = false;
+    bool _update_constant    = false;
     size_t _vertex_count    = 0;
 
 };

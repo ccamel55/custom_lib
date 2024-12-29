@@ -95,6 +95,7 @@ public:
     [[nodiscard]] nvrhi::ITexture* back_buffer(uint32_t index) const override;
     [[nodiscard]] uint32_t current_back_buffer_index() const override;
     [[nodiscard]] uint32_t back_buffer_count() const override;
+    [[nodiscard]] Device_Api api() const override;
 
     [[nodiscard]] std::expected<void, std::string> create_device() override;
     [[nodiscard]] std::expected<void, std::string> create_swap_chain() override;

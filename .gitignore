@@ -115,3 +115,5 @@ build/
 
 # Other stuff
 .clangd
+
+bin/

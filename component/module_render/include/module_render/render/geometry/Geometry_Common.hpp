@@ -35,6 +35,10 @@ using Geometry_FrameBuffer  = FrameBuffer<FrameBuffer_Id, static_cast<size_t>(Fr
 using Geometry_Image        = Image<Image_Id, static_cast<size_t>(Image_Id::Num_Image_Id)>;
 using Geometry_Pipeline     = Pipeline<Pipeline_Id, static_cast<size_t>(Pipeline_Id::Num_Pipeline_Id)>;
 
+struct geometry_batch_t {
+
+};
+
 class Geometry_Common : public NoCopy {
 public:
     explicit Geometry_Common(nvrhi::DeviceHandle device)
@@ -49,6 +53,7 @@ public:
 
 protected:
     nvrhi::DeviceHandle _device;
+    std::vector<geometry_batch_t> _batch;
 
 };
 

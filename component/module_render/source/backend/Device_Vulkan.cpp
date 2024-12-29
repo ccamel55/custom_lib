@@ -1131,4 +1131,8 @@ uint32_t Device_Vulkan::back_buffer_count() const {
     return _vk_swapchain_images.size();
 }
 
+Device_Api Device_Vulkan::api() const {
+    return Device_Api::Vulkan;
+}
+
 #endif

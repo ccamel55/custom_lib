@@ -66,7 +66,7 @@ struct device_settings_t {
     } d3d11;
 #endif
 
-#ifdef CAMEL_NVRHI_DX_11
+#ifdef CAMEL_NVRHI_DX_12
     // DirectX 12 specific settings
     struct d3d12_t {
 
@@ -75,6 +75,28 @@ struct device_settings_t {
 };
 
 using RenderCallback_Fn = std::function<void()>;
+
+//! Backing GAPI type
+enum class Device_Api {
+    Vulkan,
+    Dx11,
+    Dx12
+};
+
+//! Get shader binary type
+//! \param api graphics api
+//! \return shader type as string
+inline std::string shader_type(const Device_Api api) {
+   switch (api) {
+       case Device_Api::Vulkan:
+           return "spirv";
+       case Device_Api::Dx11:
+           return "dxbc";
+       case Device_Api::Dx12:
+           return "dxil";
+   }
+   return "";
+}
 
 //! Shared common device type.
 class Device_Common : public NoCopy {
@@ -114,6 +136,10 @@ public:
     //! Get number of back buffers we have created
     //! \return number of back buffers we have
     [[nodiscard]] virtual uint32_t back_buffer_count() const = 0;
+
+    //! Get device type
+    //! \return device api enum value
+    [[nodiscard]] virtual Device_Api api() const = 0;
 
 protected:
     [[nodiscard]] virtual std::expected<void, std::string> create_device() = 0;

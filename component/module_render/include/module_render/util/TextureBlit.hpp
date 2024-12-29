@@ -30,11 +30,11 @@ struct binding_set_desc_key {
 };
 
 struct pipeline_desc_key {
-    uint32_t width;
-    uint32_t height;
+    uint32_t width  = 0;
+    uint32_t height = 0;
     nvrhi::FramebufferInfo frame_buffer_info;
     nvrhi::BlendState::RenderTarget blend_state;
-    bool is_array_shader;
+    bool is_array_shader = false;
 
     bool operator==(const pipeline_desc_key& other) const {
         return frame_buffer_info == other.frame_buffer_info
@@ -73,10 +73,7 @@ class TextureBlit {
 public:
     TextureBlit(
         nvrhi::IDevice* device,
-        const std::unique_ptr<ShaderFactory>& shader_factory,
-        const std::filesystem::path& rect_shader_path,
-        const std::filesystem::path& blit_shader_path,
-        const std::filesystem::path& blit_shader_array_path
+        const std::unique_ptr<ShaderFactory>& shader_factory
     );
 
     //! Reset pipeline and binding set so we can rebind to new frame buffer texture

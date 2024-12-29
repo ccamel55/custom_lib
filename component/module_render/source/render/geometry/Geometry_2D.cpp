@@ -11,7 +11,7 @@ Geometry_2D::Geometry_2D(
     const std::unique_ptr<TextureFactory>& texture_factory
 )
     : Geometry_Common(device)
-    , _blit(device, shader_factory, "rect_vs.spv", "blit_ps.spv", "blit_array_ps.spv")
+    , _blit(device, shader_factory)
     , _image(device)
     , _frame_buffer(device)
     , _pipeline(_device) {
@@ -51,21 +51,22 @@ Geometry_2D::Geometry_2D(
 
     // Create shader
     {
-        auto vertex_shader = shader_factory->create_shader("geometry_2d_vs.spv", nvrhi::ShaderType::Vertex);
+        auto vertex_shader = shader_factory->create_shader("geometry_2d_vs", nvrhi::ShaderType::Vertex);
         if (!vertex_shader.has_value()) {
             throw std::runtime_error("Could not load vertex shaders from disk: " + vertex_shader.error());
         }
+        _vertex_shader = std::move(vertex_shader.value());
 
-        auto pixel_shader = shader_factory->create_shader("geometry_2d_ps.spv", nvrhi::ShaderType::Pixel);
+        auto pixel_shader = shader_factory->create_shader("geometry_2d_ps", nvrhi::ShaderType::Pixel);
         if (!pixel_shader.has_value()) {
             throw std::runtime_error("Could not load pixel shaders from disk: " + pixel_shader.error());
         }
+        _pixel_shader = std::move(pixel_shader.value());
 
-        _shader = shader_program_t::create(
-            _device,
-            std::move(vertex_shader.value()),
-            std::move(pixel_shader.value()),
-            detail::vertex_t::attributes()
+        _vertex_layout = device->createInputLayout(
+            detail::vertex_t::attributes().data(),
+            detail::vertex_t::attributes().size(),
+            _vertex_shader
         );
     }
 
@@ -118,7 +119,7 @@ void Geometry_2D::draw_geometry(nvrhi::IFramebuffer* frame_buffer) {
 
     // All this shit can be done somewhere else since it writes to our color buffer texture, not the frame buffer
     // Note: yes this even means multithreaded rendering using different command lists
-    const bool command_list_update = update_vertex || update_constant;
+    const bool command_list_update = _update_vertex || _update_constant;
 
     if (command_list_update) {
 
@@ -141,11 +142,11 @@ void Geometry_2D::draw_geometry(nvrhi::IFramebuffer* frame_buffer) {
 
         _command_list->open();
         {
-            if (update_vertex) {
+            if (_update_vertex) {
                 _vertex_count = _draw.update_buffers(_command_list);
             }
 
-            if (update_constant) {
+            if (_update_constant) {
                 detail::constant_buffer_t constants;
                 {
                     // 2D doesn't need any model or view matrix changes
@@ -193,8 +194,8 @@ void Geometry_2D::draw_geometry(nvrhi::IFramebuffer* frame_buffer) {
         }
         _command_list->close();
 
-        update_vertex   = false;
-        update_constant = false;
+        _update_vertex   = false;
+        _update_constant = false;
     }
 
     // This must be called here, it will blit the color target to our currently presented frame buffer
@@ -224,7 +225,7 @@ void Geometry_2D::back_buffer_resizing() {
 void Geometry_2D::back_buffer_resized(const point2Di& size) {
 
     // Force constant buffer to be re-calculated using the current frame buffer size
-    update_constant = true;
+    _update_constant = true;
 
     _image.back_buffer_resized([&](auto& image) {
         image[static_cast<size_t>(Image_Id::Geometry_ColorTarget)] = _device->createTexture(
@@ -261,9 +262,9 @@ void Geometry_2D::back_buffer_resized(const point2Di& size) {
     _pipeline.back_buffer_resized([&](auto& pipeline) {
         pipeline[static_cast<size_t>(Pipeline_Id::Geometry_Texture)] = _device->createGraphicsPipeline(
             nvrhi::GraphicsPipelineDesc()
-                .setVertexShader(_shader.vertex_shader)
-                .setPixelShader(_shader.pixel_shader)
-                .setInputLayout(_shader.vertex_layout)
+                .setVertexShader(_vertex_shader)
+                .setPixelShader(_pixel_shader)
+                .setInputLayout(_vertex_layout)
                 .addBindingLayout(_binding_layout)
                 .setPrimType(nvrhi::PrimitiveType::TriangleList)
                 .setRenderState(

@@ -6,13 +6,6 @@
 
 using namespace lib::render;
 
-namespace {
-    [[nodiscard]] bool is_path_valid(const std::filesystem::path& path) {
-        return is_directory(path) == false
-            && path.extension() == ".spv";
-    }
-}
-
 ShaderFactory::ShaderFactory(nvrhi::IDevice* device, std::filesystem::path  shader_folder)
     : _device(device)
     , _shader_folder(std::move(shader_folder)) {
@@ -20,43 +13,72 @@ ShaderFactory::ShaderFactory(nvrhi::IDevice* device, std::filesystem::path  shad
 }
 
 std::expected<nvrhi::ShaderHandle, std::string> ShaderFactory::create_shader(
-    std::filesystem::path path,
-    const nvrhi::ShaderType type
-) const {
+    std::filesystem::path file,
+    const nvrhi::ShaderType type,
+    const std::string& entry,
+    const std::vector<ShaderMake::ShaderConstant>& constants
+) {
+    file = full_shader_path(file, entry);
 
-    path = _shader_folder / path;
-
-    if (!exists(path)) {
-        return std::unexpected("Shader file does not exist: " + path.string());
+    if (!exists(file) || is_directory(file)) {
+        return std::unexpected("Shader file does not exist: " + file.string());
     }
 
-    const auto absolute_path = absolute(path);
+    const auto absolute_path = absolute(file);
+    nvrhi::ShaderHandle& shader = _shader[detail::shader_key(absolute_path, entry, {})];
 
-    if (!is_path_valid(absolute_path)) {
-       return std::unexpected("Shader file is not valid, ensure shader file has extension: '.spv'");
+    // Create shader if it doesn't exist
+    if (!shader) {
+        const std::vector<char> shader_bytes = system::read_file_as_bytes(absolute_path);
+        if (shader_bytes.empty()) {
+            return std::unexpected("Failed to read shader file from disk");
+        }
+
+        // Find shader permutation
+        size_t permutation_size = 0;
+        const void* permutation_bytes = nullptr;
+
+        if (!FindPermutationInBlob(
+            shader_bytes.data(),
+            shader_bytes.size(),
+            constants.data(),
+            static_cast<uint32_t>(constants.size()),
+            &permutation_bytes,
+            &permutation_size
+        )) {
+            return std::unexpected("Failed to find permutation in shader bin");
+        }
+
+        nvrhi::ShaderDesc shader_description;
+        {
+            shader_description.shaderType = type;
+
+            shader_description.entryName    = entry;
+            shader_description.debugName    = file.filename().string();
+        }
+        shader = _device->createShader(shader_description, permutation_bytes, permutation_size);
     }
 
-    if (_cache.contains(absolute_path)) {
-        return _cache.at(absolute_path);
-    }
-
-    const std::vector<char> shader_bytes = system::read_file_as_bytes(absolute_path);
-
-    if (shader_bytes.empty()) {
-        return std::unexpected("Failed to read shader file from disk");
-    }
-
-    nvrhi::ShaderDesc shader_description;
-    {
-        shader_description.shaderType = type;
-
-        shader_description.entryName    = "main";
-        shader_description.debugName    = path.filename().string();
-    }
-
-    return _cache[absolute_path] = _device->createShader(shader_description, shader_bytes.data(), shader_bytes.size());
+    return shader;
 }
 
 void ShaderFactory::clear_cache() {
-    _cache.clear();
+    _shader.clear();
 }
+
+std::filesystem::path ShaderFactory::full_shader_path(
+    const std::filesystem::path& path,
+    const std::string& entry
+) const {
+
+    // Append relative to shader folder
+    std::filesystem::path full_path = _shader_folder / path;
+
+    // Append entry name to file path
+    if (!entry.empty() && entry != "main") {
+        full_path += "_" + entry;
+    }
+
+    return full_path.replace_extension(".bin");
+}
+

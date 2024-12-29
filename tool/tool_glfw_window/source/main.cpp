@@ -24,9 +24,6 @@ const std::filesystem::path EXE_PATH = system::get_executable_path().value().par
 std::unique_ptr<render::Render> RENDER = nullptr;
 std::shared_ptr<logger::Logger> LOGGER = nullptr;
 
-std::unique_ptr<render::ShaderFactory> SHADER_FACTORY   = nullptr;
-std::unique_ptr<render::TextureFactory> TEXTURE_FACTORY = nullptr;
-
 namespace callback {
 void window_size_callback(
     [[maybe_unused]] GLFWwindow* window,
@@ -146,12 +143,16 @@ namespace init {
 
 class ExamplePass final : public render::RenderPass {
 public:
-    explicit ExamplePass(const nvrhi::DeviceHandle& device)
+    ExamplePass(
+        const nvrhi::DeviceHandle& device,
+        const std::unique_ptr<render::ShaderFactory>& shader_factory,
+        const std::unique_ptr<render::TextureFactory>& texture_factory
+    )
         : RenderPass(device)
         , _geometry_2d(std::make_unique<render::Geometry_2D>(
             _device,
-            SHADER_FACTORY,
-            TEXTURE_FACTORY
+            shader_factory,
+            texture_factory
         )) {
 
     }
@@ -256,11 +257,21 @@ int main(
 
     RENDER = std::make_unique<render::Render>(LOGGER, settings.value(), render::RenderAPI::Vulkan);
 
-    SHADER_FACTORY  = std::make_unique<render::ShaderFactory>(RENDER->backend()->device_handle(), EXE_PATH / "shaders");
-    TEXTURE_FACTORY = std::make_unique<render::TextureFactory>(RENDER->backend()->device_handle(), EXE_PATH / "textures");
+    std::unique_ptr<render::ShaderFactory> SHADER_FACTORY   = nullptr;
+    std::unique_ptr<render::TextureFactory> TEXTURE_FACTORY = nullptr;
 
-    const auto triangle_pass    = std::make_unique<render::BasicTriangle>(RENDER->backend()->device_handle());
-    const auto example_pass     = std::make_unique<ExamplePass>(RENDER->backend()->device_handle());
+    SHADER_FACTORY  = std::make_unique<render::ShaderFactory>(
+        RENDER->backend()->device_handle(),
+        EXE_PATH / "shaders" / shader_type(RENDER->backend()->api())
+    );
+
+    TEXTURE_FACTORY = std::make_unique<render::TextureFactory>(
+        RENDER->backend()->device_handle(),
+        EXE_PATH / "textures"
+    );
+
+    const auto triangle_pass    = std::make_unique<render::BasicTriangle>(RENDER->backend()->device_handle(), SHADER_FACTORY);
+    const auto example_pass     = std::make_unique<ExamplePass>(RENDER->backend()->device_handle(), SHADER_FACTORY, TEXTURE_FACTORY);
 
     RENDER->emplace_render_pass_back(triangle_pass.get());
     RENDER->emplace_render_pass_back(example_pass.get());
