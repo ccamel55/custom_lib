@@ -42,25 +42,19 @@ public:
     void remove_texture(const geometry::Texture_Id& id);
 
 public:
-    void triangle(const point2Df& pos, const size_t size, const std::array<uint8_t, 4> color = { 255, 255, 255, 255 }) {
+    //! Draw a texture in full
+    //! \param pos position in world space
+    //! \param size size in world unit length
+    //! \param texture texture to draw
+    //! \param alpha opacity of texture
+    void d_texture(const point2Df& pos, const point2Df& size, const geometry::Texture_Id& texture, uint8_t alpha = 255);
 
-        const auto centre_pos = pos;
-
-        _draw.prepare_draw(_texture_default, geometry::Pipeline_Id::Geometry_Texture);
-
-        size_t first_vertex_index;
-        std::span<geometry::vertex_t> vertices = _draw.emplace_vertices(first_vertex_index, 3);
-
-        vertices[0] = geometry::vertex_t(centre_pos.x, centre_pos.y - size / 2, 0.0, 0.5, 0.0, color[0], color[1], color[2], color[3]);
-        vertices[1] = geometry::vertex_t(centre_pos.x + size / 2, centre_pos.y + size / 2, 0.0, 1.0, 1.0, color[0], color[1], color[2], color[3]);
-        vertices[2] = geometry::vertex_t(centre_pos.x - size / 2, centre_pos.y + size / 2, 0.0, 0.0, 1.0, color[0], color[1], color[2], color[3]);
-
-        std::span<geometry::index_t> indices = _draw.emplace_indices(3);
-
-        indices[0] = first_vertex_index + 0;
-        indices[1] = first_vertex_index + 1;
-        indices[2] = first_vertex_index + 2;
-    }
+    //! Draw line
+    //! \param pos_1 starting point in world space
+    //! \param pos_2 end point in world space
+    //! \param color color of line
+    //! \param thickness thickness of line
+    void d_line(const point2Df& pos_1, const point2Df& pos_2, const color& color, float thickness = 1.0);
 
 private:
     nvrhi::DeviceHandle _device;

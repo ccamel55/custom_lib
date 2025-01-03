@@ -199,7 +199,7 @@ void Geometry_2D::draw_geometry(const nvrhi::CommandListHandle& command_list, nv
             {
                 binding_set_desc.bindings = {
                     nvrhi::BindingSetItem::ConstantBuffer(0, _constant_buffer.buffer(), nvrhi::BufferRange(0, sizeof(constant_buffer_t))),
-                    nvrhi::BindingSetItem::Texture_SRV(0, _texture_default->Get()),
+                    nvrhi::BindingSetItem::Texture_SRV(0, batch.texture->Get()),
                     nvrhi::BindingSetItem::Sampler(0, _sampler)
                 };
             }
@@ -276,3 +276,51 @@ void Geometry_2D::remove_texture(const geometry::Texture_Id& id) {
 //
 // ------------------------------------------------------------------------------------------------------------------------
 //
+
+void Geometry_2D::d_texture(const point2Df& pos, const point2Df& size, const geometry::Texture_Id& texture, const uint8_t alpha) {
+
+    _draw.prepare_draw(texture, geometry::Pipeline_Id::Geometry_Texture);
+
+    size_t first_vertex_index;
+    std::span<geometry::vertex_t> vertices = _draw.emplace_vertices(first_vertex_index, 4);
+
+    vertices[0] = geometry::vertex_t(pos.x, pos.y, 0.f, 0.f, 0.f, 255, 255, 255, alpha);
+    vertices[1] = geometry::vertex_t(pos.x + size.x, pos.y, 0.f, 1.f, 0.f, 255, 255, 255, alpha);
+    vertices[2] = geometry::vertex_t(pos.x + size.x, pos.y + size.y, 0.f, 1.f, 1.f, 255, 255, 255, alpha);
+    vertices[3] = geometry::vertex_t(pos.x, pos.y + size.y, 0.f, 0.f, 1.f, 255, 255, 255, alpha);
+
+    std::span<geometry::index_t> indices = _draw.emplace_indices(6);
+
+    indices[0] = first_vertex_index + 0;
+    indices[1] = first_vertex_index + 1;
+    indices[2] = first_vertex_index + 2;
+
+    indices[3] = first_vertex_index + 0;
+    indices[4] = first_vertex_index + 2;
+    indices[5] = first_vertex_index + 3;
+}
+
+void Geometry_2D::d_line(const point2Df& pos_1, const point2Df& pos_2, const color& color, const float thickness) {
+
+    const auto dir = glm::normalize(pos_2 - pos_1) * (thickness * 0.5f);
+
+    _draw.prepare_draw(_texture_default, geometry::Pipeline_Id::Geometry_Texture);
+
+    size_t first_vertex_index;
+    std::span<geometry::vertex_t> vertices = _draw.emplace_vertices(first_vertex_index, 4);
+
+    vertices[0] = geometry::vertex_t(pos_1.x + dir.y, pos_1.y - dir.x, 0.f, 0.f, 0.f, color.r, color.g, color.b, color.a);
+    vertices[1] = geometry::vertex_t(pos_2.x + dir.y, pos_2.y - dir.x, 0.f, 0.f, 0.f, color.r, color.g, color.b, color.a);
+    vertices[2] = geometry::vertex_t(pos_2.x - dir.y, pos_2.y + dir.x, 0.f, 0.f, 0.f, color.r, color.g, color.b, color.a);
+    vertices[3] = geometry::vertex_t(pos_1.x - dir.y, pos_1.y + dir.x, 0.f, 0.f, 0.f, color.r, color.g, color.b, color.a);
+
+    std::span<geometry::index_t> indices = _draw.emplace_indices(6);
+
+    indices[0] = first_vertex_index + 0;
+    indices[1] = first_vertex_index + 1;
+    indices[2] = first_vertex_index + 2;
+
+    indices[3] = first_vertex_index + 0;
+    indices[4] = first_vertex_index + 2;
+    indices[5] = first_vertex_index + 3;
+}

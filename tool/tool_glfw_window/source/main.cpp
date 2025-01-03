@@ -179,12 +179,13 @@ public:
         , _frame_buffer(device) {
 
         _command_list = _device->createCommandList();
+
+        _cat_image = _geometry_2d.add_texture("cat.jpg").value();
     }
 
     void update_frame(const render::FrameInterval& interval) override {
-        _geometry_2d.triangle({225, 200}, 200);
-        _geometry_2d.triangle({200, 200}, 100, { 0, 255, 255, 100 });
-        _geometry_2d.triangle({250, 200}, 100, { 255, 0, 255, 100});
+        _geometry_2d.d_texture({200, 200}, {200, 200}, _cat_image);
+        _geometry_2d.d_line({200, 200}, {400, 400}, { 0, 255, 255, 100 }, 10.f);
     }
 
     void render(nvrhi::IFramebuffer* frame_buffer) override {
@@ -234,6 +235,8 @@ private:
     FrameBuffer _frame_buffer;
 
     nvrhi::CommandListHandle _command_list;
+
+    render::geometry::Texture_Id _cat_image;
 
 };
 }

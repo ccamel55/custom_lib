@@ -7,7 +7,7 @@ namespace lib::render::geometry {
 struct draw_command_t {
 
     draw_command_t(
-        const Texture_Id texture,
+        const Texture_Id& texture,
         const Pipeline_Id pipeline,
         const size_t offset = 0
     )
@@ -18,7 +18,7 @@ struct draw_command_t {
 
     }
 
-    [[nodiscard]] bool compatible(const Texture_Id o_texture, const Pipeline_Id o_pipeline) const {
+    [[nodiscard]] bool compatible(const Texture_Id& o_texture, const Pipeline_Id o_pipeline) const {
         return texture == o_texture
             && pipeline == o_pipeline;
     }
@@ -44,7 +44,7 @@ struct draw_list_t {
     //! Called before any drawing occurs. This will create a new draw command if needed
     //! \param texture texture ID that will be drawed
     //! \param pipeline pipeline ID that will be used to draw
-    void prepare_draw(const Texture_Id texture, const Pipeline_Id pipeline) {
+    void prepare_draw(const Texture_Id& texture, const Pipeline_Id pipeline) {
         if (draw_commands.empty()) {
             draw_commands.emplace_back(texture, pipeline);
         }
