@@ -37,28 +37,9 @@ std::vector<char> lib::system::read_file_as_bytes(const std::filesystem::path& p
     std::ifstream file_stream;
     file_stream.open(path, std::ios::binary);
 
-    if (file_stream.fail()) {
+    if (file_stream.fail() || !file_stream.is_open()) {
         return {};
     }
 
-    std::vector<char> result;
-
-    constexpr size_t CHUNK_SIZE = 1024;
-    std::array<char, CHUNK_SIZE> chunk = {};
-
-    while (true) {
-        const size_t read_size = file_stream.readsome(chunk.data(), CHUNK_SIZE);
-
-        if (read_size <= 0) {
-            break;
-        }
-
-        result.insert(
-            result.end(),
-            chunk.begin(),
-            chunk.begin() + read_size
-        );
-    }
-
-    return result;
+    return { std::istreambuf_iterator(file_stream), {} };
 }
