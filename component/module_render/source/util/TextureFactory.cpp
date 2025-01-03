@@ -84,7 +84,7 @@ std::expected<nvrhi::TextureHandle, std::string> TextureFactory::create_texture(
 
     const int required_channels = stb_color_type(color);
 
-    assert(bytes.size() == size.x * size.y * required_channels);
+    assert(bytes.size() == static_cast<size_t>(size.x * size.y * required_channels));
 
     // Create render API texture
     nvrhi::TextureDesc desc;

@@ -61,6 +61,7 @@ TextureBlit::TextureBlit(
 
     layout_desc.visibility = nvrhi::ShaderType::All;
     layout_desc.bindings = {
+        nvrhi::BindingLayoutItem::PushConstants(0, sizeof(blit_constants_t)),
         nvrhi::BindingLayoutItem::Texture_SRV(0),
         nvrhi::BindingLayoutItem::Sampler(0)
     };
@@ -130,6 +131,7 @@ void TextureBlit::blit(
         const nvrhi::TextureSubresourceSet source_sub_resource(source_mip_level, 1, source_array_slice, 1);
 
         binding_set_desc.bindings = {
+            nvrhi::BindingSetItem::PushConstants(0, sizeof(blit_constants_t)),
             nvrhi::BindingSetItem::Texture_SRV(0, source_texture, nvrhi::Format::UNKNOWN, source_sub_resource, source_dimension),
             nvrhi::BindingSetItem::Sampler(0, _linear_sampler)
         };
@@ -155,6 +157,16 @@ void TextureBlit::blit(
         state.viewport.addViewportAndScissorRect(viewport);
     }
     command_list->setGraphicsState(state);
+
+    blit_constants_t blit_constants;
+    {
+        blit_constants.s_origin= float2(0.0, 0.0);
+        blit_constants.s_size   = float2(1.0, 1.0);
+
+        blit_constants.d_origin = float2(0.0, 0.0);
+        blit_constants.d_size   = float2(1.0, 1.0);
+    }
+    command_list->setPushConstants(&blit_constants, sizeof(blit_constants_t));
 
     nvrhi::DrawArguments args;
     {

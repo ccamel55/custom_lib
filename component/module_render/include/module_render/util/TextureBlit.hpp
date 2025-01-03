@@ -1,7 +1,11 @@
 #pragma once
 
 #include <dep_nvrhi/nvrhi.hpp>
+
+#include <module_render/types/hlsl_alias.hpp>
 #include <module_render/util/ShaderFactory.hpp>
+
+#include <module_render/shaders/types/blit_cb.h>
 
 #include <unordered_map>
 
