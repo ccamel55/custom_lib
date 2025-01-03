@@ -1,4 +1,7 @@
-#include <module_render/render/geometry/Geometry_2D.hpp>
+#include <module_render/geometry/Geometry_2D.hpp>
+#include <module_render/types/hlsl_alias.hpp>
+
+#include <module_render/shaders/types/geometry_cb.h>
 
 using namespace lib::render;
 
@@ -7,7 +10,12 @@ using namespace lib::render;
 
 namespace {
 
-const std::vector<uint8_t> DEFAULT_TEXTURE_WHITE = {
+static_assert(
+    sizeof(constant_buffer_t) % nvrhi::c_ConstantBufferOffsetSizeAlignment == 0,
+    "sizeof(constant_buffer_t) must be 256 bytes"
+);
+
+constexpr uint8_t DEFAULT_TEXTURE_WHITE[] = {
     0xFF, 0xFF, 0xFF, 0xFF
 };
 
@@ -15,17 +23,19 @@ const std::vector<uint8_t> DEFAULT_TEXTURE_WHITE = {
 
 Geometry_2D::Geometry_2D(
     const nvrhi::DeviceHandle& device,
-    const std::unique_ptr<ShaderFactory>& shader_factory,
-    const std::unique_ptr<TextureFactory>& texture_factory
+    const std::shared_ptr<ShaderFactory>& shader_factory,
+    const std::shared_ptr<TextureFactory>& texture_factory
 )
     : _device(device)
     , _pipeline(_device)
-    , _draw(detail::MAX_VERTICES, detail::MAX_INDICES) {
+    , _draw(geometry::MAX_VERTICES, geometry::MAX_INDICES)
+    , _shader_factory(shader_factory)
+    , _texture_factory(texture_factory) {
 
     // Create buffers
     nvrhi::BufferDesc desc;
     {
-        desc.byteSize           = _draw.max_vertices() * sizeof(detail::vertex_t);
+        desc.byteSize           = _draw.max_vertices() * sizeof(geometry::vertex_t);
         desc.debugName          = "VertexBuffer";
         desc.isVertexBuffer     = true;
         desc.isIndexBuffer      = false;
@@ -36,7 +46,7 @@ Geometry_2D::Geometry_2D(
     }
     _vertex_buffer = buffer_object_t::create(_device, desc);
     {
-        desc.byteSize           = _draw.max_indices() * sizeof(detail::index_t);
+        desc.byteSize           = _draw.max_indices() * sizeof(geometry::index_t);
         desc.debugName          = "IndexBuffer";
         desc.isVertexBuffer     = false;
         desc.isIndexBuffer      = true;
@@ -73,19 +83,11 @@ Geometry_2D::Geometry_2D(
         _pixel_shader = std::move(pixel_shader.value());
 
         _vertex_layout = device->createInputLayout(
-            detail::vertex_t::attributes().data(),
-            detail::vertex_t::attributes().size(),
+            geometry::vertex_t::attributes().data(),
+            geometry::vertex_t::attributes().size(),
             _vertex_shader
         );
     }
-
-    // Load texture
-    auto texture = texture_factory->create_texture(DEFAULT_TEXTURE_WHITE, { 1, 1 }, TextureColor::RGBA);
-    if (!texture.has_value()) {
-        throw std::runtime_error("Could not load texture from disk: " + texture.error());
-    }
-
-    _texture[TEXTURE_WHITE] = std::move(texture.value());
 
     // Texture sampler
     nvrhi::SamplerDesc sampler_desc;
@@ -105,6 +107,15 @@ Geometry_2D::Geometry_2D(
         };
     }
     _binding_layout = _device->createBindingLayout(binding_layout_desc);
+
+    // Load default texture
+    {
+        auto texture_default = add_texture(DEFAULT_TEXTURE_WHITE, { 1, 1 });
+        if (!texture_default.has_value()) {
+            throw std::runtime_error("Could not load texture from disk: " + texture_default.error());
+        }
+        _texture_default = texture_default.value();
+    }
 }
 
 void Geometry_2D::draw_geometry(const nvrhi::CommandListHandle& command_list, nvrhi::IFramebuffer* frame_buffer) {
@@ -115,7 +126,7 @@ void Geometry_2D::draw_geometry(const nvrhi::CommandListHandle& command_list, nv
         _update_pipeline = false;
 
         _pipeline.back_buffer_resized([&](auto& pipeline) {
-            pipeline[static_cast<size_t>(Pipeline_Id::Geometry_Texture)] = _device->createGraphicsPipeline(
+            pipeline[static_cast<size_t>(geometry::Pipeline_Id::Geometry_Texture)] = _device->createGraphicsPipeline(
             nvrhi::GraphicsPipelineDesc()
                 .setVertexShader(_vertex_shader)
                 .setPixelShader(_pixel_shader)
@@ -178,8 +189,8 @@ void Geometry_2D::draw_geometry(const nvrhi::CommandListHandle& command_list, nv
 
     // Write draw list
     {
-        _vertex_buffer.write(command_list, _draw.backing_vertices.data(), _draw.num_vertices * sizeof(detail::vertex_t), 0);
-        _index_buffer.write(command_list, _draw.backing_indices.data(), _draw.num_indices * sizeof(detail::index_t), 0);
+        _vertex_buffer.write(command_list, _draw.backing_vertices.data(), _draw.num_vertices * sizeof(geometry::vertex_t), 0);
+        _index_buffer.write(command_list, _draw.backing_indices.data(), _draw.num_indices * sizeof(geometry::index_t), 0);
 
         for (const auto& batch: _draw.draw_commands) {
 
@@ -188,12 +199,12 @@ void Geometry_2D::draw_geometry(const nvrhi::CommandListHandle& command_list, nv
             {
                 binding_set_desc.bindings = {
                     nvrhi::BindingSetItem::ConstantBuffer(0, _constant_buffer.buffer(), nvrhi::BufferRange(0, sizeof(constant_buffer_t))),
-                    nvrhi::BindingSetItem::Texture_SRV(0, _texture[batch.texture]),
+                    nvrhi::BindingSetItem::Texture_SRV(0, _texture_default->Get()),
                     nvrhi::BindingSetItem::Sampler(0, _sampler)
                 };
             }
 
-            nvrhi::BindingSetHandle& binding_set = _binding_set[detail::binding_set_desc_key(binding_set_desc)];
+            nvrhi::BindingSetHandle& binding_set = _binding_set[binding_set_desc_key(binding_set_desc)];
             if (!binding_set) {
                 binding_set = _device->createBindingSet(binding_set_desc, _binding_layout);
             }
@@ -238,6 +249,30 @@ void Geometry_2D::back_buffer_resizing() {
     _update_pipeline        = true;
 }
 
-void Geometry_2D::back_buffer_resized(const point2Di& size) {
+//
+// ------------------------------------------------------------------------------------------------------------------------
+//
 
+std::expected<geometry::Texture_Id, std::string> Geometry_2D::add_texture(const std::filesystem::path& path) {
+    auto texture = _texture_factory->create_texture(path, TextureColor::RGBA);
+    if (!texture.has_value()) {
+        return std::unexpected(texture.error());
+    }
+    return _texture.emplace(_texture.end(), std::move(texture.value()));
 }
+
+std::expected<geometry::Texture_Id, std::string> Geometry_2D::add_texture(const uint8_t* data_ptr, const point2Di& size) {
+    auto texture = _texture_factory->create_texture(data_ptr, size, TextureColor::RGBA);
+    if (!texture.has_value()) {
+        return std::unexpected(texture.error());
+    }
+    return _texture.emplace(_texture.end(), std::move(texture.value()));
+}
+
+void Geometry_2D::remove_texture(const geometry::Texture_Id& id) {
+    _texture.erase(id);
+}
+
+//
+// ------------------------------------------------------------------------------------------------------------------------
+//

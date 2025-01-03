@@ -8,10 +8,11 @@
 
 #include <module_render/Render.hpp>
 #include <module_render/backend/Device_Vulkan.hpp>
+#include <module_render/geometry/Geometry_2D.hpp>
 #include <module_render/pass/BasicTriangle.hpp>
-#include <module_render/render/geometry/Geometry_2D.hpp>
 #include <module_render/util/FrameBuffer.hpp>
 #include <module_render/util/Image.hpp>
+#include <module_render/util/TextureBlit.hpp>
 
 #include <module_system/filesystem.hpp>
 
@@ -164,8 +165,8 @@ class ExamplePass final : public render::RenderPass {
 public:
     ExamplePass(
         const nvrhi::DeviceHandle& device,
-        const std::unique_ptr<render::ShaderFactory>& shader_factory,
-        const std::unique_ptr<render::TextureFactory>& texture_factory
+        const std::shared_ptr<render::ShaderFactory>& shader_factory,
+        const std::shared_ptr<render::TextureFactory>& texture_factory
     )
         : RenderPass(device)
         , _geometry_2d(
@@ -205,8 +206,6 @@ public:
     }
 
     void back_buffer_resized(const point2Di& size) override {
-        _geometry_2d.back_buffer_resized(size);
-
         _image.back_buffer_resized([&](auto& image) {
             image[static_cast<size_t>(Image_Id::Geometry_2d_ColorTarget)] = _device->createTexture(
                 nvrhi::TextureDesc()
@@ -316,15 +315,15 @@ int main(
 
     RENDER = std::make_unique<render::Render>(LOGGER, settings.value(), render::RenderAPI::Vulkan);
 
-    std::unique_ptr<render::ShaderFactory> SHADER_FACTORY   = nullptr;
-    std::unique_ptr<render::TextureFactory> TEXTURE_FACTORY = nullptr;
+    std::shared_ptr<render::ShaderFactory> SHADER_FACTORY   = nullptr;
+    std::shared_ptr<render::TextureFactory> TEXTURE_FACTORY = nullptr;
 
-    SHADER_FACTORY  = std::make_unique<render::ShaderFactory>(
+    SHADER_FACTORY  = std::make_shared<render::ShaderFactory>(
         RENDER->backend()->device_handle(),
         EXE_PATH / "shaders" / shader_type(RENDER->backend()->api())
     );
 
-    TEXTURE_FACTORY = std::make_unique<render::TextureFactory>(
+    TEXTURE_FACTORY = std::make_shared<render::TextureFactory>(
         RENDER->backend()->device_handle(),
         EXE_PATH / "textures"
     );

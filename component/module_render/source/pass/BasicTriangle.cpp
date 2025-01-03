@@ -3,7 +3,7 @@
 
 using namespace lib::render;
 
-BasicTriangle::BasicTriangle(const nvrhi::DeviceHandle& device, const std::unique_ptr<ShaderFactory>& shader_factory)
+BasicTriangle::BasicTriangle(const nvrhi::DeviceHandle& device, const std::shared_ptr<ShaderFactory>& shader_factory)
     : RenderPass(device) {
 
     m_VertexShader  = shader_factory->create_shader("main", nvrhi::ShaderType::Vertex, "main_vs").value();

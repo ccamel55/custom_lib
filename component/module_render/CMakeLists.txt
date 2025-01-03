@@ -2,7 +2,6 @@ camel_library(
 	DEPENDENCIES
 		dep_nvrhi
 		module_core
-		module_hashing
 		module_logger
 		module_system
 )

@@ -23,7 +23,7 @@ public:
     ) const;
 
     [[nodiscard]] std::expected<nvrhi::TextureHandle, std::string> create_texture(
-        const std::vector<uint8_t>& bytes,
+        const uint8_t* bytes,
         const point2Di& size,
         TextureColor color
     ) const;

@@ -7,7 +7,7 @@ namespace lib::render {
 
 class BasicTriangle final : public RenderPass {
 public:
-    BasicTriangle(const nvrhi::DeviceHandle& device, const std::unique_ptr<ShaderFactory>& shader_factory);
+    BasicTriangle(const nvrhi::DeviceHandle& device, const std::shared_ptr<ShaderFactory>& shader_factory);
 
     void update_frame(const FrameInterval& interval) override;
     void render(nvrhi::IFramebuffer* frame_buffer) override;

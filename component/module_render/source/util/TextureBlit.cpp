@@ -1,4 +1,7 @@
+#include <module_render/types/hlsl_alias.hpp>
 #include <module_render/util/TextureBlit.hpp>
+
+#include <module_render/shaders/types/blit_cb.h>
 
 using namespace lib::render;
 
@@ -21,7 +24,7 @@ namespace {
 
 TextureBlit::TextureBlit(
     nvrhi::IDevice* device,
-    const std::unique_ptr<ShaderFactory>& shader_factory
+    const std::shared_ptr<ShaderFactory>& shader_factory
 )
     : _device(device) {
 
@@ -92,7 +95,7 @@ void TextureBlit::blit(
     const nvrhi::FramebufferInfoEx& frame_buffer_info = dest_frame_buffer->getFramebufferInfo();
     const bool is_array = is_texture_array(source_texture_desc.dimension);
 
-    nvrhi::GraphicsPipelineHandle& pipeline = _pipeline[detail::pipeline_desc_key(
+    nvrhi::GraphicsPipelineHandle& pipeline = _pipeline[pipeline_desc_key(
         frame_buffer_info.width,
         frame_buffer_info.height,
         frame_buffer_info,
@@ -137,7 +140,7 @@ void TextureBlit::blit(
         };
     }
 
-    nvrhi::BindingSetHandle& binding_set = _binding_set[detail::binding_set_desc_key(binding_set_desc)];
+    nvrhi::BindingSetHandle& binding_set = _binding_set[binding_set_desc_key(binding_set_desc)];
     if (!binding_set) {
         binding_set = _device->createBindingSet(binding_set_desc, _blit_layout);
     }

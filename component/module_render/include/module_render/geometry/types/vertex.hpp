@@ -9,7 +9,7 @@
 
 #include <vector>
 
-namespace lib::render::detail {
+namespace lib::render::geometry {
 
 constexpr size_t MAX_VERTICES   = 1 << 16;              // 64k
 constexpr size_t MAX_INDICES    = MAX_VERTICES * 2;     // 64k * 2

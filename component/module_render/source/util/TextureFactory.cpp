@@ -73,18 +73,16 @@ std::expected<nvrhi::TextureHandle, std::string> TextureFactory::create_texture(
     const std::vector image_data_vec(image_data, image_data + width * height * required_channels);
     stbi_image_free(image_data);
 
-    return create_texture(image_data_vec, { width, height }, color);
+    return create_texture(image_data_vec.data(), { width, height }, color);
 }
 
 std::expected<nvrhi::TextureHandle, std::string> TextureFactory::create_texture(
-    const std::vector<uint8_t>& bytes,
+    const uint8_t* bytes,
     const point2Di& size,
     const TextureColor color
 ) const {
 
     const int required_channels = stb_color_type(color);
-
-    assert(bytes.size() == static_cast<size_t>(size.x * size.y * required_channels));
 
     // Create render API texture
     nvrhi::TextureDesc desc;
@@ -104,7 +102,7 @@ std::expected<nvrhi::TextureHandle, std::string> TextureFactory::create_texture(
     command_list->open();
     {
         command_list->beginTrackingTextureState(texture, nvrhi::AllSubresources, nvrhi::ResourceStates::Common);
-        command_list->writeTexture(texture, 0, 0, bytes.data(), size.x * required_channels);
+        command_list->writeTexture(texture, 0, 0, bytes, size.x * required_channels);
         command_list->setPermanentTextureState(texture, nvrhi::ResourceStates::ShaderResource);
         command_list->commitBarriers();
     }
