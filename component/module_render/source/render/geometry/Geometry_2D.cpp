@@ -18,7 +18,7 @@ Geometry_2D::Geometry_2D(
     const std::unique_ptr<ShaderFactory>& shader_factory,
     const std::unique_ptr<TextureFactory>& texture_factory
 )
-    : Geometry_Common(device)
+    : _device(device)
     , _blit(device, shader_factory)
     , _image(device)
     , _frame_buffer(device)
@@ -50,7 +50,7 @@ Geometry_2D::Geometry_2D(
     }
     _index_buffer = buffer_object_t::create(_device, desc);
     {
-        desc.byteSize           = sizeof(detail::constant_buffer_t);
+        desc.byteSize           = sizeof(constant_buffer_t);
         desc.debugName          = "ConstantBuffer";
         desc.isVertexBuffer     = false;
         desc.isIndexBuffer      = false;
@@ -63,13 +63,13 @@ Geometry_2D::Geometry_2D(
 
     // Create shaders
     {
-        auto vertex_shader = shader_factory->create_shader("geometry_2d_vs", nvrhi::ShaderType::Vertex);
+        auto vertex_shader = shader_factory->create_shader("geometry", nvrhi::ShaderType::Vertex, "main_vs");
         if (!vertex_shader.has_value()) {
             throw std::runtime_error("Could not load vertex shaders from disk: " + vertex_shader.error());
         }
         _vertex_shader = std::move(vertex_shader.value());
 
-        auto pixel_shader = shader_factory->create_shader("geometry_2d_ps", nvrhi::ShaderType::Pixel);
+        auto pixel_shader = shader_factory->create_shader("geometry", nvrhi::ShaderType::Pixel, "main_ps");
         if (!pixel_shader.has_value()) {
             throw std::runtime_error("Could not load pixel shaders from disk: " + pixel_shader.error());
         }
@@ -121,11 +121,11 @@ void Geometry_2D::draw_geometry(nvrhi::IFramebuffer* frame_buffer) {
     {
         // Write constant buffer
         {
-            detail::constant_buffer_t constants;
+            constant_buffer_t constants = {};
             {
                 // 2D doesn't need any model or view matrix changes
-                constants.model_matrix      = matrix4x4f(1.0);
-                constants.view_matrix       = matrix4x4f(1.0);
+                constants.model_matrix      = float4x4(1.0);
+                constants.view_matrix       = float4x4(1.0);
                 constants.projection_matrix = glm::ortho(
                    0.0, static_cast<double>(frame_buffer_info.width),
                    static_cast<double>(frame_buffer_info.height), 0.0
@@ -136,7 +136,7 @@ void Geometry_2D::draw_geometry(nvrhi::IFramebuffer* frame_buffer) {
                     * constants.view_matrix
                     * constants.model_matrix;
             }
-            _constant_buffer.write(_command_list, &constants, sizeof(detail::constant_buffer_t));
+            _constant_buffer.write(_command_list, &constants, sizeof(constant_buffer_t));
         }
 
         // Write draw list
@@ -150,7 +150,7 @@ void Geometry_2D::draw_geometry(nvrhi::IFramebuffer* frame_buffer) {
                 nvrhi::BindingSetDesc binding_set_desc;
                 {
                     binding_set_desc.bindings = {
-                        nvrhi::BindingSetItem::ConstantBuffer(0, _constant_buffer.buffer(), nvrhi::BufferRange(0, sizeof(detail::constant_buffer_t))),
+                        nvrhi::BindingSetItem::ConstantBuffer(0, _constant_buffer.buffer(), nvrhi::BufferRange(0, sizeof(constant_buffer_t))),
                         nvrhi::BindingSetItem::Texture_SRV(0, _texture[batch.texture]),
                         nvrhi::BindingSetItem::Sampler(0, _sampler)
                     };
@@ -229,24 +229,12 @@ void Geometry_2D::back_buffer_resized(const point2Di& size) {
                 .setKeepInitialState(true)
                 .setInitialState(nvrhi::ResourceStates::RenderTarget)
         );
-
-        image[static_cast<size_t>(Image_Id::Geometry_DepthTarget)] = _device->createTexture(
-            nvrhi::TextureDesc()
-                .setDebugName("DepthTarget")
-                .setFormat(nvrhi::Format::D32)
-                .setWidth(std::max(size.x, 1))
-                .setHeight(std::max(size.y, 1))
-                .setIsRenderTarget(true)
-                .setKeepInitialState(true)
-                .setInitialState(nvrhi::ResourceStates::DepthWrite)
-        );
     });
 
     _frame_buffer.back_buffer_resized([&](auto& frame_buffer) {
         frame_buffer[static_cast<size_t>(FrameBuffer_Id::Geometry)] = _device->createFramebuffer(
             nvrhi::FramebufferDesc()
                 .addColorAttachment(_image[Image_Id::Geometry_ColorTarget])
-                .setDepthAttachment(_image[Image_Id::Geometry_DepthTarget])
         );
     });
 

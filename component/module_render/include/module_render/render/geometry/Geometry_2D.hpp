@@ -1,9 +1,16 @@
 #pragma once
 
+#include <module_core/NoCopy.hpp>
+
 #include <module_hashing/fnv1a_32.hpp>
-#include <module_render/render/geometry/Geometry_Common.hpp>
-#include <module_render/render/geometry/types/constant_buffer.hpp>
+
+// Must be before all types, this pre-declares some hlsl types
+#include <module_render/types/hlsl_alias.hpp>
+
+#include <module_render/backend/Device_Common.hpp>
 #include <module_render/render/geometry/types/vertex.hpp>
+
+#include <module_render/shaders/types/geometry_cb.h>
 
 #include <module_render/types/buffer_object.hpp>
 
@@ -13,6 +20,11 @@
 #include <module_render/util/ShaderFactory.hpp>
 #include <module_render/util/TextureBlit.hpp>
 #include <module_render/util/TextureFactory.hpp>
+
+static_assert(
+    sizeof(constant_buffer_t) % nvrhi::c_ConstantBufferOffsetSizeAlignment == 0,
+    "sizeof(constant_buffer_t) must be 256 bytes"
+);
 
 namespace lib::render {
 enum class FrameBuffer_Id: uint32_t {
@@ -24,7 +36,6 @@ enum class FrameBuffer_Id: uint32_t {
 
 enum class Image_Id: uint32_t {
     Geometry_ColorTarget,
-    Geometry_DepthTarget,
 
     // Must always be last
     Num_Image_Id
@@ -149,7 +160,7 @@ struct draw_list_t {
     std::vector<detail::index_t> backing_indices;
 };
 
-class Geometry_2D final : Geometry_Common {
+class Geometry_2D final : public NoCopy {
 public:
     explicit Geometry_2D(
         const nvrhi::DeviceHandle& device,
@@ -157,13 +168,12 @@ public:
         const std::unique_ptr<TextureFactory>& texture_factory
     );
 
-    void draw_geometry(nvrhi::IFramebuffer* frame_buffer) override;
+    void draw_geometry(nvrhi::IFramebuffer* frame_buffer);
 
-    void back_buffer_resizing() override;
-    void back_buffer_resized(const point2Di& size) override;
+    void back_buffer_resizing();
+    void back_buffer_resized(const point2Di& size);
 
 public:
-    // BAD!! FUCK OFF!
     void triangle(const point2Df& pos, const size_t size, const std::array<uint8_t, 4> color = { 255, 255, 255, 255 }) {
 
         const auto centre_pos = pos;
@@ -185,6 +195,8 @@ public:
     }
 
 private:
+    nvrhi::DeviceHandle _device;
+
     nvrhi::CommandListHandle _command_list;
     nvrhi::CommandListHandle _command_list_blit;
 
@@ -205,9 +217,8 @@ private:
     nvrhi::InputLayoutHandle _vertex_layout;
 
     draw_list_t _draw;
-
-    // Image
     nvrhi::SamplerHandle _sampler; // TODO: cache sampler
+
     std::unordered_map<Texture_Id, nvrhi::TextureHandle> _texture;
 
 };

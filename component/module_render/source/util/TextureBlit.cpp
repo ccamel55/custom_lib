@@ -25,7 +25,7 @@ TextureBlit::TextureBlit(
 )
     : _device(device) {
 
-    auto rect_shader = shader_factory->create_shader("blit_vs", nvrhi::ShaderType::Vertex);
+    auto rect_shader = shader_factory->create_shader("blit", nvrhi::ShaderType::Vertex, "main_vs");
     if (!rect_shader.has_value()) {
         throw std::runtime_error("Could not load rect shader: " + rect_shader.error());
     }
@@ -34,14 +34,14 @@ TextureBlit::TextureBlit(
         { "TEXTURE_ARRAY", "0" }
     };
 
-    auto blit_shader = shader_factory->create_shader("blit_ps", nvrhi::ShaderType::Pixel);
+    auto blit_shader = shader_factory->create_shader("blit", nvrhi::ShaderType::Pixel, "main_ps", constants);
     if (!blit_shader.has_value()) {
         throw std::runtime_error("Could not load blit shader: " + blit_shader.error());
     }
 
     constants[0].value = "1";
 
-    auto blit_shader_array = shader_factory->create_shader("blit_ps", nvrhi::ShaderType::Pixel);
+    auto blit_shader_array = shader_factory->create_shader("blit", nvrhi::ShaderType::Pixel, "main_ps", constants);
     if (!blit_shader_array.has_value()) {
         throw std::runtime_error("Could not load blit array shader: " + blit_shader_array.error());
     }

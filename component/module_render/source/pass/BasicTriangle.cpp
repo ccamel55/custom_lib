@@ -6,8 +6,8 @@ using namespace lib::render;
 BasicTriangle::BasicTriangle(const nvrhi::DeviceHandle& device, const std::unique_ptr<ShaderFactory>& shader_factory)
     : RenderPass(device) {
 
-    m_VertexShader  = shader_factory->create_shader("main_vs", nvrhi::ShaderType::Vertex).value();
-    m_PixelShader   = shader_factory->create_shader("main_ps", nvrhi::ShaderType::Pixel).value();
+    m_VertexShader  = shader_factory->create_shader("main", nvrhi::ShaderType::Vertex, "main_vs").value();
+    m_PixelShader   = shader_factory->create_shader("main", nvrhi::ShaderType::Pixel, "main_ps").value();
 
     m_CommandList = _device->createCommandList();
 }
