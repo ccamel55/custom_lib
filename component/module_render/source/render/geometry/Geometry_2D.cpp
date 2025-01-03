@@ -5,6 +5,14 @@ using namespace lib::render;
 // GLM BASICS:
 // http://www.c-jump.com/bcc/common/Talk3/Math/GLM/GLM.html#W01_0040_identity_matrix
 
+namespace {
+
+const std::vector<uint8_t> DEFAULT_TEXTURE_WHITE = {
+    0xFF, 0xFF, 0xFF, 0xFF
+};
+
+}
+
 Geometry_2D::Geometry_2D(
     const nvrhi::DeviceHandle& device,
     const std::unique_ptr<ShaderFactory>& shader_factory,
@@ -75,12 +83,12 @@ Geometry_2D::Geometry_2D(
     }
 
     // Load texture
-    auto texture = texture_factory->create_texture("cat.jpg", TextureColor::RGBA);
+    auto texture = texture_factory->create_texture(DEFAULT_TEXTURE_WHITE, { 1, 1 }, TextureColor::RGBA);
     if (!texture.has_value()) {
         throw std::runtime_error("Could not load texture from disk: " + texture.error());
     }
 
-    _texture = std::move(texture.value());
+    _texture[TEXTURE_WHITE] = std::move(texture.value());
 
     // Texture sampler
     nvrhi::SamplerDesc sampler_desc;
@@ -143,7 +151,7 @@ void Geometry_2D::draw_geometry(nvrhi::IFramebuffer* frame_buffer) {
                 {
                     binding_set_desc.bindings = {
                         nvrhi::BindingSetItem::ConstantBuffer(0, _constant_buffer.buffer(), nvrhi::BufferRange(0, sizeof(detail::constant_buffer_t))),
-                        nvrhi::BindingSetItem::Texture_SRV(0, _texture),
+                        nvrhi::BindingSetItem::Texture_SRV(0, _texture[batch.texture]),
                         nvrhi::BindingSetItem::Sampler(0, _sampler)
                     };
                 }

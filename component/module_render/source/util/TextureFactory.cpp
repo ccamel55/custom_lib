@@ -3,6 +3,7 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <module_render/stb/stb_image.hpp>
+#include <utility>
 
 using namespace lib::render;
 
@@ -10,8 +11,8 @@ namespace {
 
     [[nodiscard]] int stb_color_type(const TextureColor color) {
         switch (color) {
-            // case TextureColor::GrayScale:
-            //     return STBI_grey_alpha;
+            case TextureColor::GrayScale:
+                return STBI_grey;
             case TextureColor::RGBA:
                 return STBI_rgb_alpha;
         }
@@ -20,6 +21,8 @@ namespace {
 
     [[nodiscard]] nvrhi::Format texture_format(const TextureColor color) {
         switch (color) {
+            case TextureColor::GrayScale:
+                return nvrhi::Format::R8_UNORM;
             case TextureColor::RGBA:
                 return nvrhi::Format::SRGBA8_UNORM;
         }
@@ -28,9 +31,9 @@ namespace {
 
 }
 
-TextureFactory::TextureFactory(nvrhi::IDevice* device, const std::filesystem::path& texture_folder)
+TextureFactory::TextureFactory(nvrhi::IDevice* device, std::filesystem::path  texture_folder)
     : _device(device)
-    , _texture_folder(texture_folder) {
+    , _texture_folder(std::move(texture_folder)) {
 
 }
 
@@ -67,13 +70,29 @@ std::expected<nvrhi::TextureHandle, std::string> TextureFactory::create_texture(
         return std::unexpected("Failed to load image from disk");
     }
 
+    const std::vector image_data_vec(image_data, image_data + width * height * required_channels);
+    stbi_image_free(image_data);
+
+    return create_texture(image_data_vec, { width, height }, color);
+}
+
+std::expected<nvrhi::TextureHandle, std::string> TextureFactory::create_texture(
+    const std::vector<uint8_t>& bytes,
+    const point2Di& size,
+    const TextureColor color
+) const {
+
+    const int required_channels = stb_color_type(color);
+
+    assert(bytes.size() == size.x * size.y * required_channels);
+
     // Create render API texture
     nvrhi::TextureDesc desc;
     {
-        desc.debugName          = path.filename().string();
+        // desc.debugName          = path.filename().string();
         desc.dimension          = nvrhi::TextureDimension::Texture2D;
-        desc.width              = width;
-        desc.height             = height;
+        desc.width              = size.x;
+        desc.height             = size.y;
         desc.format             = texture_format(color);
         desc.initialState       = nvrhi::ResourceStates::ShaderResource;
         desc.keepInitialState   = true;
@@ -85,14 +104,12 @@ std::expected<nvrhi::TextureHandle, std::string> TextureFactory::create_texture(
     command_list->open();
     {
         command_list->beginTrackingTextureState(texture, nvrhi::AllSubresources, nvrhi::ResourceStates::Common);
-        command_list->writeTexture(texture, 0, 0, image_data, width * required_channels);
+        command_list->writeTexture(texture, 0, 0, bytes.data(), size.x * required_channels);
         command_list->setPermanentTextureState(texture, nvrhi::ResourceStates::ShaderResource);
         command_list->commitBarriers();
     }
     command_list->close();
     _device->executeCommandList(command_list);
-
-    stbi_image_free(image_data);
 
     return texture;
 }

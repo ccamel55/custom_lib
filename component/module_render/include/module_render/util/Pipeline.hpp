@@ -2,6 +2,8 @@
 
 #include <dep_nvrhi/nvrhi.hpp>
 
+#include <functional>
+
 namespace lib::render {
 
 template <typename Pipeline_Id, size_t Num_Ids>

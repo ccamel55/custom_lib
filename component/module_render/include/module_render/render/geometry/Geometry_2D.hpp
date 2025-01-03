@@ -1,5 +1,6 @@
 #pragma once
 
+#include <module_hashing/fnv1a_32.hpp>
 #include <module_render/render/geometry/Geometry_Common.hpp>
 #include <module_render/render/geometry/types/constant_buffer.hpp>
 #include <module_render/render/geometry/types/vertex.hpp>
@@ -36,11 +37,13 @@ enum class Pipeline_Id: uint32_t {
     Num_Pipeline_Id
 };
 
-using Texture_Id = uint32_t;
+using Texture_Id = hashing::fnv1a_32_t;
 
 using Geometry_FrameBuffer  = FrameBuffer<FrameBuffer_Id, static_cast<size_t>(FrameBuffer_Id::Num_FrameBuffer_Id)>;
 using Geometry_Image        = Image<Image_Id, static_cast<size_t>(Image_Id::Num_Image_Id)>;
 using Geometry_Pipeline     = Pipeline<Pipeline_Id, static_cast<size_t>(Pipeline_Id::Num_Pipeline_Id)>;
+
+constexpr Texture_Id TEXTURE_WHITE = hashing::fnv1a_32("default");
 
 struct draw_command_t {
 
@@ -165,7 +168,7 @@ public:
 
         const auto centre_pos = pos;
 
-        _draw.prepare_draw(0, Pipeline_Id::Geometry_Texture);
+        _draw.prepare_draw(TEXTURE_WHITE, Pipeline_Id::Geometry_Texture);
 
         size_t first_vertex_index;
         std::span<detail::vertex_t> vertices = _draw.emplace_vertices(first_vertex_index, 3);
@@ -205,7 +208,7 @@ private:
 
     // Image
     nvrhi::SamplerHandle _sampler; // TODO: cache sampler
-    nvrhi::TextureHandle _texture;
+    std::unordered_map<Texture_Id, nvrhi::TextureHandle> _texture;
 
 };
 
