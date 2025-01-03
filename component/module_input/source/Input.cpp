@@ -2,7 +2,7 @@
 
 using namespace lib::input;
 
-void Input::add_input(bitflag type, key key, const std::variant<bool, lib::point2Di>& state) {
+void Input::add_input(const bitflag type, const key key, const std::variant<bool, point2Di>& state) {
     if (key == key::NONE) {
         return;
     }
@@ -11,7 +11,7 @@ void Input::add_input(bitflag type, key key, const std::variant<bool, lib::point
 
     switch (key) {
         case key::MOUSE_MOVE: {
-            const auto& cursor_position = std::get<lib::point2Di>(state);
+            const auto& cursor_position = std::get<point2Di>(state);
 
             _cursor_delta = cursor_position - _cursor_position;
             _cursor_position = cursor_position;
@@ -19,7 +19,7 @@ void Input::add_input(bitflag type, key key, const std::variant<bool, lib::point
             break;
         }
         case key::MOUSE_SCROLL: {
-            _scroll_delta = std::get<lib::point2Di>(state);
+            _scroll_delta = std::get<point2Di>(state);
             break;
         }
         default: {
@@ -38,12 +38,8 @@ void Input::add_input(bitflag type, key key, const std::variant<bool, lib::point
         }
     }
 
-    for (const auto& receiver : _callbacks) {
-        const auto& [callback_type, callback] = receiver;
-
-        if (type.has(callback_type)) {
-            callback(*this);
-        }
+    for (const auto& receiver : _passes) {
+        receiver->update_input(type, *this);
     }
 
     // reset some states
@@ -53,14 +49,18 @@ void Input::add_input(bitflag type, key key, const std::variant<bool, lib::point
     _key_state.at(key_int).remove(BUTTON_STATE_PRESSED | BUTTON_STATE_RELEASED);
 }
 
-void Input::register_callback(bitflag type, std::function<void(const InputObserver &)>&& callback) {
-    input_callback_t input_callback = {};
-    {
-        input_callback.type         = type;
-        input_callback.callback     = std::move(callback);
-    }
-    _callbacks.emplace_back(std::move(input_callback));
+void Input::emplace_pass(InputPass* pass) {
+    _passes.remove(pass);
+    _passes.push_back(pass);
 }
+
+void Input::erase_pass(InputPass* pass) {
+    _passes.remove(pass);
+}
+
+//
+// ----------------------------------------------------------------------------------------------------------------
+//
 
 lib::bitflag Input::internal_get_state(key key) const {
     return _key_state.at(static_cast<uint32_t>(key));

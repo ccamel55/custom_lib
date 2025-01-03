@@ -118,5 +118,17 @@ public:
     [[nodiscard]] const point2Di& scroll_delta() const {
         return static_cast<const Base*>(this)->internal_scroll_delta();
     }
+
+    //! Returns whether mouse cursor is in give rectangle
+    //! \param position position of rect
+    //! \param size size of rect
+    //! \returns true if mouse is in rect
+    [[nodiscard]] bool in_rect(const point2Di& position, const point2Di& size) const {
+        return
+            (cursor_position().x >= position.x) &&
+            (cursor_position().y >= position.y) &&
+            (cursor_position().x <= position.x + size.x) &&
+            (cursor_position().y <= position.y + size.y);
+    }
 };
 }
