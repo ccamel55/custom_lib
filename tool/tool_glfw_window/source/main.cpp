@@ -10,6 +10,8 @@
 #include <module_render/backend/Device_Vulkan.hpp>
 #include <module_render/pass/BasicTriangle.hpp>
 #include <module_render/render/geometry/Geometry_2D.hpp>
+#include <module_render/util/FrameBuffer.hpp>
+#include <module_render/util/Image.hpp>
 
 #include <module_system/filesystem.hpp>
 
@@ -141,6 +143,23 @@ namespace init {
 #endif
 }
 
+enum class FrameBuffer_Id: uint32_t {
+    Geometry_2d,
+
+    // Must always be last
+    Num_FrameBuffer_Id
+};
+
+enum class Image_Id: uint32_t {
+    Geometry_2d_ColorTarget,
+
+    // Must always be last
+    Num_Image_Id
+};
+
+using FrameBuffer   = render::FrameBuffer<FrameBuffer_Id, static_cast<size_t>(FrameBuffer_Id::Num_FrameBuffer_Id)>;
+using Image         = render::Image<Image_Id, static_cast<size_t>(Image_Id::Num_Image_Id)>;
+
 class ExamplePass final : public render::RenderPass {
 public:
     ExamplePass(
@@ -149,34 +168,74 @@ public:
         const std::unique_ptr<render::TextureFactory>& texture_factory
     )
         : RenderPass(device)
-        , _geometry_2d(std::make_unique<render::Geometry_2D>(
+        , _geometry_2d(
             _device,
             shader_factory,
             texture_factory
-        )) {
+        )
+        , _blit(device, shader_factory)
+        , _image(device)
+        , _frame_buffer(device) {
 
+        _command_list = _device->createCommandList();
     }
 
     void update_frame(const render::FrameInterval& interval) override {
-        _geometry_2d->triangle({225, 200}, 200);
-        _geometry_2d->triangle({200, 200}, 100, { 0, 255, 255, 100 });
-        _geometry_2d->triangle({250, 200}, 100, { 255, 0, 255, 100});
+        _geometry_2d.triangle({225, 200}, 200);
+        _geometry_2d.triangle({200, 200}, 100, { 0, 255, 255, 100 });
+        _geometry_2d.triangle({250, 200}, 100, { 255, 0, 255, 100});
     }
 
     void render(nvrhi::IFramebuffer* frame_buffer) override {
-        _geometry_2d->draw_geometry(frame_buffer);
+        _command_list->open();
+        {
+            _geometry_2d.draw_geometry(_command_list, _frame_buffer[FrameBuffer_Id::Geometry_2d]);
+        }
+        // This must be called here, it will blit the color target to our currently presented frame buffer
+        {
+            _blit.blit(_command_list, _image[Image_Id::Geometry_2d_ColorTarget], frame_buffer);
+        }
+        _command_list->close();
+        _device->executeCommandList(_command_list);
     }
 
     void back_buffer_resizing() override {
-        _geometry_2d->back_buffer_resizing();
+        _geometry_2d.back_buffer_resizing();
+        _blit.back_buffer_resizing();
     }
 
     void back_buffer_resized(const point2Di& size) override {
-        _geometry_2d->back_buffer_resized(size);
+        _geometry_2d.back_buffer_resized(size);
+
+        _image.back_buffer_resized([&](auto& image) {
+            image[static_cast<size_t>(Image_Id::Geometry_2d_ColorTarget)] = _device->createTexture(
+                nvrhi::TextureDesc()
+                    .setDebugName("ColorTarget")
+                    .setFormat(nvrhi::Format::SBGRA8_UNORM)
+                    .setWidth(std::max(size.x, 1))
+                    .setHeight(std::max(size.y, 1))
+                    .setIsRenderTarget(true)
+                    .setKeepInitialState(true)
+                    .setInitialState(nvrhi::ResourceStates::RenderTarget)
+            );
+        });
+
+        _frame_buffer.back_buffer_resized([&](auto& frame_buffer) {
+            frame_buffer[static_cast<size_t>(FrameBuffer_Id::Geometry_2d)] = _device->createFramebuffer(
+                nvrhi::FramebufferDesc()
+                    .addColorAttachment(_image[Image_Id::Geometry_2d_ColorTarget])
+            );
+        });
     }
 
 private:
-    std::unique_ptr<render::Geometry_2D> _geometry_2d;
+    render::Geometry_2D _geometry_2d;
+    render::TextureBlit _blit;
+    Image _image;
+    FrameBuffer _frame_buffer;
+
+    nvrhi::CommandListHandle _command_list;
+
 };
 }
 

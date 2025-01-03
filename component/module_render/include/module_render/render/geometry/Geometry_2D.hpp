@@ -11,11 +11,8 @@
 #include <module_render/render/geometry/types/vertex.hpp>
 
 #include <module_render/shaders/types/geometry_cb.h>
-
 #include <module_render/types/buffer_object.hpp>
 
-#include <module_render/util/FrameBuffer.hpp>
-#include <module_render/util/Image.hpp>
 #include <module_render/util/Pipeline.hpp>
 #include <module_render/util/ShaderFactory.hpp>
 #include <module_render/util/TextureBlit.hpp>
@@ -27,19 +24,6 @@ static_assert(
 );
 
 namespace lib::render {
-enum class FrameBuffer_Id: uint32_t {
-    Geometry,
-
-    // Must always be last
-    Num_FrameBuffer_Id
-};
-
-enum class Image_Id: uint32_t {
-    Geometry_ColorTarget,
-
-    // Must always be last
-    Num_Image_Id
-};
 
 enum class Pipeline_Id: uint32_t {
     Geometry_Texture,
@@ -50,9 +34,8 @@ enum class Pipeline_Id: uint32_t {
 
 using Texture_Id = hashing::fnv1a_32_t;
 
-using Geometry_FrameBuffer  = FrameBuffer<FrameBuffer_Id, static_cast<size_t>(FrameBuffer_Id::Num_FrameBuffer_Id)>;
-using Geometry_Image        = Image<Image_Id, static_cast<size_t>(Image_Id::Num_Image_Id)>;
 using Geometry_Pipeline     = Pipeline<Pipeline_Id, static_cast<size_t>(Pipeline_Id::Num_Pipeline_Id)>;
+using Geometry_BindingSet   = std::unordered_map<detail::binding_set_desc_key, nvrhi::BindingSetHandle, detail::binding_set_desc_key::hash>;
 
 constexpr Texture_Id TEXTURE_WHITE = hashing::fnv1a_32("default");
 
@@ -168,7 +151,7 @@ public:
         const std::unique_ptr<TextureFactory>& texture_factory
     );
 
-    void draw_geometry(nvrhi::IFramebuffer* frame_buffer);
+    void draw_geometry(const nvrhi::CommandListHandle& command_list, nvrhi::IFramebuffer* frame_buffer);
 
     void back_buffer_resizing();
     void back_buffer_resized(const point2Di& size);
@@ -196,17 +179,10 @@ public:
 
 private:
     nvrhi::DeviceHandle _device;
-
-    nvrhi::CommandListHandle _command_list;
-    nvrhi::CommandListHandle _command_list_blit;
-
-    TextureBlit _blit;
-    Geometry_Image _image;
-    Geometry_FrameBuffer _frame_buffer;
-    Geometry_Pipeline _pipeline;
-
     nvrhi::BindingLayoutHandle _binding_layout;
-    std::unordered_map<detail::binding_set_desc_key, nvrhi::BindingSetHandle, detail::binding_set_desc_key::hash> _binding_set;
+
+    Geometry_Pipeline _pipeline;
+    Geometry_BindingSet _binding_set;
 
     buffer_object_t _vertex_buffer;
     buffer_object_t _index_buffer;
@@ -221,6 +197,8 @@ private:
 
     std::unordered_map<Texture_Id, nvrhi::TextureHandle> _texture;
 
+    bool _update_constant_buffer    = false;
+    bool _update_pipeline           = false;
 };
 
 }
