@@ -508,6 +508,7 @@ public:
         : RenderPass(device)
         , _geometry_2d(
             _device,
+            font_factory,
             shader_factory,
             texture_factory
         )
@@ -517,10 +518,8 @@ public:
 
         _command_list = _device->createCommandList();
 
-        auto poo = font_factory->load_font("arial.ttf", 50.f).value();
-
         _cat_image  = _geometry_2d.add_texture("cat.jpg").value();
-        _font_image = _geometry_2d.add_texture(poo.atlas.data(), poo.atlas_size).value();
+        _arial_font = _geometry_2d.add_font("arial.ttf", 20).value();
     }
 
     void update_input(const bitflag type, const input::InputObserver& input) override {
@@ -544,9 +543,9 @@ public:
     }
 
     void update_frame(const render::FrameInterval& interval) override {
-        _geometry_2d.d_texture({50, 50}, {500, 500}, _font_image);
         _geometry_2d.d_texture(_pos, {200, 200}, _cat_image);
         _geometry_2d.d_line(_pos, {400, 400}, { 0, 255, 255, 100 }, 10.f);
+        _geometry_2d.d_text(_pos, {255, 255, 255}, _arial_font, "TEST FUCK SHIT :D", render::font_flags::Outline);
     }
 
     void render(nvrhi::IFramebuffer* frame_buffer) override {
@@ -599,7 +598,7 @@ private:
     nvrhi::CommandListHandle _command_list;
 
     render::geometry::Texture_Id _cat_image;
-    render::geometry::Texture_Id _font_image;
+    render::geometry::Font_Id _arial_font;
 
     point2Di _screen_size = {};
     point2Df _pos = { 200, 200 };

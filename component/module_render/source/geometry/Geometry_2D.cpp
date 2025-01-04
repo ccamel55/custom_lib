@@ -23,12 +23,14 @@ constexpr uint8_t DEFAULT_TEXTURE_WHITE[] = {
 
 Geometry_2D::Geometry_2D(
     const nvrhi::DeviceHandle& device,
+    const std::shared_ptr<FontFactory>& font_factory,
     const std::shared_ptr<ShaderFactory>& shader_factory,
     const std::shared_ptr<TextureFactory>& texture_factory
 )
     : _device(device)
     , _pipeline(_device)
     , _draw(geometry::MAX_VERTICES, geometry::MAX_INDICES)
+    , _font_factory(font_factory)
     , _shader_factory(shader_factory)
     , _texture_factory(texture_factory) {
 
@@ -371,13 +373,36 @@ void Geometry_2D::remove_texture(const geometry::Texture_Id& id) {
     _texture.erase(id);
 }
 
+std::expected<geometry::Font_Id, std::string> Geometry_2D::add_font(const std::filesystem::path& path, float height) {
+    auto font = _font_factory->load_font(path, height);
+    if (!font.has_value()) {
+        return std::unexpected(font.error());
+    }
+
+    auto texture = add_texture(font->atlas.data(), font->atlas_size);
+    if (!texture.has_value()) {
+        return std::unexpected(texture.error());
+    }
+
+    geometry::font_handle_t font_handle;
+    {
+        font_handle.texture     = std::move(texture.value());
+        font_handle.characters  = font->character;
+    }
+    return _font.emplace(_font.end(), std::move(font_handle));
+}
+
+void Geometry_2D::remove_font(const geometry::Font_Id& id) {
+    _font.erase(id);
+}
+
 //
 // ------------------------------------------------------------------------------------------------------------------------
 //
 
 void Geometry_2D::d_texture(const point2Df& pos, const point2Df& size, const geometry::Texture_Id& texture, const uint8_t alpha) {
 
-    _draw.prepare_draw(texture, geometry::Pipeline_Id::Geometry_Texture_Sdf);
+    _draw.prepare_draw(texture, geometry::Pipeline_Id::Geometry_Texture);
 
     size_t first_vertex_index;
     std::span<geometry::vertex_t> vertices = _draw.emplace_vertices(first_vertex_index, 4);
@@ -422,3 +447,98 @@ void Geometry_2D::d_line(const point2Df& pos_1, const point2Df& pos_2, const col
     indices[4] = first_vertex_index + 2;
     indices[5] = first_vertex_index + 3;
 }
+
+void Geometry_2D::d_text(
+    const point2Df& pos,
+    const color& color,
+    const geometry::Font_Id& id,
+    const std::string& text,
+    const bitflag flags
+) {
+    // Fonts will always use SDF rendering, this allows us to scale the size of the font in the future
+    // TODO: implement font scaling
+    _draw.prepare_draw(
+        id->texture,
+        flags.has(font_flags::Outline)
+            ? geometry::Pipeline_Id::Geometry_Texture_Sdf_Outline
+            : geometry::Pipeline_Id::Geometry_Texture_Sdf
+    );
+
+    // Adjust pos based on flags
+    point2Df fixed_pos = pos;
+
+    const auto text_height = [&]() -> float {
+        return static_cast<float>(id->characters.at(0).spacing.y);
+    };
+
+    const auto text_width = [&]() -> float {
+        int w = 0;
+        for (const auto& c : text) {
+            w += id->characters.at(c - CHAR_START).spacing.x;
+        }
+        return static_cast<float>(w);
+    };
+
+    if (flags.has(font_flags::Align_R)) {
+        fixed_pos.x -= text_width();
+    }
+    else if (flags.has(font_flags::Centre_X)) {
+        fixed_pos.x -= text_width() / 2;
+    }
+
+    if (flags.has(font_flags::Centre_Y)) {
+        fixed_pos.y += text_height() / 2;
+    }
+
+    // Add each character by its self
+    for (const char c: text) {
+
+        const auto& character = id->characters.at(c - CHAR_START);
+
+        if (c != ' ') {
+
+            const auto aligned_pos  = fixed_pos + point2Df(character.align);
+            const auto size         = point2Df(character.size);
+
+            size_t first_vertex_index;
+            std::span<geometry::vertex_t> vertices = _draw.emplace_vertices(first_vertex_index, 4);
+
+            vertices[0] = geometry::vertex_t(
+                aligned_pos.x, aligned_pos.y, 0.f,
+                character.atlas_start.x, character.atlas_start.y,
+                color.r, color.g, color.b, color.a
+            );
+
+            vertices[1] = geometry::vertex_t(
+                aligned_pos.x + size.x, aligned_pos.y, 0.f,
+                character.atlas_end.x, character.atlas_start.y,
+                color.r, color.g, color.b, color.a
+            );
+
+            vertices[2] = geometry::vertex_t(
+                aligned_pos.x + size.x, aligned_pos.y + size.y, 0.f,
+                character.atlas_end.x, character.atlas_end.y,
+                color.r, color.g, color.b, color.a
+            );
+
+            vertices[3] = geometry::vertex_t(
+                aligned_pos.x, aligned_pos.y + size.y, 0.f,
+                character.atlas_start.x, character.atlas_end.y,
+                color.r, color.g, color.b, color.a
+            );
+
+            std::span<geometry::index_t> indices = _draw.emplace_indices(6);
+
+            indices[0] = first_vertex_index + 0;
+            indices[1] = first_vertex_index + 1;
+            indices[2] = first_vertex_index + 2;
+
+            indices[3] = first_vertex_index + 0;
+            indices[4] = first_vertex_index + 2;
+            indices[5] = first_vertex_index + 3;
+        }
+
+        fixed_pos.x += static_cast<float>(character.spacing.x);
+    }
+}
+

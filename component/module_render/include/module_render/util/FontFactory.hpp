@@ -18,6 +18,7 @@ constexpr uint8_t CHAR_END      = 127;
 struct font_character_t {
     point2Di align;
     point2Di spacing;
+    point2Di size;
     point2Df atlas_start;
     point2Df atlas_end;
 };

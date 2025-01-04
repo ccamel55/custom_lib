@@ -12,9 +12,9 @@ using namespace lib::render;
 namespace {
 
 constexpr int ON_EDGE_VALUE = 128;
-constexpr int PADDING = 4;
+constexpr int SPREAD = 4;
 
-constexpr float PIXEL_DIST_SCALE = static_cast<float>(ON_EDGE_VALUE) / static_cast<float>(PADDING);
+constexpr float PIXEL_DIST_SCALE = static_cast<float>(ON_EDGE_VALUE) / static_cast<float>(SPREAD);
 
 constexpr uint16_t DEFAULT_ATLAS_WIDTH  = 512;
 constexpr uint16_t DEFAULT_ATLAS_HEIGHT = 512;
@@ -67,39 +67,46 @@ std::expected<font_properties_t, std::string> FontFactory::load_font(
 
     for (uint8_t c = CHAR_START; c < CHAR_END; c++) {
 
-        auto& [align, spacing, _1, _2] = properties.character.at(c - CHAR_START);
-        auto& size = tmp_size.at(c - CHAR_START);
+        auto& [align, spacing, size, _1, _2] = properties.character.at(c - CHAR_START);
 
         uint8_t* bitmap_ptr = stbtt_GetCodepointSDF(
             &font_info,
             height_scale,
             c,
-            PADDING,
+            SPREAD,
             ON_EDGE_VALUE,
             PIXEL_DIST_SCALE,
-            &size.w,
-            &size.h,
+            &size.x,
+            &size.y,
             &align.x,
             &align.y
         );
 
-        if (bitmap_ptr != nullptr && size.w > 0 && size.h > 0) {
-            // Load spacing X and Y
-            stbtt_GetCodepointHMetrics(&font_info, c, &spacing.x, nullptr);
-            stbtt_GetFontVMetrics(&font_info, &spacing.y, nullptr, nullptr);
+        // Update rect packing data
+        {
+            auto& rect_data = tmp_size.at(c - CHAR_START);
 
-            spacing.x = static_cast<int>(std::roundf(static_cast<float>(spacing.x) * height_scale));
-            spacing.y = static_cast<int>(std::roundf(static_cast<float>(spacing.y) * height_scale));
+            rect_data.w = size.x;
+            rect_data.h = size.y;
+        }
 
+        // Load spacing X and Y
+        stbtt_GetCodepointHMetrics(&font_info, c, &spacing.x, nullptr);
+        stbtt_GetFontVMetrics(&font_info, &spacing.y, nullptr, nullptr);
+
+        spacing.x = static_cast<int>(std::roundf(static_cast<float>(spacing.x) * height_scale));
+        spacing.y = static_cast<int>(std::roundf(static_cast<float>(spacing.y) * height_scale));
+
+        if (bitmap_ptr != nullptr && size.x > 0 && size.y > 0) {
             // Allocate data for abgr bitmap then cast as uint32 to make working with data much easier
             auto& bitmap = tmp_bitmap.at(c - CHAR_START);
-            bitmap.resize(size.w * size.h * ATLAS_CHANNELS, 0);
+            bitmap.resize(size.x * size.y * ATLAS_CHANNELS, 0);
 
             const auto tmp_bitmap_uint32 = reinterpret_cast<uint32_t*>(bitmap.data());
 
-            for (int y = 0; y < size.h; y++) {
-                for (int x = 0; x < size.w; x++) {
-                    const auto bitmap_index = (size.w * y) + x;
+            for (int y = 0; y < size.y; y++) {
+                for (int x = 0; x < size.x; x++) {
+                    const auto bitmap_index = (size.x * y) + x;
                     if (const auto val = bitmap_ptr[bitmap_index]; val > 0) {
                         tmp_bitmap_uint32[bitmap_index] = 0x00FFFFFF;
                         tmp_bitmap_uint32[bitmap_index] |= (val << 24);
@@ -107,6 +114,7 @@ std::expected<font_properties_t, std::string> FontFactory::load_font(
                 }
             }
         }
+
         stbtt_FreeSDF(bitmap_ptr, nullptr);
     }
 
@@ -168,7 +176,7 @@ std::expected<font_properties_t, std::string> FontFactory::load_font(
 
         // Update texture properties
         // calculate texture properties, texture_rect.id should equal i
-        auto& [_1, _2, atlas_start, atlas_end] = properties.character.at(i);
+        auto& [_1, _2, size, atlas_start, atlas_end] = properties.character.at(i);
 
         atlas_start = {
             static_cast<float>(rect.x) / static_cast<float>(properties.atlas_size.x),

@@ -34,8 +34,7 @@ void main_ps(
     o_color = t_texture.Sample(s_sampler, i_uv) * i_color;
 #else
     // best sharpness = 0.25 / (spread * scale)
-    // = 0.25 / (4 * 1)
-    const float smoothing = 1.0 / 16.0;
+    const float smoothing = 0.25f / (4.f * 1.f);
 
     const float4 sampled_texture = t_texture.Sample(s_sampler, i_uv);
 
