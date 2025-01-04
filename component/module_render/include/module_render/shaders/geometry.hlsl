@@ -29,5 +29,34 @@ void main_ps(
     in float4 i_color : COLOR,
     out float4 o_color : SV_Target0
 ) {
+#if SDF_ENABLE == 0
+    // Normal, no sdf rendering
     o_color = t_texture.Sample(s_sampler, i_uv) * i_color;
+#else
+    // best sharpness = 0.25 / (spread * scale)
+    // = 0.25 / (4 * 1)
+    const float smoothing = 1.0 / 16.0;
+
+    const float4 sampled_texture = t_texture.Sample(s_sampler, i_uv);
+
+    const float distance = sampled_texture.a;
+    const float outline_factor = smoothstep(0.5 - smoothing, 0.5 + smoothing, distance);
+
+#if SDF_ENABLE == 2
+    // Between 0 and 0.5, 0 = thick outline, 0.5 = no outline
+    const float outline_distance = 0.4;
+
+    // outline will always be black for now, can change later
+    const float4 outline_color = float4(0.0, 0.0, 0.0, 1.0);
+
+    const float4 color = lerp(outline_color, sampled_texture, outline_factor);
+    const float alpha = smoothstep(outline_distance - smoothing, outline_distance + smoothing, distance);
+
+#else
+    const float4 color = sampled_texture;
+    const float alpha = outline_factor;
+#endif
+
+    o_color = float4(color.rgb, alpha) * i_color;
+#endif
 }

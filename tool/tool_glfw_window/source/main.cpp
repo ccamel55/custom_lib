@@ -13,6 +13,7 @@
 #include <module_render/backend/Device_Vulkan.hpp>
 #include <module_render/geometry/Geometry_2D.hpp>
 #include <module_render/pass/BasicTriangle.hpp>
+#include <module_render/util/FontFactory.hpp>
 #include <module_render/util/FrameBuffer.hpp>
 #include <module_render/util/Image.hpp>
 #include <module_render/util/TextureBlit.hpp>
@@ -500,6 +501,7 @@ class ExamplePass final : public render::RenderPass, public input::InputPass {
 public:
     ExamplePass(
         const nvrhi::DeviceHandle& device,
+        const std::shared_ptr<render::FontFactory>& font_factory,
         const std::shared_ptr<render::ShaderFactory>& shader_factory,
         const std::shared_ptr<render::TextureFactory>& texture_factory
     )
@@ -515,7 +517,10 @@ public:
 
         _command_list = _device->createCommandList();
 
-        _cat_image = _geometry_2d.add_texture("cat.jpg").value();
+        auto poo = font_factory->load_font("arial.ttf", 50.f).value();
+
+        _cat_image  = _geometry_2d.add_texture("cat.jpg").value();
+        _font_image = _geometry_2d.add_texture(poo.atlas.data(), poo.atlas_size).value();
     }
 
     void update_input(const bitflag type, const input::InputObserver& input) override {
@@ -539,6 +544,7 @@ public:
     }
 
     void update_frame(const render::FrameInterval& interval) override {
+        _geometry_2d.d_texture({50, 50}, {500, 500}, _font_image);
         _geometry_2d.d_texture(_pos, {200, 200}, _cat_image);
         _geometry_2d.d_line(_pos, {400, 400}, { 0, 255, 255, 100 }, 10.f);
     }
@@ -593,6 +599,7 @@ private:
     nvrhi::CommandListHandle _command_list;
 
     render::geometry::Texture_Id _cat_image;
+    render::geometry::Texture_Id _font_image;
 
     point2Di _screen_size = {};
     point2Df _pos = { 200, 200 };
@@ -678,10 +685,15 @@ int main(
     INPUTS  = std::make_unique<input::Input>();
     RENDER  = std::make_unique<render::Render>(LOGGER, settings.value(), render::RenderAPI::Vulkan);
 
+    std::shared_ptr<render::FontFactory> FONT_FACTORY       = nullptr;
     std::shared_ptr<render::ShaderFactory> SHADER_FACTORY   = nullptr;
     std::shared_ptr<render::TextureFactory> TEXTURE_FACTORY = nullptr;
 
-    SHADER_FACTORY  = std::make_shared<render::ShaderFactory>(
+    FONT_FACTORY = std::make_shared<render::FontFactory>(
+        EXE_PATH / "textures"
+    );
+
+    SHADER_FACTORY = std::make_shared<render::ShaderFactory>(
         RENDER->backend()->device_handle(),
         EXE_PATH / "shaders" / shader_type(RENDER->backend()->api())
     );
@@ -692,7 +704,7 @@ int main(
     );
 
     const auto triangle_pass    = std::make_unique<render::BasicTriangle>(RENDER->backend()->device_handle(), SHADER_FACTORY);
-    const auto example_pass     = std::make_unique<ExamplePass>(RENDER->backend()->device_handle(), SHADER_FACTORY, TEXTURE_FACTORY);
+    const auto example_pass     = std::make_unique<ExamplePass>(RENDER->backend()->device_handle(), FONT_FACTORY, SHADER_FACTORY, TEXTURE_FACTORY);
 
     INPUTS->emplace_pass(example_pass.get());
 

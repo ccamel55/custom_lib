@@ -76,11 +76,31 @@ Geometry_2D::Geometry_2D(
         }
         _vertex_shader = std::move(vertex_shader.value());
 
-        auto pixel_shader = shader_factory->create_shader("geometry", nvrhi::ShaderType::Pixel, "main_ps");
+        std::vector<ShaderMake::ShaderConstant> constants = {
+            { "SDF_ENABLE", "0" }
+        };
+
+        auto pixel_shader = shader_factory->create_shader("geometry", nvrhi::ShaderType::Pixel, "main_ps", constants);
         if (!pixel_shader.has_value()) {
             throw std::runtime_error("Could not load pixel shaders from disk: " + pixel_shader.error());
         }
         _pixel_shader = std::move(pixel_shader.value());
+
+        constants.at(0).value = "1";
+
+        auto pixel_shader_sdf = shader_factory->create_shader("geometry", nvrhi::ShaderType::Pixel, "main_ps", constants);
+        if (!pixel_shader_sdf.has_value()) {
+            throw std::runtime_error("Could not load pixel shaders from disk: " + pixel_shader_sdf.error());
+        }
+        _pixel_shader_sdf = std::move(pixel_shader_sdf.value());
+
+        constants.at(0).value = "2";
+
+        auto pixel_shader_sdf_outline = shader_factory->create_shader("geometry", nvrhi::ShaderType::Pixel, "main_ps", constants);
+        if (!pixel_shader_sdf_outline.has_value()) {
+            throw std::runtime_error("Could not load pixel shaders from disk: " + pixel_shader_sdf_outline.error());
+        }
+        _pixel_shader_sdf_outline = std::move(pixel_shader_sdf_outline.value());
 
         _vertex_layout = device->createInputLayout(
             geometry::vertex_t::attributes().data(),
@@ -130,6 +150,84 @@ void Geometry_2D::draw_geometry(const nvrhi::CommandListHandle& command_list, nv
             nvrhi::GraphicsPipelineDesc()
                 .setVertexShader(_vertex_shader)
                 .setPixelShader(_pixel_shader)
+                .setInputLayout(_vertex_layout)
+                .addBindingLayout(_binding_layout)
+                .setPrimType(nvrhi::PrimitiveType::TriangleList)
+                .setRenderState(
+                    nvrhi::RenderState()
+                        .setBlendState(
+                            nvrhi::BlendState()
+                                .setRenderTarget(
+                                    0,
+                                    nvrhi::BlendState::RenderTarget()
+                                        .setBlendEnable(true)
+                                        .setSrcBlend(nvrhi::BlendFactor::SrcAlpha)
+                                        .setSrcBlendAlpha(nvrhi::BlendFactor::One)
+                                        .setDestBlend(nvrhi::BlendFactor::OneMinusSrcAlpha)
+                                        .setDestBlendAlpha(nvrhi::BlendFactor::OneMinusSrcAlpha)
+                                )
+                        )
+                        .setDepthStencilState(
+                            nvrhi::DepthStencilState()
+                                .disableDepthWrite()
+                                .setDepthTestEnable(false)
+                                .setStencilEnable(false)
+                                .setDepthFunc(nvrhi::ComparisonFunc::Less)
+                        )
+                        .setRasterState(
+                            nvrhi::RasterState()
+                                .setScissorEnable(true)
+                                .setFrontCounterClockwise(false)
+                        )
+                ),
+                frame_buffer
+            );
+        });
+
+        _pipeline.back_buffer_resized([&](auto& pipeline) {
+            pipeline[static_cast<size_t>(geometry::Pipeline_Id::Geometry_Texture_Sdf)] = _device->createGraphicsPipeline(
+            nvrhi::GraphicsPipelineDesc()
+                .setVertexShader(_vertex_shader)
+                .setPixelShader(_pixel_shader_sdf)
+                .setInputLayout(_vertex_layout)
+                .addBindingLayout(_binding_layout)
+                .setPrimType(nvrhi::PrimitiveType::TriangleList)
+                .setRenderState(
+                    nvrhi::RenderState()
+                        .setBlendState(
+                            nvrhi::BlendState()
+                                .setRenderTarget(
+                                    0,
+                                    nvrhi::BlendState::RenderTarget()
+                                        .setBlendEnable(true)
+                                        .setSrcBlend(nvrhi::BlendFactor::SrcAlpha)
+                                        .setSrcBlendAlpha(nvrhi::BlendFactor::One)
+                                        .setDestBlend(nvrhi::BlendFactor::OneMinusSrcAlpha)
+                                        .setDestBlendAlpha(nvrhi::BlendFactor::OneMinusSrcAlpha)
+                                )
+                        )
+                        .setDepthStencilState(
+                            nvrhi::DepthStencilState()
+                                .disableDepthWrite()
+                                .setDepthTestEnable(false)
+                                .setStencilEnable(false)
+                                .setDepthFunc(nvrhi::ComparisonFunc::Less)
+                        )
+                        .setRasterState(
+                            nvrhi::RasterState()
+                                .setScissorEnable(true)
+                                .setFrontCounterClockwise(false)
+                        )
+                ),
+                frame_buffer
+            );
+        });
+
+        _pipeline.back_buffer_resized([&](auto& pipeline) {
+            pipeline[static_cast<size_t>(geometry::Pipeline_Id::Geometry_Texture_Sdf_Outline)] = _device->createGraphicsPipeline(
+            nvrhi::GraphicsPipelineDesc()
+                .setVertexShader(_vertex_shader)
+                .setPixelShader(_pixel_shader_sdf_outline)
                 .setInputLayout(_vertex_layout)
                 .addBindingLayout(_binding_layout)
                 .setPrimType(nvrhi::PrimitiveType::TriangleList)
@@ -279,7 +377,7 @@ void Geometry_2D::remove_texture(const geometry::Texture_Id& id) {
 
 void Geometry_2D::d_texture(const point2Df& pos, const point2Df& size, const geometry::Texture_Id& texture, const uint8_t alpha) {
 
-    _draw.prepare_draw(texture, geometry::Pipeline_Id::Geometry_Texture);
+    _draw.prepare_draw(texture, geometry::Pipeline_Id::Geometry_Texture_Sdf);
 
     size_t first_vertex_index;
     std::span<geometry::vertex_t> vertices = _draw.emplace_vertices(first_vertex_index, 4);

@@ -9,6 +9,8 @@ namespace lib::render::geometry {
 
 enum class Pipeline_Id: uint32_t {
     Geometry_Texture,
+    Geometry_Texture_Sdf,
+    Geometry_Texture_Sdf_Outline,
 
     // Must always be last
     Num_Pipeline_Id

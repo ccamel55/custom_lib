@@ -69,6 +69,8 @@ private:
 
     nvrhi::ShaderHandle _vertex_shader;
     nvrhi::ShaderHandle _pixel_shader;
+    nvrhi::ShaderHandle _pixel_shader_sdf;
+    nvrhi::ShaderHandle _pixel_shader_sdf_outline;
     nvrhi::InputLayoutHandle _vertex_layout;
 
     geometry::draw_list_t _draw;

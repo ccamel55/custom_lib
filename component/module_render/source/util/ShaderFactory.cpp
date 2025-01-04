@@ -24,8 +24,18 @@ std::expected<nvrhi::ShaderHandle, std::string> ShaderFactory::create_shader(
         return std::unexpected("Shader file does not exist: " + file.string());
     }
 
+    if (constants.size() > detail::MAX_CONSTANTS) {
+        return std::unexpected("Too many shader constants given, max constants allowed: " + std::to_string(detail::MAX_CONSTANTS));
+    }
+
     const auto absolute_path = absolute(file);
-    nvrhi::ShaderHandle& shader = _shader[detail::shader_key(absolute_path, entry, {})];
+
+    // This is retarded, but we need to copy into fixed sized array for the hash function
+    // Note: fix this shit-ness and do it properly
+    std::array<ShaderMake::ShaderConstant, detail::MAX_CONSTANTS> tmp_constants = {};
+    std::copy_n(constants.begin(), std::min(detail::MAX_CONSTANTS, constants.size()), tmp_constants.begin());
+
+    nvrhi::ShaderHandle& shader = _shader[detail::shader_key(absolute_path, entry, tmp_constants)];
 
     // Create shader if it doesn't exist
     if (!shader) {
