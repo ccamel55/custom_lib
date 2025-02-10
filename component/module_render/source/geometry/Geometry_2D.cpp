@@ -386,10 +386,10 @@ std::expected<geometry::Font_Id, std::string> Geometry_2D::add_font(const std::f
 
     geometry::font_handle_t font_handle;
     {
-        font_handle.texture     = std::move(texture.value());
+        font_handle.texture     = texture.value();
         font_handle.characters  = font->character;
     }
-    return _font.emplace(_font.end(), std::move(font_handle));
+    return _font.emplace(_font.end(), font_handle);
 }
 
 void Geometry_2D::remove_font(const geometry::Font_Id& id) {
