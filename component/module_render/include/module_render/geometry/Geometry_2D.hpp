@@ -16,8 +16,7 @@
 
 namespace lib::render {
 
-enum font_flags : bitflag_t
-{
+enum font_flags : bitflag_t {
     None = 0,
     Align_L = 0 << 0,
     Align_R = 1 << 0,
@@ -70,14 +69,64 @@ public:
     //! \param size size in world unit length
     //! \param texture texture to draw
     //! \param alpha opacity of texture
-    void d_texture(const point2Df& pos, const point2Df& size, const geometry::Texture_Id& texture, uint8_t alpha = 255);
+    void d_texture(
+        const point2Df& pos,
+        const point2Df& size,
+        const geometry::Texture_Id& texture,
+        uint8_t alpha = 255
+    );
 
     //! Draw line
     //! \param pos_1 starting point in world space
     //! \param pos_2 end point in world space
-    //! \param color color of line
-    //! \param thickness thickness of line
-    void d_line(const point2Df& pos_1, const point2Df& pos_2, const color& color, float thickness = 1.0);
+    //! \param color_1 line gradient color start
+    //! \param color_2 line gradient color end
+    void d_line(
+        const point2Df& pos_1,
+        const point2Df& pos_2,
+        const color& color_1,
+        const color& color_2
+    );
+
+    //! Draw box
+    //! \param pos_tl position of top left corner
+    //! \param pos_tr position of top right corner
+    //! \param pos_br position of bottom right corner
+    //! \param pos_bl position of bottom left corner
+    //! \param color_tl color of top left corner
+    //! \param color_tr color of top right corner
+    //! \param color_br color of bottom right corner
+    //! \param color_bl color of bottom left corner
+    void d_box(
+        const point2Df& pos_tl,
+        const point2Df& pos_tr,
+        const point2Df& pos_br,
+        const point2Df& pos_bl,
+        const color& color_tl,
+        const color& color_tr,
+        const color& color_br,
+        const color& color_bl
+    );
+
+    //! Draw filled box
+    //! \param pos_tl position of top left corner
+    //! \param pos_tr position of top right corner
+    //! \param pos_br position of bottom right corner
+    //! \param pos_bl position of bottom left corner
+    //! \param color_tl color of top left corner
+    //! \param color_tr color of top right corner
+    //! \param color_br color of bottom right corner
+    //! \param color_bl color of bottom left corner
+    void d_box_fill(
+        const point2Df& pos_tl,
+        const point2Df& pos_tr,
+        const point2Df& pos_br,
+        const point2Df& pos_bl,
+        const color& color_tl,
+        const color& color_tr,
+        const color& color_br,
+        const color& color_bl
+    );
 
     //! Draw text
     //! \param pos position in world space

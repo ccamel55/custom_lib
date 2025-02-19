@@ -544,8 +544,10 @@ public:
 
     void update_frame(const render::FrameInterval& interval) override {
         _geometry_2d.d_texture(_pos, {200, 200}, _cat_image);
-        _geometry_2d.d_line(_pos, {400, 400}, { 0, 255, 255, 100 }, 10.f);
+        _geometry_2d.d_line(_pos, {400, 400}, { 0, 0, 255, 255 }, { 255, 0, 0, 255 });
         _geometry_2d.d_text(_pos, {255, 255, 255}, _arial_font, "TEST FUCK SHIT :D", render::font_flags::Outline);
+        _geometry_2d.d_box({100, 100}, {150, 100}, {200, 200}, {100, 200}, {255, 255, 255}, {255, 0, 0}, {0, 255, 0}, {0, 0, 255});
+        _geometry_2d.d_box_fill({100 + 200, 100 + 200}, {150 + 200, 100 + 200}, {200 + 200, 200 + 200}, {100 + 200, 200 + 200}, {255, 255, 255}, {255, 0, 0}, {0, 255, 0}, {0, 0, 255});
     }
 
     void render(nvrhi::IFramebuffer* frame_buffer) override {
