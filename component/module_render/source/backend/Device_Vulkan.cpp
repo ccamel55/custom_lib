@@ -970,7 +970,7 @@ void Device_Vulkan::destroy_device_and_swap_chain() {
         }
 
         _vk_device.destroySemaphore(semaphore);
-        semaphore = vk::Semaphore();
+        semaphore = nullptr;
     }
 
     for (auto& semaphore: _present_semaphores) {
@@ -979,7 +979,7 @@ void Device_Vulkan::destroy_device_and_swap_chain() {
         }
 
         _vk_device.destroySemaphore(semaphore);
-        semaphore = vk::Semaphore();
+        semaphore = nullptr;
     }
 
     // Nuke nvrhi objects

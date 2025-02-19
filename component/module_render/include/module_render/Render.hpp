@@ -32,7 +32,8 @@ public:
     Render(
         const std::shared_ptr<logger::Logger>& logger,
         const device_settings_t& settings,
-        RenderAPI render_api
+        RenderAPI render_api,
+        bool clear_buffer = false
     );
 
     ~Render();
@@ -57,9 +58,13 @@ private:
     std::unique_ptr<Device_Common> _device;
 
     FrameInterval _interval;
+
     bool _is_visible = false;
+    bool _clear_buffer = false;
 
     std::vector<nvrhi::FramebufferHandle> _swap_chain_frame_buffers;
     std::list<RenderPass*> _render_passes;
+
+    nvrhi::CommandListHandle _command_list;
 
 };}

@@ -8,9 +8,11 @@ using namespace lib::render;
 Render::Render(
     const std::shared_ptr<logger::Logger>& logger,
     const device_settings_t& settings,
-    const RenderAPI render_api
+    const RenderAPI render_api,
+    const bool clear_buffer
 )
-    : _logger(logger) {
+    : _logger(logger)
+    , _clear_buffer(clear_buffer) {
 
     switch (render_api) {
         case RenderAPI::Vulkan:
@@ -38,9 +40,15 @@ Render::Render(
     _device->_settings.back_buffer_size.y = 0;
 
     update_screen_size({_device->_settings.back_buffer_size.x, _device->_settings.back_buffer_size.y});
+
+    // Only create command list if our render class is responsible for clearing color attachment
+    if (_clear_buffer) {
+        _command_list = _device->device()->createCommandList();
+    }
 }
 
 Render::~Render() {
+    _command_list.Reset();
     _swap_chain_frame_buffers.clear();
     _device->destroy_device_and_swap_chain();
 }
@@ -109,6 +117,16 @@ void Render::passes_update_frame() const {
 
 void Render::passes_render() const {
     nvrhi::IFramebuffer* frame_buffer = _swap_chain_frame_buffers[_device->current_back_buffer_index()];
+
+    if (_clear_buffer) {
+        _command_list->open();
+        {
+            // Clear color attachment, then execute.
+            nvrhi::utils::ClearColorAttachment(_command_list, frame_buffer, 0, nvrhi::Color(0));
+        }
+        _command_list->close();
+        _device->device()->executeCommandList(_command_list);
+    }
 
     for (const auto pass : _render_passes) {
         pass->render(frame_buffer);

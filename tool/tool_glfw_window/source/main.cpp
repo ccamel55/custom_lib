@@ -551,7 +551,10 @@ public:
     void render(nvrhi::IFramebuffer* frame_buffer) override {
         _command_list->open();
         {
-            _geometry_2d.draw_geometry(_command_list, _frame_buffer[FrameBuffer_Id::Geometry_2d]);
+            const auto geometry_fb = _frame_buffer[FrameBuffer_Id::Geometry_2d];
+            nvrhi::utils::ClearColorAttachment(_command_list, geometry_fb, 0, nvrhi::Color(0));
+
+            _geometry_2d.draw_geometry(_command_list, geometry_fb);
         }
         {
             _blit.blit(_command_list, _image[Image_Id::Geometry_2d_ColorTarget], frame_buffer);
@@ -682,7 +685,7 @@ int main(
     }
 
     INPUTS  = std::make_unique<input::Input>();
-    RENDER  = std::make_unique<render::Render>(LOGGER, settings.value(), render::RenderAPI::Vulkan);
+    RENDER  = std::make_unique<render::Render>(LOGGER, settings.value(), render::RenderAPI::Vulkan, true);
 
     {
         std::shared_ptr<render::FontFactory> FONT_FACTORY       = nullptr;
