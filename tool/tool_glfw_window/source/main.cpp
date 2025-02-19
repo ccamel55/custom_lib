@@ -684,46 +684,51 @@ int main(
     INPUTS  = std::make_unique<input::Input>();
     RENDER  = std::make_unique<render::Render>(LOGGER, settings.value(), render::RenderAPI::Vulkan);
 
-    std::shared_ptr<render::FontFactory> FONT_FACTORY       = nullptr;
-    std::shared_ptr<render::ShaderFactory> SHADER_FACTORY   = nullptr;
-    std::shared_ptr<render::TextureFactory> TEXTURE_FACTORY = nullptr;
+    {
+        std::shared_ptr<render::FontFactory> FONT_FACTORY       = nullptr;
+        std::shared_ptr<render::ShaderFactory> SHADER_FACTORY   = nullptr;
+        std::shared_ptr<render::TextureFactory> TEXTURE_FACTORY = nullptr;
 
-    FONT_FACTORY = std::make_shared<render::FontFactory>(
-        EXE_PATH / "textures"
-    );
+        FONT_FACTORY = std::make_shared<render::FontFactory>(
+            EXE_PATH / "textures"
+        );
 
-    SHADER_FACTORY = std::make_shared<render::ShaderFactory>(
-        RENDER->backend()->device_handle(),
-        EXE_PATH / "shaders" / shader_type(RENDER->backend()->api())
-    );
+        SHADER_FACTORY = std::make_shared<render::ShaderFactory>(
+            RENDER->backend()->device_handle(),
+            EXE_PATH / "shaders" / shader_type(RENDER->backend()->api())
+        );
 
-    TEXTURE_FACTORY = std::make_shared<render::TextureFactory>(
-        RENDER->backend()->device_handle(),
-        EXE_PATH / "textures"
-    );
+        TEXTURE_FACTORY = std::make_shared<render::TextureFactory>(
+            RENDER->backend()->device_handle(),
+            EXE_PATH / "textures"
+        );
 
-    const auto triangle_pass    = std::make_unique<render::BasicTriangle>(RENDER->backend()->device_handle(), SHADER_FACTORY);
-    const auto example_pass     = std::make_unique<ExamplePass>(RENDER->backend()->device_handle(), FONT_FACTORY, SHADER_FACTORY, TEXTURE_FACTORY);
+        const auto triangle_pass    = std::make_unique<render::BasicTriangle>(RENDER->backend()->device_handle(), SHADER_FACTORY);
+        const auto example_pass     = std::make_unique<ExamplePass>(RENDER->backend()->device_handle(), FONT_FACTORY, SHADER_FACTORY, TEXTURE_FACTORY);
 
-    INPUTS->emplace_pass(example_pass.get());
+        INPUTS->emplace_pass(example_pass.get());
 
-    RENDER->emplace_render_pass_back(triangle_pass.get());
-    RENDER->emplace_render_pass_back(example_pass.get());
+        RENDER->emplace_render_pass_back(triangle_pass.get());
+        RENDER->emplace_render_pass_back(example_pass.get());
 
-    // Main window loop
-    while (!glfwWindowShouldClose(window)) {
+        // Main window loop
+        while (!glfwWindowShouldClose(window)) {
 
-        // Update input
-        glfwPollEvents();
+            // Update input
+            glfwPollEvents();
 
-        // Draw
-        glfwGetWindowSize(window, &window_size.x, &window_size.y);
+            // Draw
+            glfwGetWindowSize(window, &window_size.x, &window_size.y);
 
-        RENDER->update_screen_size(window_size);
-        RENDER->present();
+            RENDER->update_screen_size(window_size);
+            RENDER->present();
+        }
     }
 
     log.v("exited main loop");
+
+    INPUTS.reset();
+    RENDER.reset();
 
     return 0;
 }
