@@ -3,6 +3,8 @@
 
 #include <module_core/type/point/point2D.hpp>
 
+#include <module_gui/Gui.hpp>
+
 #include <module_input/Input.hpp>
 
 #include <module_logger/Logger.hpp>
@@ -710,11 +712,14 @@ int main(
 
         const auto triangle_pass    = std::make_unique<render::BasicTriangle>(RENDER->backend()->device_handle(), SHADER_FACTORY);
         const auto example_pass     = std::make_unique<ExamplePass>(RENDER->backend()->device_handle(), FONT_FACTORY, SHADER_FACTORY, TEXTURE_FACTORY);
+        const auto gui_pass         = std::make_unique<gui::Gui>(RENDER->backend()->device_handle(), FONT_FACTORY, SHADER_FACTORY, TEXTURE_FACTORY);
 
         INPUTS->emplace_pass(example_pass.get());
+        INPUTS->emplace_pass(gui_pass.get());
 
         RENDER->emplace_render_pass_back(triangle_pass.get());
         RENDER->emplace_render_pass_back(example_pass.get());
+        RENDER->emplace_render_pass_back(gui_pass.get());
 
         // Main window loop
         while (!glfwWindowShouldClose(window)) {

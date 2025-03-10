@@ -288,6 +288,7 @@ void Geometry_2D::draw_geometry(const nvrhi::CommandListHandle& command_list, nv
     }
 
     // Write draw list
+    if (!_draw.draw_commands.empty())
     {
         _vertex_buffer.write(command_list, _draw.backing_vertices.data(), _draw.num_vertices * sizeof(geometry::vertex_t), 0);
         _index_buffer.write(command_list, _draw.backing_indices.data(), _draw.num_indices * sizeof(geometry::index_t), 0);
