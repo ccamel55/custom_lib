@@ -64,6 +64,46 @@ void Geometry_2D::d_line(
 }
 
 void Geometry_2D::d_box(
+    const point2Df& pos,
+    const point2Df& size,
+    const color& color
+) {
+    d_box(
+        pos,
+        size,
+        color,
+        color,
+        color,
+        color
+    );
+}
+
+void Geometry_2D::d_box(
+    const point2Df& pos,
+    const point2Df& size,
+    const color& color_tl,
+    const color& color_tr,
+    const color& color_br,
+    const color& color_bl
+) {
+    const lib::point2Df pos_tl = pos;
+    const lib::point2Df pos_tr = pos + point2Df(size.x, 0.f);
+    const lib::point2Df pos_br = pos + point2Df(size.x, size.y);
+    const lib::point2Df pos_bl = pos + point2Df(0.f, size.y);
+
+    d_box(
+        pos_tl,
+        pos_tr,
+        pos_br,
+        pos_bl,
+        color_tl,
+        color_tr,
+        color_br,
+        color_bl
+    );
+}
+
+void Geometry_2D::d_box(
     const point2Df& pos_tl,
     const point2Df& pos_tr,
     const point2Df& pos_br,
@@ -78,6 +118,46 @@ void Geometry_2D::d_box(
     d_line(pos_tr, pos_br, color_tr, color_br);
     d_line(pos_br, pos_bl, color_br, color_bl);
     d_line(pos_bl, pos_tl, color_bl, color_tl);
+}
+
+void Geometry_2D::d_box_fill(
+    const point2Df& pos,
+    const point2Df& size,
+    const color& color
+) {
+    d_box_fill(
+        pos,
+        size,
+        color,
+        color,
+        color,
+        color
+    );
+}
+
+void Geometry_2D::d_box_fill(
+    const point2Df& pos,
+    const point2Df& size,
+    const color& color_tl,
+    const color& color_tr,
+    const color& color_br,
+    const color& color_bl
+) {
+    const lib::point2Df pos_tl = pos;
+    const lib::point2Df pos_tr = pos + point2Df(size.x, 0.f);
+    const lib::point2Df pos_br = pos + point2Df(size.x, size.y);
+    const lib::point2Df pos_bl = pos + point2Df(0.f, size.y);
+
+    d_box_fill(
+        pos_tl,
+        pos_tr,
+        pos_br,
+        pos_bl,
+        color_tl,
+        color_tr,
+        color_br,
+        color_bl
+    );
 }
 
 void Geometry_2D::d_box_fill(

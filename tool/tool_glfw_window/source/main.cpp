@@ -4,6 +4,7 @@
 #include <module_core/type/point/point2D.hpp>
 
 #include <module_gui/Gui.hpp>
+#include <module_gui/windows/Form.hpp>
 
 #include <module_input/Input.hpp>
 
@@ -710,15 +711,21 @@ int main(
             EXE_PATH / "textures"
         );
 
-        const auto triangle_pass    = std::make_unique<render::BasicTriangle>(RENDER->backend()->device_handle(), SHADER_FACTORY);
-        const auto example_pass     = std::make_unique<ExamplePass>(RENDER->backend()->device_handle(), FONT_FACTORY, SHADER_FACTORY, TEXTURE_FACTORY);
+        // const auto triangle_pass    = std::make_unique<render::BasicTriangle>(RENDER->backend()->device_handle(), SHADER_FACTORY);
+        // const auto example_pass     = std::make_unique<ExamplePass>(RENDER->backend()->device_handle(), FONT_FACTORY, SHADER_FACTORY, TEXTURE_FACTORY);
         const auto gui_pass         = std::make_unique<gui::Gui>(RENDER->backend()->device_handle(), FONT_FACTORY, SHADER_FACTORY, TEXTURE_FACTORY);
 
-        INPUTS->emplace_pass(example_pass.get());
+        {
+            gui_pass->AddWindow(std::make_unique<gui::Form>("Hello", point2Di(640, 480 ), point2Di(50, 50)));
+            gui_pass->AddWindow(std::make_unique<gui::Form>("Bye", point2Di(640, 480 ), point2Di(100, 100)));
+            gui_pass->AddWindow(std::make_unique<gui::Form>("SCHEYYAH", point2Di(640, 480 ), point2Di(150, 150)));
+        }
+
+        // INPUTS->emplace_pass(example_pass.get());
         INPUTS->emplace_pass(gui_pass.get());
 
-        RENDER->emplace_render_pass_back(triangle_pass.get());
-        RENDER->emplace_render_pass_back(example_pass.get());
+        // RENDER->emplace_render_pass_back(triangle_pass.get());
+        // RENDER->emplace_render_pass_back(example_pass.get());
         RENDER->emplace_render_pass_back(gui_pass.get());
 
         // Main window loop

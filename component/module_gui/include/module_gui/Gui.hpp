@@ -52,9 +52,9 @@ class Gui final : public render::RenderPass, public input::InputPass {
 public:
     Gui(
         const nvrhi::DeviceHandle& device,
-        const std::shared_ptr<render::FontFactory>& font_factory,
-        const std::shared_ptr<render::ShaderFactory>& shader_factory,
-        const std::shared_ptr<render::TextureFactory>& texture_factory
+        const std::shared_ptr<render::FontFactory>& fontFactory,
+        const std::shared_ptr<render::ShaderFactory>& shaderFactory,
+        const std::shared_ptr<render::TextureFactory>& textureFactory
     );
 
     //
@@ -73,9 +73,16 @@ public:
     // Gui implementations
     //
 
+    //! Checks if GUI is operating in exclusive mode
+    //! \returns true if GUI is in exclusive mode, else false
+    [[nodiscard]] bool IsExclusive() const;
+
+    //! Toggle window exclusive mode
+    void ToggleExclusive();
+
     //! Add a window to be managed
     //! \param window window to add
-    void AddWindow(const std::shared_ptr<WindowNode>& window);
+    void AddWindow(std::unique_ptr<WindowNode>&& window);
 
 private:
 
@@ -83,17 +90,19 @@ private:
     // Render resources
     //
 
-    render::Geometry_2D _geometry_2d;
-    render::TextureBlit _blit;
-    detail::Image _image;
-    detail::FrameBuffer _frame_buffer;
-    nvrhi::CommandListHandle _command_list;
+    render::Geometry_2D m_geometry2D;
+    render::TextureBlit m_blit;
+    detail::Image m_image;
+    detail::FrameBuffer m_frameBuffer;
+    nvrhi::CommandListHandle m_commandList;
 
     //
     // Gui resources
     //
 
-    std::vector<std::shared_ptr<WindowNode>> m_windows;
+    bool m_exclusiveMode = false;
+
+    std::vector<std::unique_ptr<WindowNode>> m_windows;
 
 };
 

@@ -89,6 +89,32 @@ public:
     );
 
     //! Draw box
+    //! \param pos position of top left corner
+    //! \param size size of box
+    //! \param color color of box
+    void d_box(
+        const point2Df& pos,
+        const point2Df& size,
+        const color& color
+    );
+
+    //! Draw box
+    //! \param pos position of top left corner
+    //! \param size size of box
+    //! \param color_tl color of top left corner
+    //! \param color_tr color of top right corner
+    //! \param color_br color of bottom right corner
+    //! \param color_bl color of bottom left corner
+    void d_box(
+        const point2Df& pos,
+        const point2Df& size,
+        const color& color_tl,
+        const color& color_tr,
+        const color& color_br,
+        const color& color_bl
+    );
+
+    //! Draw box
     //! \param pos_tl position of top left corner
     //! \param pos_tr position of top right corner
     //! \param pos_br position of bottom right corner
@@ -102,6 +128,32 @@ public:
         const point2Df& pos_tr,
         const point2Df& pos_br,
         const point2Df& pos_bl,
+        const color& color_tl,
+        const color& color_tr,
+        const color& color_br,
+        const color& color_bl
+    );
+
+    //! Draw filled box
+    //! \param pos position of top left corner
+    //! \param size size of box
+    //! \param color color of box
+    void d_box_fill(
+        const point2Df& pos,
+        const point2Df& size,
+        const color& color
+    );
+
+    //! Draw filled box
+    //! \param pos position of top left corner
+    //! \param size size of box
+    //! \param color_tl color of top left corner
+    //! \param color_tr color of top right corner
+    //! \param color_br color of bottom right corner
+    //! \param color_bl color of bottom left corner
+    void d_box_fill(
+        const point2Df& pos,
+        const point2Df& size,
         const color& color_tl,
         const color& color_tr,
         const color& color_br,
