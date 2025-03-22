@@ -1,33 +1,31 @@
 #pragma once
 
-#include <module_core/type/color.hpp>
+#include <array>
 
-#include <module_core/type/point/point2D.hpp>
-#include <module_core/type/point/point4D.hpp>
+#include <module_core/type/color.hpp>
 
 namespace lib::gui {
 
-namespace detail {
+enum Style_Color {
+    Gui_Col_Background_Primary,
+    Gui_Col_Background_Secondary,
 
-struct styler_colors_t {
-    lib::color backgroundPrimary;
-    lib::color backgroundSecondary;
+    Gui_Col_Border_Primary,
+    Gui_Col_Border_Secondary,
 
-    lib::color borderPrimary;
-    lib::color borderSecondary;
+    Gui_Col_Accent_Primary,
+    Gui_Col_Accent_Secondary,
 
-    lib::color accentPrimary;
-    lib::color accentSecondary;
+    Style_Color_Count // MUST BE LAST
 };
 
-}
-
-//! Gui style provider
+//! Default gui style provider
 class StyleProvider {
 public:
-    virtual ~StyleProvider() = default;
+    StyleProvider();
 
-
+public:
+    std::array<color, Style_Color_Count> col;
 
 };
 

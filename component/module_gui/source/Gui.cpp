@@ -5,10 +5,10 @@
 using namespace lib::gui;
 
 // Global styler context
-std::shared_ptr<StyleProvider> lib::gui::STYLER = nullptr;
+std::unique_ptr<StyleProvider> lib::gui::STYLER = std::make_unique<StyleProvider>();
 
-void lib::gui::SetStyler(const std::shared_ptr<StyleProvider>& styler) {
-    STYLER = styler;
+void lib::gui::SetStyler(std::unique_ptr<StyleProvider>&& styler) {
+    STYLER = std::move(styler);
 }
 
 //

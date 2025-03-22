@@ -1,4 +1,5 @@
 #include <glm/gtx/easing.hpp>
+#include <module_gui/StyleProvider.hpp>
 #include <module_gui/windows/Form.hpp>
 
 using namespace lib::gui;
@@ -58,23 +59,35 @@ void Form::OnRender(render::Geometry_2D& geometry_2d) {
     // Draw form
     //
 
-    const point4Di& area    = GetNodeProperties().area;
-    const bool focused      = WindowState().has(WindowState_Focused | WindowState_Pinned);
+    const point4Di& area        = GetNodeProperties().area;
 
-    const point4Di dragArea = GetDragArea().value();
-    const point4Di resizeArea = GetResizeArea().value();
+    const point4Di dragArea     = GetDragArea().value();
+    const point4Di resizeArea   = GetResizeArea().value();
 
-    geometry_2d.d_box_fill(area, color(50, 50, 50));
+    // Background
+    {
+        geometry_2d.d_box_fill(area, STYLER->col[Gui_Col_Background_Primary]);
+    }
 
-    geometry_2d.d_box_fill(dragArea, color(100, 100, 100));
-    geometry_2d.d_triangle_filled(
-        point2Df(resizeArea.x + resizeArea.z, resizeArea.y),
-        point2Df(resizeArea.x + resizeArea.z, resizeArea.y + resizeArea.w),
-        point2Df(resizeArea.x, resizeArea.y + resizeArea.w),
-        color(40, 40, 40)
-    );
+    // Decorations
+    {
+        // Title bar
+        geometry_2d.d_box_fill(dragArea, STYLER->col[Gui_Col_Accent_Primary]);
 
-    geometry_2d.d_box(area, focused ? color(150, 150, 150) : color(30, 30, 30) );
+        // Resize arrow
+        geometry_2d.d_triangle_filled(
+            point2Df(resizeArea.x + resizeArea.z, resizeArea.y),
+            point2Df(resizeArea.x + resizeArea.z, resizeArea.y + resizeArea.w),
+            point2Df(resizeArea.x, resizeArea.y + resizeArea.w),
+            STYLER->col[Gui_Col_Accent_Secondary]
+        );
+    }
+
+    // Outline
+    {
+        const bool focused = WindowState().has(WindowState_Focused | WindowState_Pinned);
+        geometry_2d.d_box(area, STYLER->col[focused ? Gui_Col_Border_Primary : Gui_Col_Border_Secondary]);
+    }
 
     //
     // Render contents

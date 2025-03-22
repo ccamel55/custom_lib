@@ -10,7 +10,7 @@ namespace lib::gui {
 
 class StyleProvider;
 
-extern std::shared_ptr<StyleProvider> STYLER;
+extern std::unique_ptr<StyleProvider> STYLER;
 
 struct node_properties_t {
     lib::point4Di area;

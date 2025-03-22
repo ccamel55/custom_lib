@@ -45,7 +45,7 @@ using Image         = render::Image<Image_Id, static_cast<size_t>(Image_Id::Num_
 
 //! Set global styler
 //! \param styler styler instance
-void SetStyler(const std::shared_ptr<StyleProvider>& styler);
+void SetStyler(std::unique_ptr<StyleProvider>&& styler);
 
 //! Gui context, manages render resources and implements basic window manager
 class Gui final : public render::RenderPass, public input::InputPass {
