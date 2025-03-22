@@ -13,8 +13,7 @@ class StyleProvider;
 extern std::shared_ptr<StyleProvider> STYLER;
 
 struct node_properties_t {
-    lib::point2Di sizePixels;
-    lib::point2Di positionPixels;
+    lib::point4Di area;
 };
 
 //! Base node all UI derives from
@@ -42,14 +41,11 @@ public:
     virtual void OnRender(render::Geometry_2D& geometry_2d) = 0;
 
     //! Get node properties.
-    [[nodiscard]] const node_properties_t& GetNodeProperties() const {
-        return m_nodeProperties;
-    }
+    [[nodiscard]] const node_properties_t& GetNodeProperties() const;
 
+protected:
     //! Get node properties.
-    [[nodiscard]] node_properties_t& GetNodeProperties() {
-        return m_nodeProperties;
-    }
+    [[nodiscard]] node_properties_t& GetNodeProperties();
 
 protected:
     node_properties_t m_nodeProperties = {};

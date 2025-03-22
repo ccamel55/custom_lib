@@ -38,24 +38,56 @@ void Gui::update_input(const bitflag input_type, const input::InputObserver& inp
 
     using namespace lib::input;
 
-    //
-    // TODO: handle properly
-    //
-
     if (m_windows.empty()) {
         return;
     }
 
     // First index will always be our "focused" window
     const auto& focusedWindow = m_windows.at(0);
-    const auto& [focusSize, focusPos] = focusedWindow->GetNodeProperties();
+    const point4Di& focusedArea = focusedWindow->GetNodeProperties().area;
 
-    if (focusedWindow->WindowState().has(WindowState_BlockInput) ||
-        input.in_rect(focusPos, focusSize)) {
+    if (m_isDragging || m_isResizing) {
 
         //
-        // Mouse is in focus window or focus window is taking control
+        // Handle drag or resize
         //
+
+        if (input.get_state(key::MOUSE_LEFT).has(BUTTON_STATE_DOWN)) {
+
+            const point2Di& mouseDelta = input.cursor_delta();
+
+            if (m_isDragging) {
+                const point2Di newPos(focusedArea.x + mouseDelta.x, focusedArea.y + mouseDelta.y);
+                focusedWindow->SetWindowPosChecked(newPos, m_uiBounds);
+            }
+            else { // m_isResizing
+                const point2Di newSize(focusedArea.z + mouseDelta.x, focusedArea.w + mouseDelta.y);
+                focusedWindow->SetWindowSizeChecked(newSize, m_uiBounds);
+            }
+        }
+        else {
+            m_isResizing = false;
+            m_isDragging = false;
+        }
+    }
+    else if (input.in_rect(focusedArea)) {
+
+        //
+        // Mouse is in focus window
+        //
+
+        const auto resizeArea = focusedWindow->GetResizeArea();
+        const auto dragArea = focusedWindow->GetDragArea();
+
+        if (resizeArea.has_value() && input.in_rect(resizeArea.value())) {
+            m_isResizing = true;
+            return;
+        }
+
+        if (dragArea.has_value() && input.in_rect(dragArea.value())) {
+            m_isDragging = true;
+            return;
+        }
 
         focusedWindow->OnInput(input_type, input);
     }
@@ -68,54 +100,29 @@ void Gui::update_input(const bitflag input_type, const input::InputObserver& inp
         for (auto it = m_windows.begin() + 1; it != m_windows.end(); ++it) {
 
             const auto& window = *it;
-            const auto& [windowSize, windowPos] = window->GetNodeProperties();
+            const point4Di& windowArea = window->GetNodeProperties().area;
 
-            if (input.in_rect(windowPos, windowSize)) {
+            if (input.in_rect(windowArea)) {
+
+                // reset focus of current "focused" window
+                m_windows.at(0)->WindowState().remove(WindowState_Focused);
 
                 // move to front (index 0 AKA focused)
                 std::rotate(m_windows.begin(), it, it + 1);
+
+                // add focus to new "focused" window
+                m_windows.at(0)->WindowState().add(WindowState_Focused);
 
                 break;
             }
         }
     }
-
-    // if (m_exclusiveMode) {
-    //     // TODO: handle window resizing and snapping etc.
-    //     //
-    //     // NEED TO IMPLEMENT
-    //     // NOTE: first element in windows list should be the window in focus
-    //     //
-    // }
-    // else {
-    //
-    //     // For now, we only pass keyboard inputs to nonexclusive windows. We may want to change this in the future
-    //     if (input_type.has(lib::input::INPUT_TYPE_KEYBOARD)) {
-    //
-    //         // Update input for all windows in non-exclusive or pinned mode
-    //         for (const std::unique_ptr<WindowNode>& window: m_windows) {
-    //
-    //             const window_properties_t& windowProperties = window->GetWindowProperties();
-    //
-    //             // Skip windows that don't allow for inputting or need exclusive focus to input
-    //             if (!windowProperties.allowInput || windowProperties.exclusiveInput) {
-    //                 return;
-    //             }
-    //
-    //             window->OnInput(input_type, input);
-    //         }
-    //     }
-    // }
 }
 
 void Gui::update_frame(const render::FrameInterval& interval) {
 
     // Note: For now we will Animate and Render on the same call.
     //       Future work should be done to allow animating and rendering separately.
-
-    //
-    // TODO: handle properly, I am just drawing for the sake of it right now
-    //
 
     for (const std::unique_ptr<WindowNode>& window: m_windows | std::views::reverse) {
         window->OnAnimate(interval);
@@ -189,6 +196,8 @@ void Gui::back_buffer_resized(const point2Di& size) {
                 .addColorAttachment(m_image[Image_Id::Geometry_2d_ColorTarget])
         );
     });
+
+    m_uiBounds = { 0, 0, size.x, size.y };
 }
 
 bool Gui::IsExclusive() const {
@@ -201,6 +210,11 @@ void Gui::ToggleExclusive() {
 
 void Gui::AddWindow(std::unique_ptr<WindowNode>&& window) {
     m_windows.emplace_back(std::move(window));
+
+    // First window - set as "focused"
+    if (m_windows.size() == 1) {
+        m_windows.at(0)->WindowState().add(WindowState_Focused);
+    }
 }
 
 

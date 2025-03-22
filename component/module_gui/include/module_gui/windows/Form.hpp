@@ -9,6 +9,9 @@ class Form : public WindowNode {
     struct defaults {
         static constexpr int WIDTH  = 640;
         static constexpr int HEIGHT = 480;
+
+        static constexpr int DRAG_HEIGHT = 20;
+        static constexpr int RESIZE_SIZE = 10;
     };
 
 public:
@@ -27,6 +30,9 @@ public:
     void OnRefresh() override;
     void OnRender(render::Geometry_2D& geometry_2d) override;
 
+    [[nodiscard]] std::optional<point4Di> GetDragArea() const override;
+    [[nodiscard]] std::optional<point4Di> GetResizeArea() const override;
+
     //
     // Implementation
     //
@@ -37,10 +43,6 @@ public:
 
 private:
     std::string m_title;
-
-    bool m_resizing;
-    bool m_dragging;
-
     std::unique_ptr<UiNode> m_content;
 
 };

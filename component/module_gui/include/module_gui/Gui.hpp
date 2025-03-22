@@ -100,7 +100,11 @@ private:
     // Gui resources
     //
 
-    bool m_exclusiveMode = false;
+    point4Di m_uiBounds     = {};
+    bool m_exclusiveMode    = false;
+
+    bool m_isDragging = false;
+    bool m_isResizing = false;
 
     std::vector<std::unique_ptr<WindowNode>> m_windows;
 

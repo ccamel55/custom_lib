@@ -1,6 +1,8 @@
 #pragma once
 
 #include <module_core/NoCopy.hpp>
+#include <module_core/type/point/point4D.hpp>
+
 #include <module_core/type/bitflag.hpp>
 
 #include <module_render/backend/Device_Common.hpp>
@@ -88,6 +90,84 @@ public:
         const color& color_2
     );
 
+    //! Draw triangle
+    //! \param vert_1 vertex 1
+    //! \param vert_2 vertex 2
+    //! \param vert_3 vertex 3
+    //! \param color vertex color
+    void d_triangle(
+        const point2Df& vert_1,
+        const point2Df& vert_2,
+        const point2Df& vert_3,
+        const color& color
+    );
+
+    //! Draw triangle
+    //! \param vert_1 vertex 1
+    //! \param vert_2 vertex 2
+    //! \param vert_3 vertex 3
+    //! \param color_1 vertex 1 color
+    //! \param color_2 vertex 2 color
+    //! \param color_3 vertex 3 color
+    void d_triangle(
+        const point2Df& vert_1,
+        const point2Df& vert_2,
+        const point2Df& vert_3,
+        const color& color_1,
+        const color& color_2,
+        const color& color_3
+    );
+
+    //! Draw filled triangle
+    //! \param vert_1 vertex 1
+    //! \param vert_2 vertex 2
+    //! \param vert_3 vertex 3
+    //! \param color vertex color
+    void d_triangle_filled(
+        const point2Df& vert_1,
+        const point2Df& vert_2,
+        const point2Df& vert_3,
+        const color& color
+    );
+
+    //! Draw filled triangle
+    //! \param vert_1 vertex 1
+    //! \param vert_2 vertex 2
+    //! \param vert_3 vertex 3
+    //! \param color_1 vertex 1 color
+    //! \param color_2 vertex 2 color
+    //! \param color_3 vertex 3 color
+    void d_triangle_filled(
+        const point2Df& vert_1,
+        const point2Df& vert_2,
+        const point2Df& vert_3,
+        const color& color_1,
+        const color& color_2,
+        const color& color_3
+    );
+
+    //! Draw box
+    //! \param area area to draw box
+    //! \param color color of box
+    void d_box(
+        const point4Df& area,
+        const color& color
+    );
+
+    //! Draw box
+    //! \param area area to draw box
+    //! \param color_tl color of top left corner
+    //! \param color_tr color of top right corner
+    //! \param color_br color of bottom right corner
+    //! \param color_bl color of bottom left corner
+    void d_box(
+        const point4Df& area,
+        const color& color_tl,
+        const color& color_tr,
+        const color& color_br,
+        const color& color_bl
+    );
+
     //! Draw box
     //! \param pos position of top left corner
     //! \param size size of box
@@ -128,6 +208,28 @@ public:
         const point2Df& pos_tr,
         const point2Df& pos_br,
         const point2Df& pos_bl,
+        const color& color_tl,
+        const color& color_tr,
+        const color& color_br,
+        const color& color_bl
+    );
+
+    //! Draw filled box
+    //! \param area area to draw box
+    //! \param color color of box
+    void d_box_fill(
+        const point4Df& area,
+        const color& color
+    );
+
+    //! Draw filled box
+    //! \param area area to draw box
+    //! \param color_tl color of top left corner
+    //! \param color_tr color of top right corner
+    //! \param color_br color of bottom right corner
+    //! \param color_bl color of bottom left corner
+    void d_box_fill(
+        const point4Df& area,
         const color& color_tl,
         const color& color_tr,
         const color& color_br,

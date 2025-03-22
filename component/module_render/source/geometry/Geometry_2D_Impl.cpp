@@ -63,6 +63,98 @@ void Geometry_2D::d_line(
     indices[5] = first_vertex_index + 3;
 }
 
+void Geometry_2D::d_triangle(
+    const point2Df& vert_1,
+    const point2Df& vert_2,
+    const point2Df& vert_3,
+    const color& color
+) {
+   d_triangle(vert_1, vert_2, vert_3, color, color, color);
+}
+
+void Geometry_2D::d_triangle(
+    const point2Df& vert_1,
+    const point2Df& vert_2,
+    const point2Df& vert_3,
+    const color& color_1,
+    const color& color_2,
+    const color& color_3
+) {
+    d_line(vert_1, vert_2, color_1, color_2);
+    d_line(vert_2, vert_3, color_2, color_3);
+    d_line(vert_3, vert_1, color_3, color_1);
+}
+
+void Geometry_2D::d_triangle_filled(
+    const point2Df& vert_1,
+    const point2Df& vert_2,
+    const point2Df& vert_3,
+    const color& color
+) {
+    d_triangle_filled(vert_1, vert_2, vert_3, color, color, color);
+}
+
+void Geometry_2D::d_triangle_filled(
+    const point2Df& vert_1,
+    const point2Df& vert_2,
+    const point2Df& vert_3,
+    const color& color_1,
+    const color& color_2,
+    const color& color_3
+) {
+    _draw.prepare_draw(_texture_default, geometry::Pipeline_Id::Geometry_Texture);
+
+    size_t first_vertex_index;
+    std::span<geometry::vertex_t> vertices = _draw.emplace_vertices(first_vertex_index, 3);
+
+    vertices[0] = geometry::vertex_t(vert_1.x, vert_1.y, 0.f, 0.f, 0.f, color_1.r, color_1.g, color_1.b, color_1.a);
+    vertices[1] = geometry::vertex_t(vert_2.x, vert_2.y, 0.f, 0.f, 0.f, color_2.r, color_2.g, color_2.b, color_2.a);
+    vertices[2] = geometry::vertex_t(vert_3.x, vert_3.y, 0.f, 0.f, 0.f, color_3.r, color_3.g, color_3.b, color_3.a);
+
+    std::span<geometry::index_t> indices = _draw.emplace_indices(3);
+
+    indices[0] = first_vertex_index + 0;
+    indices[1] = first_vertex_index + 1;
+    indices[2] = first_vertex_index + 2;
+}
+
+void Geometry_2D::d_box(
+    const point4Df& area,
+    const color& color
+) {
+    d_box(
+     area,
+     color,
+     color,
+     color,
+     color
+ );
+}
+
+void Geometry_2D::d_box(
+    const point4Df& area,
+    const color& color_tl,
+    const color& color_tr,
+    const color& color_br,
+    const color& color_bl
+) {
+    const lib::point2Df pos_tl = point2Df(area.x, area.y);
+    const lib::point2Df pos_tr = point2Df(area.x + area.z, area.y);
+    const lib::point2Df pos_br = point2Df(area.x + area.z, area.y + area.w);
+    const lib::point2Df pos_bl = point2Df(area.x, area.y + area.w);
+
+    d_box(
+        pos_tl,
+        pos_tr,
+        pos_br,
+        pos_bl,
+        color_tl,
+        color_tr,
+        color_br,
+        color_bl
+    );
+}
+
 void Geometry_2D::d_box(
     const point2Df& pos,
     const point2Df& size,
@@ -118,6 +210,43 @@ void Geometry_2D::d_box(
     d_line(pos_tr, pos_br, color_tr, color_br);
     d_line(pos_br, pos_bl, color_br, color_bl);
     d_line(pos_bl, pos_tl, color_bl, color_tl);
+}
+
+void Geometry_2D::d_box_fill(
+    const point4Df& area,
+    const color& color
+) {
+    d_box_fill(
+        area,
+        color,
+        color,
+        color,
+        color
+    );
+}
+
+void Geometry_2D::d_box_fill(
+    const point4Df& area,
+    const color& color_tl,
+    const color& color_tr,
+    const color& color_br,
+    const color& color_bl
+) {
+    const lib::point2Df pos_tl = point2Df(area.x, area.y);
+    const lib::point2Df pos_tr = point2Df(area.x + area.z, area.y);
+    const lib::point2Df pos_br = point2Df(area.x + area.z, area.y + area.w);
+    const lib::point2Df pos_bl = point2Df(area.x, area.y + area.w);
+
+    d_box_fill(
+        pos_tl,
+        pos_tr,
+        pos_br,
+        pos_bl,
+        color_tl,
+        color_tr,
+        color_br,
+        color_bl
+    );
 }
 
 void Geometry_2D::d_box_fill(
