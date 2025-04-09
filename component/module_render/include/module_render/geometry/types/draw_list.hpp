@@ -2,6 +2,8 @@
 
 #include <module_render/geometry/types/vertex.hpp>
 
+#include <optional>
+
 namespace lib::render::geometry {
 
 struct draw_command_t {
@@ -9,22 +11,36 @@ struct draw_command_t {
     draw_command_t(
         const Texture_Id& texture,
         const Pipeline_Id pipeline,
+        const std::optional<nvrhi::Viewport>& viewport,
+        const std::optional<nvrhi::Rect>& scissor,
         const size_t offset = 0
     )
         : texture(texture)
         , pipeline(pipeline)
+        , viewport(viewport)
+        , scissor(scissor)
         , offset(offset)
         , count(0) {
 
     }
 
-    [[nodiscard]] bool compatible(const Texture_Id& o_texture, const Pipeline_Id o_pipeline) const {
+    [[nodiscard]] bool compatible(
+        const Texture_Id& o_texture,
+        const Pipeline_Id o_pipeline,
+        const std::optional<nvrhi::Viewport>& o_viewport,
+        const std::optional<nvrhi::Rect>& o_scissor
+    ) const {
         return texture == o_texture
-            && pipeline == o_pipeline;
+            && pipeline == o_pipeline
+            && viewport == o_viewport
+            && scissor == o_scissor;
     }
 
     Texture_Id texture;
     Pipeline_Id pipeline;
+    std::optional<nvrhi::Viewport> viewport;
+    std::optional<nvrhi::Rect> scissor;
+
     uint32_t offset;
     uint32_t count;
 };
@@ -42,14 +58,19 @@ struct draw_list_t {
     }
 
     //! Called before any drawing occurs. This will create a new draw command if needed
-    //! \param texture texture ID that will be drawed
+    //! \param texture texture ID that will be drawn
     //! \param pipeline pipeline ID that will be used to draw
-    void prepare_draw(const Texture_Id& texture, const Pipeline_Id pipeline) {
-        if (draw_commands.empty()) {
-            draw_commands.emplace_back(texture, pipeline);
-        }
-        else if (!draw_commands.back().compatible(texture, pipeline)) {
-            draw_commands.emplace_back(texture, pipeline, num_indices);
+    //! \param viewport viewport, defaults to whole frame buffer
+    //! \param scissor scissor, defaults to whole viewport
+    void prepare_draw(
+        const Texture_Id& texture,
+        const Pipeline_Id pipeline,
+        const std::optional<nvrhi::Viewport>& viewport = std::nullopt,
+        const std::optional<nvrhi::Rect>& scissor = std::nullopt
+    ) {
+        if (draw_commands.empty() ||
+            draw_commands.back().compatible(texture, pipeline, viewport, scissor) == false) {
+            draw_commands.emplace_back(texture, pipeline, viewport, scissor, num_indices);
         }
     }
 

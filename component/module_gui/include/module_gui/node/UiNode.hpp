@@ -4,13 +4,9 @@
 #include <module_render/FrameInterval.hpp>
 #include <module_render/geometry/Geometry_2D.hpp>
 
-#include <memory>
-
 namespace lib::gui {
 
 class StyleProvider;
-
-extern std::unique_ptr<StyleProvider> STYLER;
 
 struct node_properties_t {
     lib::point4Di area;
@@ -34,8 +30,9 @@ public:
     //! Update inputs
     virtual void OnInput(bitflag input_type, const input::InputObserver& input) = 0;
 
-    //! Update window size/compute size
-    virtual void OnRefresh() = 0;
+    //! Refresh window state
+    //! \param styler style provider
+    virtual void OnRefresh(const StyleProvider* styler);
 
     //! Update render target
     virtual void OnRender(render::Geometry_2D& geometry_2d) = 0;
@@ -48,6 +45,8 @@ protected:
     [[nodiscard]] node_properties_t& GetNodeProperties();
 
 protected:
+    const StyleProvider* m_styler = nullptr;
+
     node_properties_t m_nodeProperties = {};
 
 };

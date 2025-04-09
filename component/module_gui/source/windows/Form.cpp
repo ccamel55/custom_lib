@@ -44,13 +44,15 @@ void Form::OnInput(const bitflag input_type, const input::InputObserver& input) 
     m_content->OnInput(input_type, input);
 }
 
-void Form::OnRefresh() {
+void Form::OnRefresh(const StyleProvider* styler) {
+
+    UiNode::OnRefresh(styler);
 
     if (m_content == nullptr) {
         return;
     }
 
-    m_content->OnRefresh();
+    m_content->OnRefresh(styler);
 }
 
 void Form::OnRender(render::Geometry_2D& geometry_2d) {
@@ -66,27 +68,36 @@ void Form::OnRender(render::Geometry_2D& geometry_2d) {
 
     // Background
     {
-        geometry_2d.d_box_fill(area, STYLER->col[Gui_Col_Background_Primary]);
+        geometry_2d.d_box_fill(area, m_styler->col[Gui_Col_Background_Primary]);
     }
 
     // Decorations
     {
         // Title bar
-        geometry_2d.d_box_fill(dragArea, STYLER->col[Gui_Col_Accent_Primary]);
+        geometry_2d.d_box_fill(dragArea, m_styler->col[Gui_Col_Accent_Primary]);
+
+        // Title
+        geometry_2d.d_text(
+            point2Df(dragArea.x + 10, dragArea.y + dragArea.w / 2),
+            m_styler->col[Gui_Col_Text_Primary],
+            m_styler->font[Gui_Font_H1],
+            m_title,
+            render::font_flags::Centre_Y
+        );
 
         // Resize arrow
         geometry_2d.d_triangle_filled(
             point2Df(resizeArea.x + resizeArea.z, resizeArea.y),
             point2Df(resizeArea.x + resizeArea.z, resizeArea.y + resizeArea.w),
             point2Df(resizeArea.x, resizeArea.y + resizeArea.w),
-            STYLER->col[Gui_Col_Accent_Secondary]
+            m_styler->col[Gui_Col_Accent_Secondary]
         );
     }
 
     // Outline
     {
         const bool focused = WindowState().has(WindowState_Focused | WindowState_Pinned);
-        geometry_2d.d_box(area, STYLER->col[focused ? Gui_Col_Border_Primary : Gui_Col_Border_Secondary]);
+        geometry_2d.d_box(area, m_styler->col[focused ? Gui_Col_Border_Primary : Gui_Col_Border_Secondary]);
     }
 
     //

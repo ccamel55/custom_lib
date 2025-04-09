@@ -355,11 +355,11 @@ void Geometry_2D::d_text(
         fixed_pos.x -= text_width();
     }
     else if (flags.has(font_flags::Centre_X)) {
-        fixed_pos.x -= text_width() / 2;
+        fixed_pos.x -= text_width() * 0.5f;
     }
 
     if (flags.has(font_flags::Centre_Y)) {
-        fixed_pos.y += text_height() / 2;
+        fixed_pos.y += text_height() * 0.5f;
     }
 
     // Add each character by its self

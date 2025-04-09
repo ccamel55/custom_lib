@@ -319,13 +319,23 @@ void Geometry_2D::draw_geometry(const nvrhi::CommandListHandle& command_list, nv
                 state.pipeline      = _pipeline[batch.pipeline];
                 state.framebuffer   = frame_buffer;
 
-                // Construct the viewport so that all viewports form a grid.
-                const nvrhi::Viewport viewport = nvrhi::Viewport(
-                    0, static_cast<float>(frame_buffer_info.width),
-                    0, static_cast<float>(frame_buffer_info.height),
-                    0.f, 1.f
-                );
-                state.viewport.addViewportAndScissorRect(viewport);
+                // If no viewport is given, then use full frame buffer size
+                const nvrhi::Viewport viewport = batch.viewport.has_value()
+                    ? batch.viewport.value()
+                    : nvrhi::Viewport(
+                        0, static_cast<float>(frame_buffer_info.width),
+                        0, static_cast<float>(frame_buffer_info.height),
+                        0.f, 1.f
+                    );
+
+                state.viewport.addViewport(viewport);
+
+                // If no scissor region is given, then use full viewport size
+                const nvrhi::Rect scissor = batch.scissor.has_value()
+                    ? batch.scissor.value()
+                    : nvrhi::Rect(viewport);
+
+                state.viewport.addScissorRect(scissor);
             }
             command_list->setGraphicsState(state);
 
@@ -374,7 +384,7 @@ void Geometry_2D::remove_texture(const geometry::Texture_Id& id) {
     _texture.erase(id);
 }
 
-std::expected<geometry::Font_Id, std::string> Geometry_2D::add_font(const std::filesystem::path& path, float height) {
+std::expected<geometry::Font_Id, std::string> Geometry_2D::add_font(const std::filesystem::path& path, const float height) {
     auto font = _font_factory->load_font(path, height);
     if (!font.has_value()) {
         return std::unexpected(font.error());

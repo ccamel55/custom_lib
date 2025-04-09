@@ -4,12 +4,10 @@
 
 using namespace lib::gui;
 
-// Global styler context
-std::unique_ptr<StyleProvider> lib::gui::STYLER = std::make_unique<StyleProvider>();
-
-void lib::gui::SetStyler(std::unique_ptr<StyleProvider>&& styler) {
-    STYLER = std::move(styler);
-}
+//! TODOS
+//! - Implement form/window snapping
+//! - Implement flex box like layout
+//! - Support scissor/clipping
 
 //
 // --------------------------------------------------------------------------------------------------------------
@@ -32,6 +30,9 @@ Gui::Gui(
     , m_frameBuffer(device)
     , m_commandList(_device->createCommandList()) {
 
+    // NOTE: we are creating the styler here for now however we should allow the user to
+    //       set and update the style when ever they want.
+    m_styler = std::make_unique<StyleProvider>(m_geometry2D);
 }
 
 void Gui::update_input(const bitflag input_type, const input::InputObserver& input) {
@@ -209,11 +210,14 @@ void Gui::ToggleExclusive() {
 }
 
 void Gui::AddWindow(std::unique_ptr<WindowNode>&& window) {
-    m_windows.emplace_back(std::move(window));
+    const std::unique_ptr<WindowNode>& new_window = m_windows.emplace_back(std::move(window));
+
+    // IMPORTANT: refresh the window using the latest styler.
+    new_window->OnRefresh(m_styler.get());
 
     // First window - set as "focused"
     if (m_windows.size() == 1) {
-        m_windows.at(0)->WindowState().add(WindowState_Focused);
+        new_window->WindowState().add(WindowState_Focused);
     }
 }
 

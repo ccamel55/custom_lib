@@ -16,7 +16,7 @@ void WindowNode::SetWindowPosChecked(const point2Di& pos, const point4Di& bounds
     area.x = std::clamp<int>(pos.x, bounds.x, bounds.z - area.z);
     area.y = std::clamp<int>(pos.y, bounds.y, bounds.w - area.w);
 
-    OnRefresh();
+    OnRefresh(m_styler);
 }
 
 void WindowNode::SetWindowSizeChecked(const point2Di& size, const point4Di& bounds) {
@@ -26,7 +26,7 @@ void WindowNode::SetWindowSizeChecked(const point2Di& size, const point4Di& boun
     area.z = std::clamp<int>(size.x, MIN_WINDOW_SIZE.x, bounds.z - area.x);
     area.w = std::clamp<int>(size.y, MIN_WINDOW_SIZE.y, bounds.w - area.y);
 
-    OnRefresh();
+    OnRefresh(m_styler);
 }
 
 std::optional<lib::point4Di> WindowNode::GetDragArea() const {

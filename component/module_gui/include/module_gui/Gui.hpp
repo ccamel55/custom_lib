@@ -12,7 +12,6 @@
 
 #include <module_gui/node/ContainerNode.hpp>
 #include <module_gui/node/ControlNode.hpp>
-#include <module_gui/node/DecoratorNode.hpp>
 #include <module_gui/node/WindowNode.hpp>
 
 #include <module_gui/StyleProvider.hpp>
@@ -42,10 +41,6 @@ using FrameBuffer   = render::FrameBuffer<FrameBuffer_Id, static_cast<size_t>(Fr
 using Image         = render::Image<Image_Id, static_cast<size_t>(Image_Id::Num_Image_Id)>;
 
 }
-
-//! Set global styler
-//! \param styler styler instance
-void SetStyler(std::unique_ptr<StyleProvider>&& styler);
 
 //! Gui context, manages render resources and implements basic window manager
 class Gui final : public render::RenderPass, public input::InputPass {
@@ -92,8 +87,10 @@ private:
 
     render::Geometry_2D m_geometry2D;
     render::TextureBlit m_blit;
+
     detail::Image m_image;
     detail::FrameBuffer m_frameBuffer;
+
     nvrhi::CommandListHandle m_commandList;
 
     //
@@ -106,6 +103,7 @@ private:
     bool m_isDragging = false;
     bool m_isResizing = false;
 
+    std::unique_ptr<StyleProvider> m_styler;
     std::vector<std::unique_ptr<WindowNode>> m_windows;
 
 };

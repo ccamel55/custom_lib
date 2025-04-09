@@ -56,7 +56,7 @@ std::expected<font_properties_t, std::string> FontFactory::load_font(
     }
 
     // Find scaling needed to achieve desired height
-    const float height_scale = stbtt_ScaleForPixelHeight(&font_info, height);
+    const float height_scale = stbtt_ScaleForMappingEmToPixels(&font_info, height);
 
     // For each drawable character, we will render to our texture atlas.
     // Note: in the future we should use rect packing for this/put into a global font atlas.
