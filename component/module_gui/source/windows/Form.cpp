@@ -55,7 +55,7 @@ void Form::OnRefresh(const StyleProvider* styler) {
     m_content->OnRefresh(styler);
 }
 
-void Form::OnRender(render::Geometry_2D& geometry_2d) {
+void Form::OnRender(render::Geometry_2D_Observer& geometry_2d) {
 
     //
     // Draw form

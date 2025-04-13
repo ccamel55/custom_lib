@@ -35,7 +35,7 @@ public:
     virtual void OnRefresh(const StyleProvider* styler);
 
     //! Update render target
-    virtual void OnRender(render::Geometry_2D& geometry_2d) = 0;
+    virtual void OnRender(render::Geometry_2D_Observer& geometry_2d) = 0;
 
     //! Get node properties.
     [[nodiscard]] const node_properties_t& GetNodeProperties() const;

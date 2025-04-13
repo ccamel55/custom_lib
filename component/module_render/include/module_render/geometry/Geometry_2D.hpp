@@ -1,15 +1,13 @@
 #pragma once
 
-#include <module_core/NoCopy.hpp>
 #include <module_core/type/point/point4D.hpp>
 
 #include <module_core/type/bitflag.hpp>
 
 #include <module_render/backend/Device_Common.hpp>
 
-#include <module_render/geometry/types/alias.hpp>
+#include <module_render/geometry/Geometry_2D_Base.hpp>
 #include <module_render/geometry/types/draw_list.hpp>
-#include <module_render/geometry/types/vertex.hpp>
 
 #include <module_render/types/buffer_object.hpp>
 
@@ -18,17 +16,10 @@
 
 namespace lib::render {
 
-enum font_flags : bitflag_t {
-    None = 0,
-    Align_L = 0 << 0,
-    Align_R = 1 << 0,
-    Centre_X = 1 << 1,
-    Centre_Y = 1 << 2,
-    Centre_XY = Centre_X | Centre_Y,
-    Outline = 1 << 3,
-};
+class Geometry_2D;
+using Geometry_2D_Observer = Geometry_2D_Base<Geometry_2D>;
 
-class Geometry_2D final : public NoCopy {
+class Geometry_2D final : public Geometry_2D_Observer {
 public:
     explicit Geometry_2D(
         const nvrhi::DeviceHandle& device,
@@ -90,46 +81,6 @@ public:
         const color& color_2
     );
 
-    //! Draw triangle
-    //! \param vert_1 vertex 1
-    //! \param vert_2 vertex 2
-    //! \param vert_3 vertex 3
-    //! \param color vertex color
-    void d_triangle(
-        const point2Df& vert_1,
-        const point2Df& vert_2,
-        const point2Df& vert_3,
-        const color& color
-    );
-
-    //! Draw triangle
-    //! \param vert_1 vertex 1
-    //! \param vert_2 vertex 2
-    //! \param vert_3 vertex 3
-    //! \param color_1 vertex 1 color
-    //! \param color_2 vertex 2 color
-    //! \param color_3 vertex 3 color
-    void d_triangle(
-        const point2Df& vert_1,
-        const point2Df& vert_2,
-        const point2Df& vert_3,
-        const color& color_1,
-        const color& color_2,
-        const color& color_3
-    );
-
-    //! Draw filled triangle
-    //! \param vert_1 vertex 1
-    //! \param vert_2 vertex 2
-    //! \param vert_3 vertex 3
-    //! \param color vertex color
-    void d_triangle_filled(
-        const point2Df& vert_1,
-        const point2Df& vert_2,
-        const point2Df& vert_3,
-        const color& color
-    );
-
     //! Draw filled triangle
     //! \param vert_1 vertex 1
     //! \param vert_2 vertex 2
@@ -144,122 +95,6 @@ public:
         const color& color_1,
         const color& color_2,
         const color& color_3
-    );
-
-    //! Draw box
-    //! \param area area to draw box
-    //! \param color color of box
-    void d_box(
-        const point4Df& area,
-        const color& color
-    );
-
-    //! Draw box
-    //! \param area area to draw box
-    //! \param color_tl color of top left corner
-    //! \param color_tr color of top right corner
-    //! \param color_br color of bottom right corner
-    //! \param color_bl color of bottom left corner
-    void d_box(
-        const point4Df& area,
-        const color& color_tl,
-        const color& color_tr,
-        const color& color_br,
-        const color& color_bl
-    );
-
-    //! Draw box
-    //! \param pos position of top left corner
-    //! \param size size of box
-    //! \param color color of box
-    void d_box(
-        const point2Df& pos,
-        const point2Df& size,
-        const color& color
-    );
-
-    //! Draw box
-    //! \param pos position of top left corner
-    //! \param size size of box
-    //! \param color_tl color of top left corner
-    //! \param color_tr color of top right corner
-    //! \param color_br color of bottom right corner
-    //! \param color_bl color of bottom left corner
-    void d_box(
-        const point2Df& pos,
-        const point2Df& size,
-        const color& color_tl,
-        const color& color_tr,
-        const color& color_br,
-        const color& color_bl
-    );
-
-    //! Draw box
-    //! \param pos_tl position of top left corner
-    //! \param pos_tr position of top right corner
-    //! \param pos_br position of bottom right corner
-    //! \param pos_bl position of bottom left corner
-    //! \param color_tl color of top left corner
-    //! \param color_tr color of top right corner
-    //! \param color_br color of bottom right corner
-    //! \param color_bl color of bottom left corner
-    void d_box(
-        const point2Df& pos_tl,
-        const point2Df& pos_tr,
-        const point2Df& pos_br,
-        const point2Df& pos_bl,
-        const color& color_tl,
-        const color& color_tr,
-        const color& color_br,
-        const color& color_bl
-    );
-
-    //! Draw filled box
-    //! \param area area to draw box
-    //! \param color color of box
-    void d_box_fill(
-        const point4Df& area,
-        const color& color
-    );
-
-    //! Draw filled box
-    //! \param area area to draw box
-    //! \param color_tl color of top left corner
-    //! \param color_tr color of top right corner
-    //! \param color_br color of bottom right corner
-    //! \param color_bl color of bottom left corner
-    void d_box_fill(
-        const point4Df& area,
-        const color& color_tl,
-        const color& color_tr,
-        const color& color_br,
-        const color& color_bl
-    );
-
-    //! Draw filled box
-    //! \param pos position of top left corner
-    //! \param size size of box
-    //! \param color color of box
-    void d_box_fill(
-        const point2Df& pos,
-        const point2Df& size,
-        const color& color
-    );
-
-    //! Draw filled box
-    //! \param pos position of top left corner
-    //! \param size size of box
-    //! \param color_tl color of top left corner
-    //! \param color_tr color of top right corner
-    //! \param color_br color of bottom right corner
-    //! \param color_bl color of bottom left corner
-    void d_box_fill(
-        const point2Df& pos,
-        const point2Df& size,
-        const color& color_tl,
-        const color& color_tr,
-        const color& color_br,
-        const color& color_bl
     );
 
     //! Draw filled box
