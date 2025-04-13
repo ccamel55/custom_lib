@@ -28,7 +28,6 @@ Geometry_2D::Geometry_2D(
     const std::shared_ptr<TextureFactory>& texture_factory
 )
     : _device(device)
-    , _pipeline(_device)
     , _draw(geometry::MAX_VERTICES, geometry::MAX_INDICES)
     , _font_factory(font_factory)
     , _shader_factory(shader_factory)
@@ -138,17 +137,11 @@ Geometry_2D::Geometry_2D(
         }
         _texture_default = texture_default.value();
     }
-}
 
-void Geometry_2D::draw_geometry(const nvrhi::CommandListHandle& command_list, nvrhi::IFramebuffer* frame_buffer) {
-
-    const nvrhi::FramebufferInfoEx& frame_buffer_info = frame_buffer->getFramebufferInfo();
-
-    if (_update_pipeline) {
-        _update_pipeline = false;
-
-        _pipeline.back_buffer_resized([&](auto& pipeline) {
-            pipeline[static_cast<size_t>(geometry::Pipeline_Id::Geometry_Texture)] = _device->createGraphicsPipeline(
+    // Set pipeline creation functions
+    {
+        _pipeline.set(geometry::Pipeline_Id::Geometry_Texture, [&](nvrhi::IFramebuffer* frame_buffer) {
+            return _device->createGraphicsPipeline(
             nvrhi::GraphicsPipelineDesc()
                 .setVertexShader(_vertex_shader)
                 .setPixelShader(_pixel_shader)
@@ -186,8 +179,8 @@ void Geometry_2D::draw_geometry(const nvrhi::CommandListHandle& command_list, nv
             );
         });
 
-        _pipeline.back_buffer_resized([&](auto& pipeline) {
-            pipeline[static_cast<size_t>(geometry::Pipeline_Id::Geometry_Texture_Sdf)] = _device->createGraphicsPipeline(
+        _pipeline.set(geometry::Pipeline_Id::Geometry_Texture_Sdf, [&](nvrhi::IFramebuffer* frame_buffer) {
+            return _device->createGraphicsPipeline(
             nvrhi::GraphicsPipelineDesc()
                 .setVertexShader(_vertex_shader)
                 .setPixelShader(_pixel_shader_sdf)
@@ -225,8 +218,8 @@ void Geometry_2D::draw_geometry(const nvrhi::CommandListHandle& command_list, nv
             );
         });
 
-        _pipeline.back_buffer_resized([&](auto& pipeline) {
-            pipeline[static_cast<size_t>(geometry::Pipeline_Id::Geometry_Texture_Sdf_Outline)] = _device->createGraphicsPipeline(
+        _pipeline.set(geometry::Pipeline_Id::Geometry_Texture_Sdf_Outline, [&](nvrhi::IFramebuffer* frame_buffer) {
+            return _device->createGraphicsPipeline(
             nvrhi::GraphicsPipelineDesc()
                 .setVertexShader(_vertex_shader)
                 .setPixelShader(_pixel_shader_sdf_outline)
@@ -263,6 +256,16 @@ void Geometry_2D::draw_geometry(const nvrhi::CommandListHandle& command_list, nv
                 frame_buffer
             );
         });
+    }
+}
+
+void Geometry_2D::draw_geometry(const nvrhi::CommandListHandle& command_list, nvrhi::IFramebuffer* frame_buffer) {
+
+    const nvrhi::FramebufferInfoEx& frame_buffer_info = frame_buffer->getFramebufferInfo();
+
+    if (_update_pipeline) {
+        _update_pipeline = false;
+        _pipeline.recreate(frame_buffer);
     }
 
     // Write constant buffer
@@ -316,7 +319,7 @@ void Geometry_2D::draw_geometry(const nvrhi::CommandListHandle& command_list, nv
                 state.indexBuffer   = { _index_buffer.buffer(), nvrhi::Format::R32_UINT, 0 };
                 state.vertexBuffers = { { _vertex_buffer.buffer(), 0, 0 } };
 
-                state.pipeline      = _pipeline[batch.pipeline];
+                state.pipeline      = _pipeline.at(batch.pipeline);
                 state.framebuffer   = frame_buffer;
 
                 // If no viewport is given, then use full frame buffer size

@@ -26,9 +26,39 @@ Gui::Gui(
         textureFactory
     )
     , m_blit(device, shaderFactory)
-    , m_image(device)
-    , m_frameBuffer(device)
     , m_commandList(_device->createCommandList()) {
+
+    {
+        m_image.set(detail::Image_Id::Geometry_2d_ColorTarget, [&](const point2Di& size) {
+
+            //
+            // Recreate textures
+            //
+
+             return _device->createTexture(
+                 nvrhi::TextureDesc()
+                     .setDebugName("ColorTarget")
+                     .setFormat(nvrhi::Format::SBGRA8_UNORM)
+                     .setWidth(std::max(size.x, 1))
+                     .setHeight(std::max(size.y, 1))
+                     .setIsRenderTarget(true)
+                     .setKeepInitialState(true)
+                     .setInitialState(nvrhi::ResourceStates::RenderTarget)
+             );
+        });
+
+        m_frameBuffer.set(detail::FrameBuffer_Id::Geometry_2d, [&]() {
+
+            //
+            // Recreate frame buffers
+            //
+
+            return _device->createFramebuffer(
+                nvrhi::FramebufferDesc()
+                    .addColorAttachment(m_image.at(detail::Image_Id::Geometry_2d_ColorTarget))
+            );
+        });
+    }
 
     // NOTE: we are creating the styler here for now however we should allow the user to
     //       set and update the style when ever they want.
@@ -141,7 +171,7 @@ void Gui::render(nvrhi::IFramebuffer* frame_buffer) {
         // Write queued up draws to image
         //
 
-        const auto geometry_fb = m_frameBuffer[FrameBuffer_Id::Geometry_2d];
+        const auto geometry_fb = m_frameBuffer.at(FrameBuffer_Id::Geometry_2d);
         nvrhi::utils::ClearColorAttachment(m_commandList, geometry_fb, 0, nvrhi::Color(0));
 
         m_geometry2D.draw_geometry(m_commandList, geometry_fb);
@@ -152,7 +182,7 @@ void Gui::render(nvrhi::IFramebuffer* frame_buffer) {
         // Copy draw target image to current frame buffer image
         //
 
-        m_blit.blit(m_commandList, m_image[Image_Id::Geometry_2d_ColorTarget], frame_buffer);
+        m_blit.blit(m_commandList, m_image.at(Image_Id::Geometry_2d_ColorTarget), frame_buffer);
     }
     m_commandList->close();
 
@@ -168,35 +198,8 @@ void Gui::back_buffer_resized(const point2Di& size) {
 
     using namespace detail;
 
-    m_image.back_buffer_resized([&](auto& image) {
-
-        //
-        // Recreate textures
-        //
-
-        image[static_cast<size_t>(Image_Id::Geometry_2d_ColorTarget)] = _device->createTexture(
-            nvrhi::TextureDesc()
-                .setDebugName("ColorTarget")
-                .setFormat(nvrhi::Format::SBGRA8_UNORM)
-                .setWidth(std::max(size.x, 1))
-                .setHeight(std::max(size.y, 1))
-                .setIsRenderTarget(true)
-                .setKeepInitialState(true)
-                .setInitialState(nvrhi::ResourceStates::RenderTarget)
-        );
-    });
-
-    m_frameBuffer.back_buffer_resized([&](auto& frame_buffer) {
-
-        //
-        // Recreate frame buffers
-        //
-
-        frame_buffer[static_cast<size_t>(FrameBuffer_Id::Geometry_2d)] = _device->createFramebuffer(
-            nvrhi::FramebufferDesc()
-                .addColorAttachment(m_image[Image_Id::Geometry_2d_ColorTarget])
-        );
-    });
+    m_image.recreate(size);
+    m_frameBuffer.recreate();
 
     m_uiBounds = { 0, 0, size.x, size.y };
 }

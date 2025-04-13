@@ -3,9 +3,8 @@
 #include <module_input/Input.hpp>
 
 #include <module_render/Render.hpp>
+#include <module_render/util/Creatable.hpp>
 #include <module_render/util/FontFactory.hpp>
-#include <module_render/util/FrameBuffer.hpp>
-#include <module_render/util/Image.hpp>
 #include <module_render/util/ShaderFactory.hpp>
 #include <module_render/util/TextureBlit.hpp>
 #include <module_render/util/TextureFactory.hpp>
@@ -37,8 +36,16 @@ enum class Image_Id: uint32_t {
     Num_Image_Id
 };
 
-using FrameBuffer   = render::FrameBuffer<FrameBuffer_Id, static_cast<size_t>(FrameBuffer_Id::Num_FrameBuffer_Id)>;
-using Image         = render::Image<Image_Id, static_cast<size_t>(Image_Id::Num_Image_Id)>;
+using FrameBuffer = render::Creatable<
+    nvrhi::FramebufferHandle, nvrhi::IFramebuffer,
+    FrameBuffer_Id, static_cast<size_t>(FrameBuffer_Id::Num_FrameBuffer_Id)
+>;
+
+using Image = render::Creatable<
+    nvrhi::TextureHandle, nvrhi::ITexture,
+    Image_Id, static_cast<size_t>(Image_Id::Num_Image_Id),
+    const point2Di&
+>;
 
 }
 

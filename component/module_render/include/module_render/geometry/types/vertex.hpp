@@ -7,8 +7,6 @@
 
 #include <module_core/type/color.hpp>
 
-#include <vector>
-
 namespace lib::render::geometry {
 
 constexpr size_t MAX_VERTICES   = 1 << 16;              // 64k

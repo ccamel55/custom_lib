@@ -15,10 +15,8 @@
 #include <module_render/Render.hpp>
 #include <module_render/backend/Device_Vulkan.hpp>
 #include <module_render/geometry/Geometry_2D.hpp>
-#include <module_render/pass/BasicTriangle.hpp>
+#include <module_render/util/Creatable.hpp>
 #include <module_render/util/FontFactory.hpp>
-#include <module_render/util/FrameBuffer.hpp>
-#include <module_render/util/Image.hpp>
 #include <module_render/util/TextureBlit.hpp>
 
 #include <module_system/filesystem.hpp>
@@ -497,8 +495,16 @@ enum class Image_Id: uint32_t {
     Num_Image_Id
 };
 
-using FrameBuffer   = render::FrameBuffer<FrameBuffer_Id, static_cast<size_t>(FrameBuffer_Id::Num_FrameBuffer_Id)>;
-using Image         = render::Image<Image_Id, static_cast<size_t>(Image_Id::Num_Image_Id)>;
+using FrameBuffer = render::Creatable<
+    nvrhi::FramebufferHandle, nvrhi::IFramebuffer,
+    FrameBuffer_Id, static_cast<size_t>(FrameBuffer_Id::Num_FrameBuffer_Id)
+>;
+
+using Image = render::Creatable<
+    nvrhi::TextureHandle, nvrhi::ITexture,
+    Image_Id, static_cast<size_t>(Image_Id::Num_Image_Id),
+    const point2Di&
+>;
 
 class ExamplePass final : public render::RenderPass, public input::InputPass {
 public:
@@ -515,14 +521,34 @@ public:
             shader_factory,
             texture_factory
         )
-        , _blit(device, shader_factory)
-        , _image(device)
-        , _frame_buffer(device) {
+        , _blit(device, shader_factory) {
 
         _command_list = _device->createCommandList();
 
         _cat_image  = _geometry_2d.add_texture("cat.jpg").value();
         _arial_font = _geometry_2d.add_font("arial.ttf", 20).value();
+
+        {
+            _image.set(Image_Id::Geometry_2d_ColorTarget, [&](const point2Di& size) {
+                return _device->createTexture(
+                    nvrhi::TextureDesc()
+                        .setDebugName("ColorTarget")
+                        .setFormat(nvrhi::Format::SBGRA8_UNORM)
+                        .setWidth(std::max(size.x, 1))
+                        .setHeight(std::max(size.y, 1))
+                        .setIsRenderTarget(true)
+                        .setKeepInitialState(true)
+                        .setInitialState(nvrhi::ResourceStates::RenderTarget)
+                );
+            });
+
+            _frame_buffer.set(FrameBuffer_Id::Geometry_2d, [&]() {
+                return _device->createFramebuffer(
+                    nvrhi::FramebufferDesc()
+                        .addColorAttachment(_image.at(Image_Id::Geometry_2d_ColorTarget))
+                );
+            });
+        }
     }
 
     void update_input(const bitflag type, const input::InputObserver& input) override {
@@ -556,13 +582,13 @@ public:
     void render(nvrhi::IFramebuffer* frame_buffer) override {
         _command_list->open();
         {
-            const auto geometry_fb = _frame_buffer[FrameBuffer_Id::Geometry_2d];
+            const auto geometry_fb = _frame_buffer.at(FrameBuffer_Id::Geometry_2d);
             nvrhi::utils::ClearColorAttachment(_command_list, geometry_fb, 0, nvrhi::Color(0));
 
             _geometry_2d.draw_geometry(_command_list, geometry_fb);
         }
         {
-            _blit.blit(_command_list, _image[Image_Id::Geometry_2d_ColorTarget], frame_buffer);
+            _blit.blit(_command_list, _image.at(Image_Id::Geometry_2d_ColorTarget), frame_buffer);
         }
         _command_list->close();
         _device->executeCommandList(_command_list);
@@ -574,25 +600,8 @@ public:
     }
 
     void back_buffer_resized(const point2Di& size) override {
-        _image.back_buffer_resized([&](auto& image) {
-            image[static_cast<size_t>(Image_Id::Geometry_2d_ColorTarget)] = _device->createTexture(
-                nvrhi::TextureDesc()
-                    .setDebugName("ColorTarget")
-                    .setFormat(nvrhi::Format::SBGRA8_UNORM)
-                    .setWidth(std::max(size.x, 1))
-                    .setHeight(std::max(size.y, 1))
-                    .setIsRenderTarget(true)
-                    .setKeepInitialState(true)
-                    .setInitialState(nvrhi::ResourceStates::RenderTarget)
-            );
-        });
-
-        _frame_buffer.back_buffer_resized([&](auto& frame_buffer) {
-            frame_buffer[static_cast<size_t>(FrameBuffer_Id::Geometry_2d)] = _device->createFramebuffer(
-                nvrhi::FramebufferDesc()
-                    .addColorAttachment(_image[Image_Id::Geometry_2d_ColorTarget])
-            );
-        });
+        _image.recreate(size);
+        _frame_buffer.recreate();
 
         _screen_size = size;
     }
@@ -711,7 +720,6 @@ int main(
             EXE_PATH / "textures"
         );
 
-        // const auto triangle_pass    = std::make_unique<render::BasicTriangle>(RENDER->backend()->device_handle(), SHADER_FACTORY);
         const auto example_pass     = std::make_unique<ExamplePass>(RENDER->backend()->device_handle(), FONT_FACTORY, SHADER_FACTORY, TEXTURE_FACTORY);
         const auto gui_pass         = std::make_unique<gui::Gui>(RENDER->backend()->device_handle(), FONT_FACTORY, SHADER_FACTORY, TEXTURE_FACTORY);
 
@@ -724,7 +732,6 @@ int main(
         INPUTS->emplace_pass(example_pass.get());
         INPUTS->emplace_pass(gui_pass.get());
 
-        // RENDER->emplace_render_pass_back(triangle_pass.get());
         RENDER->emplace_render_pass_back(example_pass.get());
         RENDER->emplace_render_pass_back(gui_pass.get());
 
