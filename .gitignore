@@ -109,4 +109,11 @@ fabric.properties
 # Ignore all cmake-build files as well.
 **/cmake-build-*/
 
-.idea/
+# Qt Creator
+**/*.user
+build/
+
+# Other stuff
+.clangd
+
+bin/
