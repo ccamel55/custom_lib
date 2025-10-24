@@ -1,7 +1,9 @@
 #pragma once
 
 #include <module_core/type/bitflag.hpp>
+
 #include <module_core/type/point/point2D.hpp>
+#include <module_core/type/point/point4D.hpp>
 
 namespace lib::input
 {
@@ -117,6 +119,29 @@ public:
     //! \return scroll delta
     [[nodiscard]] const point2Di& scroll_delta() const {
         return static_cast<const Base*>(this)->internal_scroll_delta();
+    }
+
+    //! Returns whether mouse cursor is in give rectangle
+    //! \param position position of rect
+    //! \param size size of rect
+    //! \returns true if mouse is in rect
+    [[nodiscard]] bool in_rect(const point2Di& position, const point2Di& size) const {
+        return
+            (cursor_position().x >= position.x) &&
+            (cursor_position().y >= position.y) &&
+            (cursor_position().x <= position.x + size.x) &&
+            (cursor_position().y <= position.y + size.y);
+    }
+
+    //! Returns whether mouse cursor is in give rectangle
+    //! \param area area of rectangle
+    //! \returns true if mouse is in rect
+    [[nodiscard]] bool in_rect(const point4Di& area) const {
+        return
+            (cursor_position().x >= area.x) &&
+            (cursor_position().y >= area.y) &&
+            (cursor_position().x <= area.x + area.z) &&
+            (cursor_position().y <= area.y + area.w);
     }
 };
 }

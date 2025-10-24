@@ -43,9 +43,9 @@ public:
     //! \param message String containing message body.
     //! \param args Packed arguments list containing things to be formatted.
     template<typename... Args>
-    void print(log_level level, const std::string& tag, const fmt::format_string<Args...>& message, Args&&... args) {
+    void print(const log_level level, const std::string& tag, const fmt::format_string<Args...>& message, Args&&... args) {
         log_message_t message_object = { }; {
-            message_object.thread_id = std::this_thread::get_id();
+            message_object.thread_id = std::hash<std::thread::id>{}(std::this_thread::get_id());
             message_object.timestamp = std::chrono::system_clock::now();
             message_object.level     = level;
             message_object.tag       = tag;

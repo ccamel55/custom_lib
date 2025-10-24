@@ -39,11 +39,19 @@ class color {
 public:
     constexpr color() = default;
 
-    constexpr color(uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255)
+    constexpr color(const uint8_t r, const uint8_t g, const uint8_t b, const uint8_t a = 255)
         : r(r)
         , g(g)
         , b(b)
         , a(a) {
+    }
+
+    constexpr color(const color& col, const uint8_t a)
+        : r(col.r)
+        , g(col.g)
+        , b(col.b)
+        , a(a) {
+
     }
 
     //! Convert current color to a float color

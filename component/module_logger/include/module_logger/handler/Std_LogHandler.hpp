@@ -25,7 +25,7 @@ public:
         std::cout
                 << fmt::format(
                     "| {} | {} | {} | [{}] | {}\n",
-                    message.thread_id._Get_underlying_id(),
+                    message.thread_id,
                     message.timestamp,
                     get_level_identifier(message.level),
                     message.tag,

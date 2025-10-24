@@ -1,31 +1,28 @@
 #pragma once
 
-#include <nvrhi/nvrhi.h>
+#ifdef CAMEL_NVRHI_VULKAN
 #include <nvrhi/utils.h>
 #include <nvrhi/validation.h>
-
-#ifdef CAMEL_NVRHI_VULKAN
 #include <nvrhi/vulkan.h>
-
-// these macros can suck dick
-#ifdef min
-#undef min
-#endif
-
-#ifdef max
-#undef max
-#endif
 
 #define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
 #include <vulkan/vulkan.hpp>
 #endif
 
 #ifdef CAMEL_NVRHI_DX_11
+#include <Windows.h>
+#include <dxgi1_5.h>
+#include <dxgidebug.h>
+
 #include <nvrhi/d3d11.h>
-#include <d3d11.h>
+#include <nvrhi/validation.h>
 #endif
 
 #ifdef CAMEL_NVRHI_DX_12
+#include <Windows.h>
+#include <dxgi1_5.h>
+#include <dxgidebug.h>
+
 #include <nvrhi/d3d12.h>
-#include <d3d12.h>
+#include <nvrhi/validation.h>
 #endif

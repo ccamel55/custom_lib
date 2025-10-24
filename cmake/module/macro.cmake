@@ -8,8 +8,8 @@ macro(scan_components)
 	# Look for folders in 'components' subdirectory and get their names.
 	file(
 		GLOB _COMPONENTS
-		RELATIVE ${_CAMEL_CMAKE_TOP_LEVEL_DIR}
-			"${_CAMEL_CMAKE_TOP_LEVEL_DIR}/component/*"
+		RELATIVE ${_CAMEL_CMAKE_DIR}
+			"${_CAMEL_CMAKE_DIR}/component/*"
 	)
 
 	# Get name of each folder
@@ -40,8 +40,8 @@ macro(add_components)
 	# Look for folders in 'components' subdirectory and get their names.
 	file(
 		GLOB _COMPONENTS
-		RELATIVE ${_CAMEL_CMAKE_TOP_LEVEL_DIR}
-			"${_CAMEL_CMAKE_TOP_LEVEL_DIR}/component/*"
+		RELATIVE ${_CAMEL_CMAKE_DIR}
+			"${_CAMEL_CMAKE_DIR}/component/*"
 	)
 
 	# add_subdirectory for all folders
@@ -62,8 +62,8 @@ macro(scan_tools)
 	# Look for folders in 'tool' subdirectory and get their names.
 	file(
 		GLOB _TOOLS
-		RELATIVE ${_CAMEL_CMAKE_TOP_LEVEL_DIR}
-			"${_CAMEL_CMAKE_TOP_LEVEL_DIR}/tool/*"
+		RELATIVE ${_CAMEL_CMAKE_DIR}
+			"${_CAMEL_CMAKE_DIR}/tool/*"
 	)
 
 	# Get name of each folder
@@ -97,8 +97,8 @@ macro(add_tools)
 	# Look for folders in 'tool' subdirectory and get their names.
 	file(
 		GLOB _TOOLS
-		RELATIVE ${_CAMEL_CMAKE_TOP_LEVEL_DIR}
-			"${_CAMEL_CMAKE_TOP_LEVEL_DIR}/tool/*"
+		RELATIVE ${_CAMEL_CMAKE_DIR}
+			"${_CAMEL_CMAKE_DIR}/tool/*"
 	)
 
 	# add_subdirectory for all folders

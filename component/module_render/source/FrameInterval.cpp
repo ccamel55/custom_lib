@@ -25,7 +25,7 @@ void FrameInterval::emplace() {
     emplace(frame_time);
 }
 
-void FrameInterval::emplace(std::chrono::microseconds frame_time) {
+void FrameInterval::emplace(const std::chrono::microseconds frame_time) {
     _current_fps        = static_cast<uint16_t>(1000.f / (static_cast<float>(frame_time.count()) / 1000.f));
     _current_frame_time = frame_time;
 

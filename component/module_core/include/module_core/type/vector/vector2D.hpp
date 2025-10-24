@@ -1,8 +1,8 @@
 #pragma once
 
-#include <module_core/type/point/point2D.hpp>
+#include <dep_glm/glm.hpp>
 
 namespace lib
 {
-using vector2D = point2Df;
+using vector2D = glm::vec2;
 }  // namespace lib

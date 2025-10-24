@@ -1,4 +1,6 @@
 #pragma once
+
+#include <module_core/type/point/point3D.hpp>
 #include <module_core/type/vector/vector3D.hpp>
 
 namespace lib {
@@ -10,7 +12,7 @@ public:
     //! \param origin Origin or the ray.
     //! \param normalized_direction direction of the ray.
     //! \param scalar the unit length of the ray.
-    constexpr ray(const point3Df& origin, const vector3D& normalized_direction, float scalar)
+    constexpr ray(const point3Df& origin, const vector3D& normalized_direction, const float scalar)
         : origin(origin)
         , direction(normalized_direction)
         , scalar(scalar) {
